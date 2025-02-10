@@ -14,72 +14,7 @@
 
 This repository allows you to create and search a vector database for relevant context across a wide variety of documents and then get a response from the large language model that's more accurate.  This is commonly referred to as "retrieval augmented generation" (RAG) and it drastically reduces hallucinations from the LLM!  You can watch an introductory [Video](https://www.youtube.com/watch?v=8-ZAYI4MvtA) or read a [Medium article](https://medium.com/@vici0549/search-images-with-vector-database-retrieval-augmented-generation-rag-3d5a48881de5) about the program. <br>
 
-
-```mermaid
-graph TD
-    %% Define Classes
-    classDef inputStyle fill:#263238,stroke:#2ecc71,stroke-width:2px;
-    classDef processStyle fill:#263238,stroke:#e91e63,stroke-width:2px;
-    classDef outputStyle fill:#263238,stroke:#5bc0de,stroke-width:2px;
-    classDef searchStyle fill:#263238,stroke:#ff9800,stroke-width:2px;
-    classDef llmStyle fill:#263238,stroke:#9c27b0,stroke-width:2px;
-    classDef ttsStyle fill:#263238,stroke:#3f51b5,stroke-width:2px;
-    classDef minWidth width:200px;
-    %% Input Files
-    subgraph InputFiles [Files]
-        A[.pdf, .docx, .txt, .html, .csv, .xls, .xlsx, .rtf, .odt]
-        B[.png, .jpg, .jpeg, .bmp, .gif, .tif, .tiff]
-        C[.mp3, .wav, .m4a, .ogg, .wma, .flac]
-    end
-    class InputFiles inputStyle;
-    %% Processing
-    subgraph Processing [Process]
-        D[Extract Text]
-        E[Summarize Images]
-        F[Transcribe Audio]
-    end
-    class Processing processStyle;
-    %% Output
-    subgraph Output [Save]
-        G[Vector Database]:::minWidth
-    end
-    class Output outputStyle;
-    %% Search
-    subgraph Search [Query]
-        H[Type a Question]
-        I[Record a Question]
-    end
-    class Search searchStyle;
-    %% LLM
-    subgraph LLM [Get Response from LLM]
-        J[Combine Chunks & Query]
-        K1[Local Models<br/>via this program]
-        K2[Kobold, LM Studio or ChatGPT]
-        K[Response from LLM]
-        K1 --> K
-        K2 --> K
-    end
-    class LLM llmStyle;
-    %% TTS
-    subgraph TTS [Speak Response]
-        L[Text-to-Speech Models]
-    end
-    class TTS ttsStyle;
-    %% Connections
-    A --> D
-    B --> E
-    C --> F
-    D --> G
-    E --> G
-    F --> G
-    H --> G
-    I --> G
-    G --> J
-    J --> K1
-    J --> K2
-    K --> L
-```
-
+![image](https://github.com/user-attachments/assets/b3784da7-91a5-426b-882c-756468ffdc20)
 
 <div align="center">
   <h3><u>Requirements</u></h3>
