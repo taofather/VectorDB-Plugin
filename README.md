@@ -68,7 +68,7 @@ python setup_windows_.py
 <a name="using-the-program"></a>
 <div align="center"> <h2>🖥️Usage🖥️</h2></div>
 
-🔥Important🔥
+### 🔥Important🔥
 * Instructions on how to use this program are being consolidated into the ```Ask Jeeves``` functionality, which can be accessed from the "Ask Jeeves" menu option.  Please post an issue in this repository if Jeeves is not giving you sufficient answers.
 * To talk with Jeeves, you must first download 📥 the ```bge-small-en-v1.5``` embedding model from the ```Models Tab```.
 
