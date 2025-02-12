@@ -70,7 +70,7 @@ python setup_windows_.py
 
 🔥Important🔥
 * Instructions on how to use this program are being consolidated into the ```Ask Jeeves``` functionality, which can be accessed from the "Ask Jeeves" menu option.  Please post an issue in this repository if Jeeves is not giving you sufficient answers.
-* To talk with Jeeves, you must first download the ```bge-small-en-v1.5``` embedding model from the ```Models Tab```.
+* To talk with Jeeves, you must first download 📥 the ```bge-small-en-v1.5``` embedding model from the ```Models Tab```.
 
 ### 1) Activate the virtual environment and start the program
 > Every time you want to use the program you must activate the virtual environment:
@@ -81,25 +81,25 @@ python setup_windows_.py
 python gui.py
 ```
 
-### 2) Download a vector model
+### 2) Download a vector model 📥
 * Download a vector/embedding model from the ```Models Tab```.
 
-### 3) Selecting General Files
+### 3) Selecting General Files 📄 🖼️
 
 Non-audio files (including images) can be selected by clicking the ```Choose Files``` button within the ```Create Database Tab```.
   > It is highly recommended that you test out the different vision models before inputting images, however.  Ask Jeeves!
 
-### 4) Selecting Audio Files
+### 4) Selecting Audio Files 🎵
 Audio files can be put into a vector database by first transcribing them from the ```Tools Tab``` using advanced ```Whisper``` models.  You can only transcribe one audio file at a time, but batch processing is hopefully coming soon.
   > I highly recommend testing the various ```Whisper``` model sizes, precisions, and the ```batch``` setting on a short audio file **before** committng to transcribing a longer file.  This will ensure that you do not run out of VRAM.  Ask Jeeves!
 
 A completed transcription will appear in the ```Create Database Tab``` as a ```.json``` file having the same name as the original audio file.  Just doubleclick to see the transcription.
 
-### 5) Creating a Database
+### 5) Creating a Database 🏗️
 * Download a vector model from the ```Models``` tab.
 * Assuming you have added all the files you want, simply click the ```Create Vector Database``` button within the ```Create Database Tab```.
 
-### 6) Query a Database
+### 6) Query a Database 🔍
 * In the ```Query Database Tab```, select the database you want to search.
 * Type or voice-record your question.
 * Use the ```chunks only``` checkbox to only receive the relevant contexts.
@@ -107,8 +107,10 @@ A completed transcription will appear in the ```Create Database Tab``` as a ```.
 * Click ```Submit Question```.
   * In the ```Settings``` tab, you can change multiple settings regarding querying the database.
 
-🔥Important🔥<br><br>
+### 🔥Important🔥
 If you use either the ```Kobold``` or ```LM Studio``` backends you must be familiar with those programs.  For example, ```LM Studio``` must be running in "server mode" and handles the prompt formatting.  In contrast,```Kobold``` defaults to creating a server but requires you to manually enter the prompt formatting.  This program no longer provides detailed instructions on how to use either of these two backends but you can Ask Jeeves about them generally.
+* Kobold [home page](https://github.com/LostRuins/koboldcpp), [instructions](https://github.com/LostRuins/koboldcpp/wiki), and [Discord server](https://koboldai.org/discord)
+* LM Studio [home page](https://lmstudio.ai/), [instructions](https://lmstudio.ai/docs), and [Discord server](https://discord.gg/aPQfnNkxGC).
 
 ### 7) Deleting a Database
 * In the ```Manage Databases Tab```, select a database and click ```Delete Database```.
