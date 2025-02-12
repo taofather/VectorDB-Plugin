@@ -112,7 +112,7 @@ If you use either the ```Kobold``` or ```LM Studio``` backends you must be famil
 * Kobold [home page](https://github.com/LostRuins/koboldcpp), [instructions](https://github.com/LostRuins/koboldcpp/wiki), and [Discord server](https://koboldai.org/discord)
 * LM Studio [home page](https://lmstudio.ai/), [instructions](https://lmstudio.ai/docs), and [Discord server](https://discord.gg/aPQfnNkxGC).
 
-### 7) Deleting a Database
+### 7) Deleting a Database 🗑️
 * In the ```Manage Databases Tab```, select a database and click ```Delete Database```.
 
 [Back to Top](#top)
