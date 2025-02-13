@@ -7,8 +7,8 @@ priority_libs = {
             "https://download.pytorch.org/whl/cu126/torchvision-0.21.0%2Bcu126-cp311-cp311-win_amd64.whl#sha256=ddbf4516fbb7624ac42934b877dcf6a3b295d9914ab89643b55dedb9c9773ce4",
             "https://github.com/woct0rdho/triton-windows/releases/download/v3.2.0-windows.post9/triton-3.2.0-cp311-cp311-win_amd64.whl",
             "git+https://github.com/shashikg/WhisperS2T.git@e7f7e6dbfdc7f3a39454feb9dd262fd3653add8c",
-            "git+https://github.com/BBC-Esq/WhisperSpeech.git@41c9accb7d9ac1e4e5f5c110a4a973c566c56fd8",
-            "xformers==0.0.29.post2", # requires torch 2.6.0
+            "git+https://github.com/BBC-Esq/WhisperSpeech.git@795f60157136b0052b9a1f576e88803f7783ab1f",
+            "https://download.pytorch.org/whl/cu126/xformers-0.0.29.post3-cp311-cp311-win_amd64.whl", # requires torch 2.6.0
             # per https://github.com/pytorch/pytorch/blob/main/.github/scripts/generate_binary_build_matrix.py
             "nvidia-cuda-runtime-cu12==12.6.77",
             "nvidia-cublas-cu12==12.6.4.1",
@@ -29,8 +29,8 @@ priority_libs = {
             "https://download.pytorch.org/whl/cu126/torchvision-0.21.0%2Bcu126-cp312-cp312-win_amd64.whl#sha256=600c18579cd6eae8f6bbfcc43a088bc512bfde1fa4de0587a4db1d44eaf411f9",
             "https://github.com/woct0rdho/triton-windows/releases/download/v3.2.0-windows.post9/triton-3.2.0-cp312-cp312-win_amd64.whl",
             "git+https://github.com/shashikg/WhisperS2T.git@e7f7e6dbfdc7f3a39454feb9dd262fd3653add8c",
-            "git+https://github.com/BBC-Esq/WhisperSpeech.git@41c9accb7d9ac1e4e5f5c110a4a973c566c56fd8",
-            "xformers==0.0.29.post2", # requires torch 2.6.0
+            "git+https://github.com/BBC-Esq/WhisperSpeech.git@795f60157136b0052b9a1f576e88803f7783ab1f",
+            "https://download.pytorch.org/whl/cu126/xformers-0.0.29.post3-cp312-cp312-win_amd64.whl", # requires torch 2.6.0
             # per https://github.com/pytorch/pytorch/blob/main/.github/scripts/generate_binary_build_matrix.py
             "nvidia-cuda-runtime-cu12==12.6.77",
             "nvidia-cublas-cu12==12.6.4.1",
@@ -73,7 +73,7 @@ libs = [
     "colorama==0.4.6",
     "coloredlogs==15.0.1",
     "contourpy==1.3.1", # onlyk required by matplotlib
-    "cryptography==44.0.0", # only required by unstructured library
+    "cryptography==44.0.1", # only required by unstructured library
     "ctranslate2==4.5.0",
     "cycler==0.12.1",
     "dataclasses-json==0.6.7",
@@ -86,7 +86,7 @@ libs = [
     "einx==0.3.0",
     "emoji==2.14.1",
     "encodec==0.1.1",
-    "et-xmlfile==1.1.0", # openpyxl requires; caution...openpyxl 3.1.5 (6/28/2024) predates et-xmlfile 2.0.0 (10/25/2024)
+    "et-xmlfile==2.0.0", # openpyxl requires; caution...openpyxl 3.1.5 (6/28/2024) predates et-xmlfile 2.0.0 (10/25/2024)
     "eval-type-backport==0.2.2", # only required by unstructured
     "fastcore==1.7.29", # only required by whisperspeech
     "fastprogress==1.0.3", # only required by whisperspeech
@@ -118,13 +118,13 @@ libs = [
     "kiwisolver==1.4.8",
     "langchain==0.3.18",
     "langchain-community==0.3.17",
-    "langchain-core==0.3.34",
+    "langchain-core==0.3.35",
     "langchain-huggingface==0.1.2",
     "langchain-text-splitters==0.3.6",
     "langdetect==1.0.9",
-    "langsmith==0.3.4",
+    "langsmith==0.3.8",
     "llvmlite==0.44.0", # only required by numba
-    "lxml==5.3.0",
+    "lxml==5.3.1",
     "Markdown==3.7",
     "markdown-it-py==3.0.0",
     "MarkupSafe==3.0.2",
@@ -132,7 +132,7 @@ libs = [
     "matplotlib==3.10.0", # uniquely requires pyparsing==3.1.2 cycler==0.12.1 kiwisolver==1.4.5
     "mdurl==0.1.2",
     "more-itertools==10.6.0",
-    "mpmath==1.3.0", # sympy 1.12.1 requires less than 1.4
+    "mpmath==1.3.0", # sympy 1.13.1 requires less than 1.4
     "msg-parser==1.2.0",
     "multidict==6.1.0",
     "multiprocess==0.70.16", # datasets 3.2.0 requires <0.70.17
@@ -140,11 +140,11 @@ libs = [
     "natsort==8.4.0",
     "nest-asyncio==1.6.0",
     "networkx==3.4.2",
-    "nltk==3.8.1", # not higher; gives unexplained error
+    "nltk==3.9.1", # not higher; gives unexplained error
     "numba==0.61.0", # only required by openai-whisper
     "numpy==1.26.4", # langchain libraries <2; numba <2.1; scipy <2.3; chattts <2.0.0
     "olefile==0.47",
-    "openai==1.61.1", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
+    "openai==1.62.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
     "optimum==1.24.0",
@@ -199,7 +199,7 @@ libs = [
     "speechbrain==0.5.16",
     "SQLAlchemy==2.0.38", # langchain and langchain-community require less than 3.0.0
     "sseclient-py==1.8.0", # only required by Kobold
-    "sympy==1.13.1", # torch 2.5.1 requires sympy==1.13.1
+    "sympy==1.13.1", # torch 2.6.0 requires sympy==1.13.1
     "tabulate==0.9.0",
     "tblib==1.7.0", # tiledb-cloud requires >= 1.7.0 but < 1.8.0
     "tenacity==9.0.0",
@@ -218,10 +218,10 @@ libs = [
     "unstructured-client==0.29.0",
     "tzdata==2025.1",
     "urllib3==2.3.0", # requests 2.32.3 requires <3
-    "vector-quantize-pytorch==1.21.7",
+    "vector-quantize-pytorch==1.21.8",
     "vocos==0.1.0",
     "watchdog==6.0.0",
-    "webdataset==0.2.100", # required by all TTS libraries
+    "webdataset==0.2.111", # required by all TTS libraries
     "webencodings==0.5.1", # only required by html5lib
     "wrapt==1.17.2",
     "xlrd==2.0.1",
@@ -740,6 +740,16 @@ VISION_MODELS = {
         'vram': '2.4 GB',
         'loader': 'loader_internvl2_5'
     },
+    'Ovis2 - 1b': {
+        'precision': 'bfloat16',
+        'quant': 'n/a',
+        'size': '1b',
+        'repo_id': 'AIDC-AI/Ovis2-1B',
+        'cache_dir': 'AIDC-AI--Ovis2-1B',
+        'requires_cuda': True,
+        'vram': '2.4 GB',
+        'loader': 'loader_ovis'
+    },
     'Florence-2-base': {
         'precision': 'autoselect',
         'quant': 'n/a',
@@ -789,6 +799,16 @@ VISION_MODELS = {
         'requires_cuda': True,
         'vram': '5.3 GB',
         'loader': 'loader_mississippi'
+    },
+    'Ovis2 - 2b': {
+        'precision': 'bfloat16',
+        'quant': 'n/a',
+        'size': '2b',
+        'repo_id': 'AIDC-AI/Ovis2-2B',
+        'cache_dir': 'AIDC-AI--Ovis2-2B',
+        'requires_cuda': True,
+        'vram': '2.4 GB',
+        'loader': 'loader_ovis'
     },
     'Ovis1.6-Llama3.2 - 3b': {
         'precision': 'bfloat16',
@@ -2802,11 +2822,12 @@ rag_string = "Here are the contexts to base your answer on.  However, I need to 
 **Xformers**
 ************
 
-+------------------+-------+---------------+----------------+------------------------
-| Xformers Version | Torch |  FA2 Support  | CUDA (excl.11) | Python                |
-+------------------+-------+---------------+----------------|------------------------
-| v0.0.29.post2    | 2.6.0 | 2.7.1 - 2.7.2 | 12.4.1, 12.6.? | 3.9, 3.10, 3.11, 3.12 |
-| v0.0.29.post1    | 2.5.1 | 2.6.3 - 2.7.2 | 12.1.0, 12.4.1 |
++------------------+-------+---------------+----------------+---------------+
+| Xformers Version | Torch |  FA2 Support  |         CUDA (excluding 11.x)  |
++------------------+-------+---------------+--------------------------------+
+| v0.0.29.post3    | 2.6.0 | 2.7.1 - 2.7.2 | 12.1.0, 12.4.1, 12.6.3, 12.8.0 |
+| v0.0.29.post2    | 2.6.0 | 2.7.1 - 2.7.2 | 12.1.0, 12.4.1, 12.6.3, 12.8.0 |
+| v0.0.29.post1    | 2.5.1 | 2.6.3 - 2.7.2 | 12.1.0, 12.4.1                 |
 | v0.0.29 (BUG)    | 2.5.1 |               |                |
 | v0.0.28.post3    | 2.5.1 |               |                |
 | v0.0.28.post2    | 2.5.0 |               |                |
