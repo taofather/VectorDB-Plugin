@@ -84,22 +84,22 @@ python gui.py
 ### 2) Download a vector model 📥
 * Download a vector/embedding model from the ```Models Tab```.
 
-### 3) Selecting General Files 📄 🖼️
+### 3) 📄 🖼️ Selecting General Files
 
 Non-audio files (including images) can be selected by clicking the ```Choose Files``` button within the ```Create Database Tab```.
   > It is highly recommended that you test out the different vision models before inputting images, however.  Ask Jeeves!
 
-### 4) Selecting Audio Files 🎵
+### 4) 🎵 Selecting Audio Files
 Audio files can be put into a vector database by first transcribing them from the ```Tools Tab``` using advanced ```Whisper``` models.  You can only transcribe one audio file at a time, but batch processing is hopefully coming soon.
   > I highly recommend testing the various ```Whisper``` model sizes, precisions, and the ```batch``` setting on a short audio file **before** committng to transcribing a longer file.  This will ensure that you do not run out of VRAM.  Ask Jeeves!
 
 A completed transcription will appear in the ```Create Database Tab``` as a ```.json``` file having the same name as the original audio file.  Just doubleclick to see the transcription.
 
-### 5) Creating a Database 🏗️
+### 5) 🏗️ Creating a Database
 * Download a vector model from the ```Models``` tab.
 * Assuming you have added all the files you want, simply click the ```Create Vector Database``` button within the ```Create Database Tab```.
 
-### 6) Query a Database 🔍
+### 6) 🔍 Query a Database
 * In the ```Query Database Tab```, select the database you want to search.
 * Type or voice-record your question.
 * Use the ```chunks only``` checkbox to only receive the relevant contexts.
