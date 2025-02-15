@@ -152,15 +152,6 @@ def load_single_document(file_path: Path) -> Document:
             logging.error(f"No content could be extracted from file: {file_path.name}")
             return None
 
-        content = documents[0].page_content.strip()
-        content_length = len(content)
-        print(f"Loaded---> {file_path.name} (Content length: {content_length} characters)")
-        with open('extracted_content.txt', 'a', encoding='utf-8') as f:
-            f.write(f"\n\nFile: {file_path.name}\n")
-            f.write("---START OF CONTENT---\n")
-            f.write(content)
-            f.write("\n---END OF CONTENT---\n")
-
         document = documents[0]
         metadata = extract_document_metadata(file_path)
         document.metadata.update(metadata)
