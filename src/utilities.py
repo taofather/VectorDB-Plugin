@@ -2,6 +2,7 @@ import importlib
 import importlib.metadata
 import importlib.util
 import os
+import threading
 import logging
 import platform
 import shutil
@@ -18,6 +19,69 @@ from packaging import version
 from PySide6.QtCore import QRunnable, QObject, Signal, QThreadPool
 from PySide6.QtWidgets import QApplication, QMessageBox
 from termcolor import cprint
+
+def check_pdfs_for_ocr(script_dir):
+    import pymupdf
+    import tempfile
+    from datetime import datetime
+    from PySide6.QtWidgets import QPushButton
+
+    documents_dir = script_dir / "Docs_for_DB"
+    pdf_paths = [f for f in documents_dir.iterdir() if f.suffix.lower() == '.pdf']
+    if not pdf_paths:
+        return True, ""
+
+    non_ocr_pdfs = []
+    for pdf_path in pdf_paths:
+        try:
+            doc = pymupdf.open(str(pdf_path))
+            has_text = False
+            for page in doc:
+                if page.get_text().strip():
+                    has_text = True
+                    break
+            if not has_text:
+                non_ocr_pdfs.append(pdf_path)
+        except Exception as e:
+            logging.error(f"Error checking PDF {pdf_path}: {str(e)}")
+            continue
+
+    if non_ocr_pdfs:
+        message = "The following PDF files appear to have no text content and may need OCR:\n\n"
+        for pdf_path in non_ocr_pdfs:
+            message += f"  - {pdf_path}\n"
+        message += "\nPlease perform OCR on these files before proceeding."
+        
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle("PDFs Need OCR")
+        msg_box.setText(message)
+        msg_box.setIcon(QMessageBox.Icon.Warning)
+        
+        msg_box.addButton(QMessageBox.StandardButton.Ok)
+        view_report_button = msg_box.addButton("View Report", QMessageBox.ButtonRole.ActionRole)
+        
+        result = msg_box.exec()
+        
+        if msg_box.clickedButton() == view_report_button:
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_file:
+                temp_file.write("PDFs that need OCR:\n\n")
+                for pdf_path in non_ocr_pdfs:
+                    temp_file.write(f"{pdf_path}\n")
+                temp_path = temp_file.name
+
+            os.startfile(temp_path)
+
+            def cleanup_temp_file():
+                try:
+                    os.unlink(temp_path)
+                except:
+                    pass
+
+            threading.Timer(1.0, cleanup_temp_file).start()
+
+        return False, "PDFs without text content detected."
+
+    return True, ""
 
 def set_cuda_paths():
     import sys
@@ -706,6 +770,11 @@ def check_preconditions_for_db_creation(script_dir, database_name):
                        "Please disable half-precision in the configuration or use a CUDA-enabled GPU.")
             QMessageBox.warning(None, "CUDA Unavailable for Half-Precision", message)
             return False, "CUDA unavailable for half-precision operation."
+
+    # check for PDFs that need OCR
+    ocr_check, ocr_message = check_pdfs_for_ocr(script_dir)
+    if not ocr_check:
+        return False, ocr_message
 
     # final confirmation
     confirmation_reply = QMessageBox.question(None, 'Confirmation', 

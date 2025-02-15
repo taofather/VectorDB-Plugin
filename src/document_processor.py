@@ -56,12 +56,14 @@ class CustomPyMuPDFParser(PyMuPDFParser):
         with PyMuPDFParser._lock:
             with blob.as_bytes_io() as file_path:
                 doc = pymupdf.open(stream=file_path, filetype="pdf") if blob.data else pymupdf.open(file_path)
-                
+
                 full_content = []
                 for page in doc:
                     page_content = self._get_page_content(doc, page, text_kwargs)
-                    full_content.append(f"[[page{page.number + 1}]]{page_content}")
-                
+                    # Only add page marker and content if there's actual content
+                    if page_content.strip():
+                        full_content.append(f"[[page{page.number + 1}]]{page_content}")
+
                 yield Document(
                     page_content="".join(full_content),
                     metadata=self._extract_metadata(doc, blob)
@@ -150,6 +152,15 @@ def load_single_document(file_path: Path) -> Document:
             logging.error(f"No content could be extracted from file: {file_path.name}")
             return None
 
+        content = documents[0].page_content.strip()
+        content_length = len(content)
+        print(f"Loaded---> {file_path.name} (Content length: {content_length} characters)")
+        with open('extracted_content.txt', 'a', encoding='utf-8') as f:
+            f.write(f"\n\nFile: {file_path.name}\n")
+            f.write("---START OF CONTENT---\n")
+            f.write(content)
+            f.write("\n---END OF CONTENT---\n")
+
         document = documents[0]
         metadata = extract_document_metadata(file_path)
         document.metadata.update(metadata)
@@ -174,12 +185,12 @@ def load_document_batch(filepaths, threads_per_process):
 def load_documents(source_dir: Path) -> list:
     valid_extensions = {ext.lower() for ext in DOCUMENT_LOADERS.keys()}
     doc_paths = [f for f in source_dir.iterdir() if f.suffix.lower() in valid_extensions]
-    
+
     docs = []
 
     if doc_paths:
         n_workers = min(INGEST_THREADS, max(len(doc_paths), 1))
-        
+
         total_cores = os.cpu_count()
         threads_per_process = 1
 
@@ -189,7 +200,7 @@ def load_documents(source_dir: Path) -> list:
             for i in range(0, len(doc_paths), chunksize):
                 chunk_paths = doc_paths[i:i + chunksize]
                 futures.append(executor.submit(load_document_batch, chunk_paths, threads_per_process))
-            
+
             for future in as_completed(futures):
                 contents, _ = future.result()
                 docs.extend(contents)
@@ -203,7 +214,7 @@ def split_documents(documents=None, text_documents_pdf=None):
             config = yaml.safe_load(config_file)
             chunk_size = config["database"]["chunk_size"]
             chunk_overlap = config["database"]["chunk_overlap"]
-        
+
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
         texts = []
