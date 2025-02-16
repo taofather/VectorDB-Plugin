@@ -77,7 +77,7 @@ libs = [
     "ctranslate2==4.5.0",
     "cycler==0.12.1",
     "dataclasses-json==0.6.7",
-    "datasets==3.2.0",
+    "datasets==3.3.0",
     "deepdiff==8.2.0", # required by unstructured
     "dill==0.3.8", # datasets 3.2.0 requires <0.3.9; multiprocess 0.70.16 requires >=0.3.8
     "distro==1.9.0",
@@ -144,7 +144,7 @@ libs = [
     "numba==0.61.0", # only required by openai-whisper
     "numpy==1.26.4", # langchain libraries <2; numba <2.1; scipy <2.3; chattts <2.0.0
     "olefile==0.47",
-    "openai==1.62.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
+    "openai==1.63.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
     "optimum==1.24.0",
@@ -159,7 +159,7 @@ libs = [
     "platformdirs==4.3.6",
     "propcache==0.2.1",
     "protobuf==5.29.3",
-    "psutil==6.1.1",
+    "psutil==7.0.0",
     "pyarrow==19.0.0",
     "pybase16384==0.3.8", # only required by chattts
     "pycparser==2.22",
@@ -204,8 +204,11 @@ libs = [
     "tblib==1.7.0", # tiledb-cloud requires >= 1.7.0 but < 1.8.0
     "tenacity==9.0.0",
     "termcolor==2.5.0",
+    "https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.8.0-tesseract-5.5.0/tesserocr-2.8.0-cp311-cp311-win_amd64.whl",
+    "tessdata==1.0.0",
+    "tessdata.eng==1.0.0",
     "threadpoolctl==3.5.0",
-    "tiktoken==0.8.0",
+    "tiktoken==0.9.0",
     "tiledb==0.33.3",
     "tiledb-cloud==0.13.0",
     "tiledb-vector-search==0.11.0",
@@ -215,7 +218,7 @@ libs = [
     "transformers==4.48.3",
     "typing-inspect==0.9.0",
     "typing_extensions==4.12.2",
-    "unstructured-client==0.29.0",
+    "unstructured-client==0.30.0",
     "tzdata==2025.1",
     "urllib3==2.3.0", # requests 2.32.3 requires <3
     "vector-quantize-pytorch==1.21.8",
@@ -850,6 +853,16 @@ VISION_MODELS = {
         'vram': '14.1 GB',
         'loader': 'loader_llava_next'
     }
+}
+
+OCR_MODELS = {
+    'GOT-OCR2': {
+        'precision': 'bfloat16',
+        'size': '716m',
+        'repo_id': 'ctranslate2-4you/GOT-OCR2_0-Customized',
+        'cache_dir': 'ctranslate2-4you--GOT-OCR2_0-Customized',
+        'requires_cuda': True,
+    },
 }
 
 TTS_MODELS = {
@@ -2747,7 +2760,12 @@ master_questions = [
     "What is the manage databases Tab?",
     "What is the Settings Tab?",
     "What is the Models Tab?",
-    "What does precision mean?"
+    "What does precision mean?",
+    "What is OCR or Optical Character Recognition?",
+    "What OCR backends are available in this program?",
+    "What is Tesseract?",
+    "What is GOT OCR?",
+    "How can I use optical character recognition in this program?"
 ]
 
 jeeves_system_message = "You are a helpful British butler who clearly and directly answers questions in a succinct fashion based on contexts provided to you. If you cannot find the answer within the contexts simply tell me that the contexts do not provide an answer. However, if the contexts partially address a question you answer based on what the contexts say and then briefly summarize the parts of the question that the contexts didn't provide an answer to.  Also, you should be very respectful to the person asking the question and frequently offer traditional butler services like various fancy drinks, snacks, various butler services like shining of shoes, pressing of suites, and stuff like that. Also, if you can't answer the question at all based on the provided contexts, you should apologize profusely and beg to keep your job.  Lastly, it is essential that if there are no contexts actually provided it means that a user's question wasn't relevant and you should state that you can't answer based off of the contexts because there are none.  And it goes without saying you should refuse to answer any questions that are not directly answerable by the provided contexts.  Moreover, some of the contexts might not have relevant information and you should simply ignore them and focus on only answering a user's question.  I cannot emphasize enough that you must gear your answer towards using this program and based your response off of the contexts you receive.  Lastly, in addition to offering to perform stereotypical butler services in the midst of your response, you must always always always end your response with some kind of offering of butler services even they don't want it."

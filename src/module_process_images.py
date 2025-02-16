@@ -73,7 +73,7 @@ def choose_image_loader():
         loader_func = loader_molmo(config).process_images
     elif chosen_model == 'Mississippi - 2b':
         loader_func = loader_mississippi(config).process_images
-    elif chosen_model == 'Ovis1.6-Llama3.2 - 3b':
+    elif chosen_model in ['Ovis1.6-Llama3.2 - 3b', 'Ovis2 - 1b', 'Ovis2 - 2b']:
         loader_func = loader_ovis(config).process_images
     elif chosen_model in ['InternVL2.5 - 1b', 'InternVL2.5 - 4b']:
         loader_func = loader_internvl2_5(config).process_images
@@ -561,7 +561,7 @@ class loader_ovis(BaseLoader):
 
     @torch.inference_mode()
     def process_single_image(self, raw_image):
-        text = "Describe this image in as much detail as possible but do not repeat yourself."
+        text = "Describe this image in detail as possible but do not repeatedly identify the same things."
         query = f'<image>\n{text}'
         
         prompt, input_ids, pixel_values = self.model.preprocess_inputs(query, [raw_image])
@@ -659,7 +659,7 @@ class loader_internvl2_5(BaseLoader):
     def process_single_image(self, raw_image):
         pixel_values = self._prepare_image(raw_image).to(torch.bfloat16).to(self.device)
         
-        question = "Describe this image in as much detail as possible but do not repeat yourself."
+        question = "Describe this image in detail as possible but do not repeatedly identify the same things."
         
         generation_config = dict(
             num_beams=1,

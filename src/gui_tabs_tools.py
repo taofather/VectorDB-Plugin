@@ -3,12 +3,10 @@ from PySide6.QtCore import QThread, Signal
 from gui_tabs_tools_transcribe import TranscriberToolSettingsTab
 from gui_tabs_tools_vision import VisionToolSettingsTab
 from gui_tabs_tools_scrape import ScrapeDocumentationTab
+from gui_tabs_tools_ocr import OCRToolSettingsTab
 from gui_tabs_tools_misc import MiscTab
 from initialize import restore_vector_db_backup
 from utilities import backup_database
-# from gui_tabs_tools_ocr import OcrToolSettingsTab
-# from gui_tabs_tools_keybert import KeywordExtractorTab
-
 
 class RestoreBackupThread(QThread):
     finished = Signal(bool)
@@ -36,12 +34,11 @@ class GuiSettingsTab(QWidget):
         self.layout = QVBoxLayout(self)
         self.groups = {}
         classes = {
-            "TRANSCRIBE FILE": (TranscriberToolSettingsTab, 1.5),
-            "SCRAPE DOCUMENTATION": (ScrapeDocumentationTab, 1.5),
-            "TEST VISION MODEL": (VisionToolSettingsTab, 6),
-            # "PERFORM OCR": (OcrToolSettingsTab, 2),
-            # "KEYWORD EXTRACTOR": (KeywordExtractorTab, 3),
-            "MISC": (MiscTab, 1),
+            "TRANSCRIBE FILE": (TranscriberToolSettingsTab, 3),
+            "SCRAPE DOCUMENTATION": (ScrapeDocumentationTab, 3),
+            "TEST VISION MODELS": (VisionToolSettingsTab, 2),
+            "OPTICAL CHARACTER RECOGNITION": (OCRToolSettingsTab, 3),
+            "MISC": (MiscTab, 2),
         }
         for title, (TabClass, stretch) in classes.items():
             settings = TabClass()

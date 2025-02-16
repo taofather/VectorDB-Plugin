@@ -11,10 +11,11 @@ import gc
 import time
 from PIL import Image
 import torch
-from PySide6.QtCore import QUrl, QThread, Signal as pyqtSignal, Qt
-from PySide6.QtGui import QDesktopServices
-from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtWebEngineCore import QWebEnginePage
+from PySide6.QtCore import QThread, Signal as pyqtSignal, Qt
+# from PySide6.QtCore import Qurl
+# from PySide6.QtGui import QDesktopServices
+# from PySide6.QtWebEngineWidgets import QWebEngineView
+# from PySide6.QtWebEngineCore import QWebEnginePage
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, QMessageBox, QFileDialog, QProgressDialog, QDialog, QCheckBox
 
 import module_process_images
@@ -49,18 +50,18 @@ class ModelSelectionDialog(QDialog):
     def get_selected_models(self):
         return [model for model, checkbox in self.checkboxes.items() if checkbox.isChecked()]
 
-class CustomWebEnginePage(QWebEnginePage):
-    def acceptNavigationRequest(self, url, _type, isMainFrame):
-        if _type == QWebEnginePage.NavigationTypeLinkClicked:
-            print(f"Opening URL in system browser: {url.toString()}")
-            QDesktopServices.openUrl(url)
-            return False
-        return super().acceptNavigationRequest(url, _type, isMainFrame)
+# class CustomWebEnginePage(QWebEnginePage):
+    # def acceptNavigationRequest(self, url, _type, isMainFrame):
+        # if _type == QWebEnginePage.NavigationTypeLinkClicked:
+            # print(f"Opening URL in system browser: {url.toString()}")
+            # QDesktopServices.openUrl(url)
+            # return False
+        # return super().acceptNavigationRequest(url, _type, isMainFrame)
 
-    def createWindow(self, _type):
-        if _type == QWebEnginePage.WebBrowserTab or _type == QWebEnginePage.WebBrowserBackgroundTab:
-            return self
-        return None
+    # def createWindow(self, _type):
+        # if _type == QWebEnginePage.WebBrowserTab or _type == QWebEnginePage.WebBrowserBackgroundTab:
+            # return self
+        # return None
 
 class ImageProcessorThread(QThread):
     finished = pyqtSignal(list)
@@ -144,7 +145,7 @@ class MultiModelProcessorThread(QThread):
             self.error.emit(str(e))
 
 class VisionToolSettingsTab(QWidget):
-    HTML_FILE = 'vision_model_table.html'
+    # HTML_FILE = 'vision_model_table.html'
 
     def __init__(self):
         super().__init__()
@@ -163,13 +164,13 @@ class VisionToolSettingsTab(QWidget):
         hBoxLayout.addWidget(newButton)
         newButton.clicked.connect(self.selectSingleImage)
 
-        self.webView = QWebEngineView()
-        custom_page = CustomWebEnginePage(self.webView)
-        self.webView.setPage(custom_page)
-        script_dir = Path(__file__).resolve().parent
-        html_file_path = script_dir / "Assets" / self.HTML_FILE
-        self.webView.setUrl(QUrl.fromLocalFile(str(html_file_path)))
-        mainVLayout.addWidget(self.webView)
+        # self.webView = QWebEngineView()
+        # custom_page = CustomWebEnginePage(self.webView)
+        # self.webView.setPage(custom_page)
+        # script_dir = Path(__file__).resolve().parent
+        # html_file_path = script_dir / "Assets" / self.HTML_FILE
+        # self.webView.setUrl(QUrl.fromLocalFile(str(html_file_path)))
+        # mainVLayout.addWidget(self.webView)
 
         self.thread = None
 

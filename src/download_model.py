@@ -16,7 +16,8 @@ MODEL_DIRECTORIES = {
     "vector": "vector",
     "chat": "chat", 
     "tts": "tts",
-    "jeeves": "jeeves"
+    "jeeves": "jeeves",
+    "ocr": "ocr"
 }
 
 class ModelDownloader(QObject):

@@ -11,6 +11,8 @@ set_cuda_paths()
 from ctypes import windll, byref, sizeof, c_void_p, c_int
 from ctypes.wintypes import BOOL, HWND, DWORD
 
+from PySide6.QtCore import QTimer
+
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QTabWidget,
     QMenuBar, QHBoxLayout, QMessageBox, QInputDialog
@@ -104,6 +106,9 @@ class DocQA_GUI(QWidget):
         self.jeeves_action.triggered.connect(self.open_chat_window)
 
     def open_chat_window(self):
+        self.jeeves_action.setEnabled(False)
+        QTimer.singleShot(5000, lambda: self.jeeves_action.setEnabled(True))
+
         required_folder = script_dir / 'Models' / 'vector' / 'BAAI--bge-small-en-v1.5'
         if not required_folder.exists() or not required_folder.is_dir():
             QMessageBox.warning(
@@ -175,7 +180,6 @@ def main():
 
     app = QApplication(sys.argv)
 
-    # Optionally, set the application font size based on DPI (recommended)
     # font = app.font()
     # font.setPointSize(10)  # Adjust as necessary
     # app.setFont(font)

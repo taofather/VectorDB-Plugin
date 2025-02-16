@@ -47,10 +47,10 @@ def check_pdfs_for_ocr(script_dir):
             continue
 
     if non_ocr_pdfs:
-        message = "The following PDF files appear to have no text content and may need OCR:\n\n"
+        message = "The following PDF files appear to have no text content and likelyk need OCR done on them:\n\n"
         for pdf_path in non_ocr_pdfs:
             message += f"  - {pdf_path}\n"
-        message += "\nPlease perform OCR on these files before proceeding."
+        message += "\nPlease perform OCR on these by going to the Tools Tab first or remove them from the files selected for processing."
         
         msg_box = QMessageBox()
         msg_box.setWindowTitle("PDFs Need OCR")

@@ -28,6 +28,8 @@ def create_vision_models_comparison_plot():
         {"model": "Moondream2 - 2b", "cps": 344.97, "memory": 4461.80},
         {"model": "InternVL2.5 - 4b", "cps": 173.57, "memory": 3151.93},
         {"model": "InternVL2.5 - 1b", "cps": 291.18, "memory": 2385.93},
+        {"model": "Ovis2 - 1b", "cps": 286.39, "memory": 4071.93},
+        {"model": "Ovis2 - 2b", "cps": 312.08, "memory": 5846.49},
     ]
 
     df = pd.DataFrame(data)
