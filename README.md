@@ -81,7 +81,7 @@ python setup_windows_.py
 python gui.py
 ```
 
-### 2) Download a vector model 📥
+### 2) 📥 Download a vector model
 * Download a vector/embedding model from the ```Models Tab```.
 
 ### 3) 📄 🖼️ Selecting General Files
