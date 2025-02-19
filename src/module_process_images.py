@@ -71,8 +71,6 @@ def choose_image_loader():
         loader_func = loader_glmv4(config).process_images
     elif chosen_model == 'Molmo-D-0924 - 8b':
         loader_func = loader_molmo(config).process_images
-    elif chosen_model == 'Mississippi - 2b':
-        loader_func = loader_mississippi(config).process_images
     elif chosen_model in ['Ovis1.6-Llama3.2 - 3b', 'Ovis2 - 1b', 'Ovis2 - 2b']:
         loader_func = loader_ovis(config).process_images
     elif chosen_model in ['InternVL2.5 - 1b', 'InternVL2.5 - 4b']:
@@ -85,7 +83,6 @@ def choose_image_loader():
     image_dir = script_dir / "Docs_for_DB"
 
     if not check_for_images(image_dir):
-        # print("No images selected to process...")
         return []
 
     with ProcessPoolExecutor(1) as executor:
@@ -154,8 +151,9 @@ class BaseLoader:
 
 class loader_llava_next(BaseLoader):
     def initialize_model_and_tokenizer(self):
+        from transformers.image_utils import PILImageResampling
         chosen_model = self.config['vision']['chosen_model']
-        
+
         model_info = VISION_MODELS[chosen_model]
         model_id = model_info['repo_id']
         save_dir = model_info["cache_dir"]
@@ -167,7 +165,7 @@ class loader_llava_next(BaseLoader):
             bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch.float16,
         )
-        
+
         model = LlavaNextForConditionalGeneration.from_pretrained(
             model_id,
             quantization_config=quantization_config,
@@ -176,28 +174,41 @@ class loader_llava_next(BaseLoader):
             cache_dir=cache_dir
         )
         model.eval()
-        
+
         my_cprint(f"{chosen_model} vision model loaded into memory...", "green")
 
         processor = LlavaNextProcessor.from_pretrained(
             model_id, 
-            cache_dir=cache_dir
+            cache_dir=cache_dir,
+            images_kwargs={
+                "size": {"shortest_edge": 672},  # must be multiple of 336
+                "image_grid_pinpoints": [
+                    [672, 672],
+                    [336, 1344],
+                    [1344, 336],
+                    [672, 336],
+                    [336, 672]
+                ],
+                "resample": PILImageResampling.LANCZOS,
+                "do_pad": True
+            }
         )
 
         return model, None, processor
 
     @ torch.inference_mode()
     def process_single_image(self, raw_image):
-        user_prompt = "Describe this image in as much detail as possible but do not repeat yourself."
+        user_prompt = "Explain everything you see in this picture but your response should be no more than one paragraph, but the paragraph can be as long as you want."
         prompt = f"USER: <image>\n{user_prompt} ASSISTANT:"
-        inputs = self.processor(text=prompt, images=raw_image, return_tensors="pt").to(self.device)
-        
-        output = self.model.generate(**inputs, max_new_tokens=512, do_sample=False)
-        
-        # possibly adjust to "full_response = self.processor.decode(output[0][2:], skip_special_tokens=True)" or something similar if output is preceded by special tokens inexplicatly
+        inputs = self.processor(text=prompt, images=raw_image, return_tensors="pt")
+        inputs["pixel_values"] = inputs["pixel_values"].to(dtype=torch.float16)
+        inputs = inputs.to(self.device)
+
+        output = self.model.generate(**inputs, max_new_tokens=1024, do_sample=False)
+
         response = self.processor.decode(output[0], skip_special_tokens=True)
         model_response = response.split("ASSISTANT:")[-1].strip()
-        
+
         return model_response
 
 
@@ -207,21 +218,24 @@ class loader_moondream(BaseLoader):
     """
     def initialize_model_and_tokenizer(self):
         # moondream's approach uses the "vision" directory and does not create a nested folder like all other sub-classes
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.precision_type = torch.float16 if self.device.type == "cuda" else torch.float32
+
         chosen_model = self.config['vision']['chosen_model']
         model_id = VISION_MODELS[chosen_model]['repo_id']
         cache_dir=VISION_DIR
-        
+
         model = AutoModelForCausalLM.from_pretrained(
             model_id, 
             trust_remote_code=True, 
             revision="2024-08-26",
-            torch_dtype=torch.float16,
             cache_dir=cache_dir,
             low_cpu_mem_usage=True
-        ).to(self.device)
+        ).to(self.device, dtype=self.precision_type)
+
         model.eval()
 
-        my_cprint("Moondream2 vision model loaded into memory...", "green")
+        my_cprint(f"Moondream2 vision model loaded with {self.precision_type} on {self.device}.", "green")
 
         tokenizer = AutoTokenizer.from_pretrained(
             model_id, 
@@ -233,23 +247,24 @@ class loader_moondream(BaseLoader):
     
     @torch.inference_mode()
     def process_single_image(self, raw_image):
-        enc_image = self.model.encode_image(raw_image)
-        summary = self.model.answer_question(enc_image, "Describe what this image depicts in as much detail as possible.", self.tokenizer)
+        enc_image = self.model.encode_image(raw_image).to(
+            dtype=torch.float16 if self.device.type == "cuda" else torch.float32
+        )
+        summary = self.model.answer_question(enc_image, "Explain everything you see in this picture but your response should be no more than one paragraph, but the paragraph can be as long as you want.", self.tokenizer)
+
         return summary
 
 
 class loader_florence2(BaseLoader):
     def __init__(self, config):
         super().__init__(config)
-        from utilities import my_cprint, get_device_and_precision
         self.my_cprint = my_cprint
-        self.get_device_and_precision = get_device_and_precision
 
     def initialize_model_and_tokenizer(self):
         chosen_model = self.config['vision']['chosen_model']
         repo_id = VISION_MODELS[chosen_model]["repo_id"]
         save_dir = VISION_MODELS[chosen_model]["cache_dir"]
-        
+
         cache_dir = CACHE_DIR / save_dir
         cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -267,22 +282,20 @@ class loader_florence2(BaseLoader):
             cache_dir=cache_dir
         )
 
-        device_type, precision_type = self.get_device_and_precision()
-        
-        if device_type == "cuda":
-            self.device = torch.device("cuda")
-            model = model.to(self.device)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        if self.device.type == "cuda":
+            model = model.to(self.device).half()
+            self.precision_type = "float16"
         else:
-            self.device = torch.device("cpu")
-        
-        if precision_type == "float16":
-            model = model.half()
-        elif precision_type == "bfloat16":
-            model = model.bfloat16()
-        
-        self.my_cprint(f"{chosen_model} loaded with {precision_type}.", color="green")
-        
-        self.precision_type = precision_type
+            model = model.to(self.device).float()
+            self.precision_type = "float32"
+
+        self.my_cprint(f"{chosen_model} loaded with {self.precision_type}.", color="green")
+
+        self.model = model
+        self.processor = processor
+
         return model, None, processor
 
     @torch.inference_mode()
@@ -292,10 +305,9 @@ class loader_florence2(BaseLoader):
         
         if self.device.type == "cuda":
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
-        
-        if self.precision_type != "float32":
-            inputs["pixel_values"] = inputs["pixel_values"].to(getattr(torch, self.precision_type))
-        
+
+        inputs["pixel_values"] = inputs["pixel_values"].to(dtype=torch.float16 if self.precision_type == "float16" else torch.float32)
+
         generated_ids = self.model.generate(
             input_ids=inputs["input_ids"],
             pixel_values=inputs["pixel_values"],
@@ -307,10 +319,10 @@ class loader_florence2(BaseLoader):
             top_k=None,
             temperature=None,
         )
-        
+
         generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
         parsed_answer = self.processor.post_process_generation(generated_text, task=prompt, image_size=(raw_image.width, raw_image.height))
-        
+
         return parsed_answer['<MORE_DETAILED_CAPTION>']
 
 
@@ -328,6 +340,9 @@ class loader_glmv4(BaseLoader):
             bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch.bfloat16,
         )
+
+        model_config = AutoConfig.from_pretrained(model_id, cache_dir=cache_dir, trust_remote_code=True)
+        model_config.vision_config['image_size'] = 448
 
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
@@ -351,7 +366,7 @@ class loader_glmv4(BaseLoader):
 
     @torch.inference_mode()
     def process_single_image(self, raw_image):
-        query = "Describe this image in as much detail as possible but do not repeat yourself."
+        query = "Explain everything you see in this picture but your response should be no more than one paragraph, but the paragraph can be as long as you want."
         
         inputs = self.tokenizer.apply_chat_template(
             [{"role": "user", "image": raw_image, "content": query}],
@@ -364,7 +379,7 @@ class loader_glmv4(BaseLoader):
         inputs = inputs.to(self.device)
 
         gen_kwargs = {
-            "max_length": 512,
+            "max_length": 1024,
             "do_sample": False,
             "top_k": None,
             "top_p": None,
@@ -385,7 +400,6 @@ class loader_molmo(BaseLoader):
         chosen_model = self.config['vision']['chosen_model']
         model_info = VISION_MODELS[chosen_model]
 
-        # Use local model path if specified; otherwise, use model ID
         model_path = model_info.get('model_path')
         model_id = model_info.get('repo_id')
 
@@ -426,13 +440,25 @@ class loader_molmo(BaseLoader):
         if raw_image.mode != "RGB":
             raw_image = raw_image.convert("RGB")
 
-        user_prompt = "Describe this image in detail as possible but be succinct and don't repeat yourself."
-        inputs = self.processor.process(images=[raw_image], text=user_prompt)
+        image_kwargs = {
+            "max_crops": 24,  # Maximum number of 336x336 crops from the input image
+            "overlap_margins": [4, 4],  # [left/top, right/bottom] margins in patches between crops
+                                       # With patch_size=14, this means 56 pixels of overlap
+        }
+
+        user_prompt = "Explain everything you see in this picture but your response should be no more than one paragraph, but the paragraph can be as long as you want."
+
+        inputs = self.processor.process(
+            images=[raw_image], 
+            text=user_prompt,
+            images_kwargs=image_kwargs
+        )
+
         inputs = {k: v.to(self.device).unsqueeze(0) for k, v in inputs.items()}
 
         try:
             generation_config = GenerationConfig(
-                max_new_tokens=500,
+                max_new_tokens=1024,
                 stop_strings=["<|endoftext|>"]
             )
             output = self.model.generate_from_batch(
@@ -450,85 +476,9 @@ class loader_molmo(BaseLoader):
         return generated_text
 
 
-class loader_mississippi(BaseLoader):
-    def __init__(self, config):
-        super().__init__(config)
-        from utilities import my_cprint, get_device_and_precision
-        self.my_cprint = my_cprint
-        self.get_device_and_precision = get_device_and_precision
-
-    def initialize_model_and_tokenizer(self):
-        _, precision_type = self.get_device_and_precision()
-        
-        chosen_model = self.config['vision']['chosen_model']
-        model_info = VISION_MODELS[chosen_model]
-        repo_id = model_info['repo_id']
-        save_dir = model_info["cache_dir"]
-        cache_dir = CACHE_DIR / save_dir
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        
-        config = AutoConfig.from_pretrained(
-            repo_id, 
-            trust_remote_code=True,
-            cache_dir=cache_dir
-        )
-        config.hidden_act = "gelu"
-        config.patch_size = 14
-        config.image_size = 672
-        config.min_dynamic_patch = 1
-        config.max_dynamic_patch = 6
-        
-        model = AutoModel.from_pretrained(
-            repo_id,
-            config=config,
-            torch_dtype=torch.bfloat16 if precision_type == "bfloat16" else torch.float16,
-            low_cpu_mem_usage=True,
-            trust_remote_code=True,
-            cache_dir=cache_dir
-        ).eval().cuda()
-        
-        tokenizer = AutoTokenizer.from_pretrained(
-            repo_id, 
-            trust_remote_code=True, 
-            use_fast=False,
-            cache_dir=cache_dir
-        )
-        
-        self.my_cprint(f"H2OVL vision model loaded with {precision_type}.", color="green")
-        
-        return model, tokenizer, None
-
-    @torch.inference_mode()
-    def process_single_image(self, raw_image):
-        image_path = raw_image.filename
-        
-        generation_config = dict(
-            max_new_tokens=512,
-            do_sample=False,
-            temperature=None,
-            top_p=None,
-            repetition_penalty=1.1,
-            eos_token_id=self.tokenizer.eos_token_id,
-        )
-        
-        question = '<image>\nDescribe this image in as much detail as possible but do not repeat yourself.'
-        response, _ = self.model.chat(
-            self.tokenizer, 
-            image_path,
-            question, 
-            generation_config, 
-            history=None, 
-            return_history=True
-        )
-        
-        return response
-
-
 class loader_ovis(BaseLoader):
     def __init__(self, config):
         super().__init__(config)
-        from utilities import my_cprint
-        self.my_cprint = my_cprint
 
     def initialize_model_and_tokenizer(self):
         chosen_model = self.config['vision']['chosen_model']
@@ -550,27 +500,27 @@ class loader_ovis(BaseLoader):
             torch_dtype=torch.bfloat16,
             low_cpu_mem_usage=True,
             trust_remote_code=True,
-            multimodal_max_length=4096,
+            multimodal_max_length=8192,
             cache_dir=cache_dir
         ).eval().cuda()
-        
+
         text_tokenizer = model.get_text_tokenizer()
         visual_tokenizer = model.get_visual_tokenizer()
-        
+
         return model, text_tokenizer, visual_tokenizer
 
     @torch.inference_mode()
     def process_single_image(self, raw_image):
-        text = "Describe this image in detail as possible but do not repeatedly identify the same things."
+        text = "Explain everything you see in this picture but your response should be no more than one paragraph, but the paragraph can be as long as you want."
         query = f'<image>\n{text}'
-        
+
         prompt, input_ids, pixel_values = self.model.preprocess_inputs(query, [raw_image])
         attention_mask = torch.ne(input_ids, self.tokenizer.pad_token_id)
-        
+
         input_ids = input_ids.unsqueeze(0).to(device=self.model.device)
         attention_mask = attention_mask.unsqueeze(0).to(device=self.model.device)
         pixel_values = [pixel_values.to(dtype=self.processor.dtype, device=self.processor.device)]
-        
+
         gen_kwargs = {
             'max_new_tokens': 1024,
             'do_sample': False,
@@ -582,14 +532,14 @@ class loader_ovis(BaseLoader):
             'pad_token_id': self.tokenizer.pad_token_id,
             'use_cache': True
         }
-        
+
         output_ids = self.model.generate(
             input_ids, 
             pixel_values=pixel_values, 
             attention_mask=attention_mask, 
             **gen_kwargs
         )[0]
-        
+
         output = self.tokenizer.decode(output_ids, skip_special_tokens=True)
         return output
 
@@ -616,7 +566,7 @@ class loader_internvl2_5(BaseLoader):
             trust_remote_code=True,
             cache_dir=cache_dir
         )
-        model.eval() # bnb automatically places model on cuda
+        model.eval()
 
         tokenizer = AutoTokenizer.from_pretrained(
             model_id,
@@ -703,7 +653,7 @@ class loader_internvl2_5(BaseLoader):
     def process_single_image(self, raw_image):
         pixel_values = self._prepare_image(raw_image).to(torch.bfloat16).to(self.device)
         
-        question = '<image>\nExplain everything you see in this picture but your response should be no more than one paragraph.'
+        question = '<image>\nExplain everything you see in this picture but your response should be no more than one paragraph, but the paragraph can be as long as you want.'
         
         generation_config = dict(
             num_beams=1,
