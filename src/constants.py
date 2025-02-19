@@ -5,7 +5,7 @@ priority_libs = {
             "https://download.pytorch.org/whl/cu126/torch-2.6.0%2Bcu126-cp311-cp311-win_amd64.whl#sha256=5ddca43b81c64df8ce0c59260566e648ee46b2622ab6a718e38dea3c0ca059a1",
             "https://download.pytorch.org/whl/cu126/torchaudio-2.6.0%2Bcu126-cp311-cp311-win_amd64.whl#sha256=833b8e350c77021400fed2271df10ecd02b88f684bbc9d57132faa0efc9a0a57",
             "https://download.pytorch.org/whl/cu126/torchvision-0.21.0%2Bcu126-cp311-cp311-win_amd64.whl#sha256=ddbf4516fbb7624ac42934b877dcf6a3b295d9914ab89643b55dedb9c9773ce4",
-            "https://github.com/woct0rdho/triton-windows/releases/download/v3.2.0-windows.post9/triton-3.2.0-cp311-cp311-win_amd64.whl",
+            "https://github.com/woct0rdho/triton-windows/releases/download/v3.2.0-windows.post10/triton-3.2.0-cp311-cp311-win_amd64.whl",
             "git+https://github.com/shashikg/WhisperS2T.git@e7f7e6dbfdc7f3a39454feb9dd262fd3653add8c",
             "git+https://github.com/BBC-Esq/WhisperSpeech.git@795f60157136b0052b9a1f576e88803f7783ab1f",
             "https://download.pytorch.org/whl/cu126/xformers-0.0.29.post3-cp311-cp311-win_amd64.whl", # requires torch 2.6.0
@@ -27,7 +27,7 @@ priority_libs = {
             "https://download.pytorch.org/whl/cu126/torch-2.6.0%2Bcu126-cp312-cp312-win_amd64.whl#sha256=b10c39c83e5d1afd639b5c9f5683b351e97e41390a93f59c59187004a9949924",
             "https://download.pytorch.org/whl/cu126/torchaudio-2.6.0%2Bcu126-cp312-cp312-win_amd64.whl#sha256=144b286d2f6195ba8d75ed1a568bddd718d032d54d1bf94940d47730c6321a0b",
             "https://download.pytorch.org/whl/cu126/torchvision-0.21.0%2Bcu126-cp312-cp312-win_amd64.whl#sha256=600c18579cd6eae8f6bbfcc43a088bc512bfde1fa4de0587a4db1d44eaf411f9",
-            "https://github.com/woct0rdho/triton-windows/releases/download/v3.2.0-windows.post9/triton-3.2.0-cp312-cp312-win_amd64.whl",
+            "https://github.com/woct0rdho/triton-windows/releases/download/v3.2.0-windows.post10/triton-3.2.0-cp312-cp312-win_amd64.whl",
             "git+https://github.com/shashikg/WhisperS2T.git@e7f7e6dbfdc7f3a39454feb9dd262fd3653add8c",
             "git+https://github.com/BBC-Esq/WhisperSpeech.git@795f60157136b0052b9a1f576e88803f7783ab1f",
             "https://download.pytorch.org/whl/cu126/xformers-0.0.29.post3-cp312-cp312-win_amd64.whl", # requires torch 2.6.0
@@ -47,7 +47,7 @@ priority_libs = {
 }
 
 libs = [
-    "accelerate==1.3.0",
+    "accelerate==1.4.0",
     "aiofiles==24.1.0",
     "aiohappyeyeballs==2.4.6",
     "aiohttp==3.11.12", # langchain libraries require <4
@@ -77,7 +77,7 @@ libs = [
     "ctranslate2==4.5.0",
     "cycler==0.12.1",
     "dataclasses-json==0.6.7",
-    "datasets==3.3.0",
+    "datasets==3.3.1",
     "deepdiff==8.2.0", # required by unstructured
     "dill==0.3.8", # datasets 3.2.0 requires <0.3.9; multiprocess 0.70.16 requires >=0.3.8
     "distro==1.9.0",
@@ -116,7 +116,7 @@ libs = [
     "jsonpath-python==1.0.6",
     "jsonpointer==3.0.0",
     "kiwisolver==1.4.8",
-    "langchain==0.3.18",
+    "langchain==0.3.19",
     "langchain-community==0.3.17",
     "langchain-core==0.3.35",
     "langchain-huggingface==0.1.2",
@@ -144,7 +144,7 @@ libs = [
     "numba==0.61.0", # only required by openai-whisper
     "numpy==1.26.4", # langchain libraries <2; numba <2.1; scipy <2.3; chattts <2.0.0
     "olefile==0.47",
-    "openai==1.63.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
+    "openai==1.63.2", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
     "optimum==1.24.0",
@@ -188,7 +188,7 @@ libs = [
     "ruamel.yaml.clib==0.2.12",
     "safetensors==0.5.2",
     "scikit-learn==1.6.1",
-    "scipy==1.15.1", # 1.15.0 has possible breaking changes
+    "scipy==1.15.2",
     "sentence-transformers==3.4.1",
     "sentencepiece==0.2.0",
     "six==1.17.0",
@@ -218,7 +218,7 @@ libs = [
     "transformers==4.48.3",
     "typing-inspect==0.9.0",
     "typing_extensions==4.12.2",
-    "unstructured-client==0.30.0",
+    "unstructured-client==0.30.1",
     "tzdata==2025.1",
     "urllib3==2.3.0", # requests 2.32.3 requires <3
     "vector-quantize-pytorch==1.21.8",
@@ -237,7 +237,7 @@ libs = [
 full_install_libs = [
     "PySide6==6.8.2.1",
     "pymupdf==1.25.3",
-    "unstructured==0.16.20"
+    "unstructured==0.16.21"
 ]
 
 CHAT_MODELS = {
@@ -793,16 +793,6 @@ VISION_MODELS = {
         'vram': '5.3 GB',
         'loader': 'loader_florence2'
     },
-    'Mississippi - 2b': {
-        'precision': 'autoselect',
-        'quant': 'n/a',
-        'size': '2b',
-        'repo_id': 'h2oai/h2ovl-mississippi-2b',
-        'cache_dir': 'h2oai--h2ovl-mississippi-2b',
-        'requires_cuda': True,
-        'vram': '5.3 GB',
-        'loader': 'loader_mississippi'
-    },
     'Ovis2 - 2b': {
         'precision': 'bfloat16',
         'quant': 'n/a',
@@ -811,16 +801,6 @@ VISION_MODELS = {
         'cache_dir': 'AIDC-AI--Ovis2-2B',
         'requires_cuda': True,
         'vram': '2.4 GB',
-        'loader': 'loader_ovis'
-    },
-    'Ovis1.6-Llama3.2 - 3b': {
-        'precision': 'bfloat16',
-        'quant': 'n/a',
-        'size': '3b',
-        'repo_id': 'AIDC-AI/Ovis1.6-Llama3.2-3B',
-        'cache_dir': 'AIDC-AI--Ovis1.6-Llama3.2-3B',
-        'requires_cuda': True,
-        'vram': '9.6 GB',
         'loader': 'loader_ovis'
     },
     'THUDM glm4v - 9b': {
@@ -1442,6 +1422,30 @@ scrape_documentation = {
     "CTranslate2": {
         "URL": "https://opennmt.net/CTranslate2/",
         "folder": "ctranslate2"
+    },
+    "cuda-python 12.6.2": {
+        "URL": "https://nvidia.github.io/cuda-python/12.6.2/",
+        "folder": "cuda-python_1262"
+    },
+    "cuda-bindings 12.6.2": {
+        "URL": "https://nvidia.github.io/cuda-python/cuda-bindings/12.6.2/",
+        "folder": "cuda-bindings_1262"
+    },
+    "cuda-core 0.1.1": {
+        "URL": "https://nvidia.github.io/cuda-python/cuda-core/0.1.1/",
+        "folder": "cuda-core_011"
+    },
+    "cuda-cooperative": {
+        "URL": "https://nvidia.github.io/cccl/cuda_cooperative/",
+        "folder": "cuda-cooperative"
+    },
+    "cuda-parallel": {
+        "URL": "https://nvidia.github.io/cccl/cuda_parallel/",
+        "folder": "cuda_parallel"
+    },
+    "cuda-nvmath": {
+        "URL": "https://docs.nvidia.com/cuda/nvmath-python/0.2.1/",
+        "folder": "cuda_nvmath"
     },
     "cuDF": {
         "URL": "https://docs.rapids.ai/api/cudf/stable/",
@@ -2870,11 +2874,9 @@ rag_string = "Here are the contexts to base your answer on.  However, I need to 
   * E.g., https://github.com/jakaline-dev/Triton_win/releases/download/3.0.0/triton-3.0.0-cp311-cp311-win_amd64.whl
   * only supports up to Python 3.11
 
-* 3.1.0 and later wheels: https://github.com/woct0rdho/triton-windows/releases
- * "Triton 3.1.0 requires torch 2.4.0+
- * "The wheels are built against CUDA 12.5, and they should work with other CUDA 12.x."
+* 3.1.0 and later (supports Python 3.12):
+ * https://github.com/woct0rdho/triton-windows/releases
  * https://github.com/woct0rdho/triton-windows/releases/download/v3.1.0-windows.post5/triton-3.1.0-cp311-cp311-win_amd64.whl
- * supports Python 3.12
 
 *************
 **LINUX FA2**
