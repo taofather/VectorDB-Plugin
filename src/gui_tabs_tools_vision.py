@@ -12,10 +12,6 @@ import time
 from PIL import Image
 import torch
 from PySide6.QtCore import QThread, Signal as pyqtSignal, Qt
-# from PySide6.QtCore import Qurl
-# from PySide6.QtGui import QDesktopServices
-# from PySide6.QtWebEngineWidgets import QWebEngineView
-# from PySide6.QtWebEngineCore import QWebEnginePage
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, QMessageBox, QFileDialog, QProgressDialog, QDialog, QCheckBox
 
 import module_process_images
@@ -49,19 +45,6 @@ class ModelSelectionDialog(QDialog):
     
     def get_selected_models(self):
         return [model for model, checkbox in self.checkboxes.items() if checkbox.isChecked()]
-
-# class CustomWebEnginePage(QWebEnginePage):
-    # def acceptNavigationRequest(self, url, _type, isMainFrame):
-        # if _type == QWebEnginePage.NavigationTypeLinkClicked:
-            # print(f"Opening URL in system browser: {url.toString()}")
-            # QDesktopServices.openUrl(url)
-            # return False
-        # return super().acceptNavigationRequest(url, _type, isMainFrame)
-
-    # def createWindow(self, _type):
-        # if _type == QWebEnginePage.WebBrowserTab or _type == QWebEnginePage.WebBrowserBackgroundTab:
-            # return self
-        # return None
 
 class ImageProcessorThread(QThread):
     finished = pyqtSignal(list)
@@ -145,8 +128,6 @@ class MultiModelProcessorThread(QThread):
             self.error.emit(str(e))
 
 class VisionToolSettingsTab(QWidget):
-    # HTML_FILE = 'vision_model_table.html'
-
     def __init__(self):
         super().__init__()
 
@@ -163,14 +144,6 @@ class VisionToolSettingsTab(QWidget):
         newButton = QPushButton("Single Image + All Vision Models")
         hBoxLayout.addWidget(newButton)
         newButton.clicked.connect(self.selectSingleImage)
-
-        # self.webView = QWebEngineView()
-        # custom_page = CustomWebEnginePage(self.webView)
-        # self.webView.setPage(custom_page)
-        # script_dir = Path(__file__).resolve().parent
-        # html_file_path = script_dir / "Assets" / self.HTML_FILE
-        # self.webView.setUrl(QUrl.fromLocalFile(str(html_file_path)))
-        # mainVLayout.addWidget(self.webView)
 
         self.thread = None
 
@@ -258,6 +231,7 @@ class VisionToolSettingsTab(QWidget):
             model_col_width = 23
             count_col_width = 12
             time_col_width = 12
+            speed_col_width = 12  # New column width for char/sec
 
             temp_file.write(f"Image Path: {image_path}\n")
             temp_file.write(f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
@@ -266,21 +240,35 @@ class VisionToolSettingsTab(QWidget):
             temp_file.write(textwrap.fill(chunk_advice, width=100) + "\n\n")
 
             temp_file.write("Model Performance Comparison Table:\n")
-            temp_file.write("+" + "-"*model_col_width + "+" + "-"*count_col_width + "+" + "-"*time_col_width + "+\n")
-            temp_file.write("|" + "Model Name".center(model_col_width) + "|" + "Char Count".center(count_col_width) + "|" + "Time (sec)".center(time_col_width) + "|\n")
-            temp_file.write("+" + "-"*model_col_width + "+" + "-"*count_col_width + "+" + "-"*time_col_width + "+\n")
+            temp_file.write("+" + "-"*model_col_width + "+" + "-"*count_col_width + "+" + 
+                           "-"*time_col_width + "+" + "-"*speed_col_width + "+\n")
+            temp_file.write("|" + "Model Name".center(model_col_width) + "|" + 
+                           "Char Count".center(count_col_width) + "|" + 
+                           "Time (sec)".center(time_col_width) + "|" + 
+                           "Char/Sec".center(speed_col_width) + "|\n")
+            temp_file.write("+" + "-"*model_col_width + "+" + "-"*count_col_width + "+" + 
+                           "-"*time_col_width + "+" + "-"*speed_col_width + "+\n")
 
             for model_name, description, process_time in results:
+                char_count = len(description)
+                chars_per_sec = char_count / process_time if process_time > 0 else 0
+                
                 temp_file.write("|" + model_name.ljust(model_col_width) + "|" + 
-                              str(len(description)).center(count_col_width) + "|" + 
-                              f"{process_time:.2f}".center(time_col_width) + "|\n")
+                              str(char_count).center(count_col_width) + "|" + 
+                              f"{process_time:.2f}".center(time_col_width) + "|" +
+                              f"{chars_per_sec:.1f}".center(speed_col_width) + "|\n")
 
-            temp_file.write("+" + "-"*model_col_width + "+" + "-"*count_col_width + "+" + "-"*time_col_width + "+\n\n")
+            temp_file.write("+" + "-"*model_col_width + "+" + "-"*count_col_width + "+" + 
+                           "-"*time_col_width + "+" + "-"*speed_col_width + "+\n\n")
 
             for model_name, description, process_time in results:
+                char_count = len(description)
+                chars_per_sec = char_count / process_time if process_time > 0 else 0
+                
                 temp_file.write(f"Model: {model_name}\n")
-                temp_file.write(f"Summary Length: {len(description)}\n")
+                temp_file.write(f"Summary Length: {char_count}\n")
                 temp_file.write(f"Processing Time: {process_time:.2f} seconds\n")
+                temp_file.write(f"Characters per Second: {chars_per_sec:.1f}\n")
                 temp_file.write("="*50 + "\n")
                 if description.strip():
                     temp_file.write(textwrap.fill(description, width=100) + "\n\n")
