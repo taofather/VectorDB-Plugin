@@ -128,6 +128,52 @@ class TesseractOCR(OCRProcessor):
     def clean_text(self, text: str) -> str:
         return text
 
+    def process_document(self, pdf_path: Path, output_path: Path = None):
+        if not self.validate_pdf(pdf_path):
+            raise ValueError(f"Invalid or corrupted PDF file: {pdf_path}")
+
+        if output_path is None:
+            output_path = pdf_path.with_stem(f"{pdf_path.stem}_OCR")
+
+        if self.temp_dir is None:
+            self.initialize()
+
+        self.cleanup_temp_pdfs()
+
+        # Get page count without keeping file open
+        with fitz.open(str(pdf_path)) as pdf_document:
+            num_pages = len(pdf_document)
+
+        if self.progress_queue:
+            self.progress_queue.put(('total', num_pages))
+
+        results = []
+        with ThreadPoolExecutor(max_workers=self.get_optimal_threads()) as executor:
+            futures = {executor.submit(self.process_page, page_num, str(pdf_path)): page_num 
+                      for page_num in range(num_pages)}
+
+            for future in as_completed(futures):
+                page_num, temp_pdf_path = future.result()
+                results.append((temp_pdf_path, page_num))
+                if self.progress_queue:
+                    self.progress_queue.put(('update', 1))
+
+        results.sort(key=lambda x: x[1])
+
+        output_pdf = fitz.open()
+        for temp_pdf_path, _ in results:
+            output_pdf.insert_pdf(fitz.open(temp_pdf_path))
+            Path(temp_pdf_path).unlink(missing_ok=True)
+
+        output_pdf.save(output_path)
+        output_pdf.close()
+
+        # final cleanup
+        self.cleanup_temp_pdfs()
+
+        if self.progress_queue:
+            self.progress_queue.put(('done', None))
+
     def process_page(self, page_num: int, pdf_path: str) -> Tuple[int, str]:
         import tempfile
         import tesserocr
