@@ -30,7 +30,11 @@ class OCRProcessor(ABC):
         return Image.open(io.BytesIO(img_data))
 
     @abstractmethod
-    def process_page(self, page_num: int, page) -> Tuple[int, str]:
+    def process_page(self, page_num: int, pdf_path: str) -> Tuple[int, str]:
+        """
+        Process a single page from a PDF file.
+        Each implementation should handle opening and closing the PDF.
+        """
         pass
 
     @abstractmethod
@@ -67,21 +71,21 @@ class OCRProcessor(ABC):
 
         with fitz.open(str(pdf_path)) as pdf_document:
             total_pages = len(pdf_document)
-            
-            if self.progress_queue:
-                self.progress_queue.put(('total', total_pages))
+        
+        if self.progress_queue:
+            self.progress_queue.put(('total', total_pages))
 
-            with ThreadPoolExecutor(max_workers=self.get_optimal_threads()) as executor:
-                future_to_page = {
-                    executor.submit(self.process_page, page_num, pdf_document[page_num]): page_num 
-                    for page_num in range(total_pages)
-                }
+        with ThreadPoolExecutor(max_workers=self.get_optimal_threads()) as executor:
+            future_to_page = {
+                executor.submit(self.process_page, page_num, str(pdf_path)): page_num 
+                for page_num in range(total_pages)
+            }
 
-                for future in as_completed(future_to_page):
-                    page_num, processed_text = future.result()
-                    results[page_num] = processed_text
-                    if self.progress_queue:
-                        self.progress_queue.put(('update', 1))
+            for future in as_completed(future_to_page):
+                page_num, processed_text = future.result()
+                results[page_num] = processed_text
+                if self.progress_queue:
+                    self.progress_queue.put(('update', 1))
 
         with open(output_path, 'w', encoding='utf-8') as f:
             for page_num in range(total_pages):
@@ -124,7 +128,7 @@ class TesseractOCR(OCRProcessor):
     def clean_text(self, text: str) -> str:
         return text
 
-    def process_page(self, page_num: int, page) -> Tuple[int, str]:
+    def process_page(self, page_num: int, pdf_path: str) -> Tuple[int, str]:
         import tempfile
         import tesserocr
         import time
@@ -133,6 +137,9 @@ class TesseractOCR(OCRProcessor):
 
         fd, temp_pdf_path = tempfile.mkstemp(suffix=".pdf", dir=self.temp_dir)
         os.close(fd)
+
+        pdf_document = fitz.open(pdf_path)
+        page = pdf_document[page_num]
 
         out_pdf = fitz.open()
 
@@ -187,6 +194,8 @@ class TesseractOCR(OCRProcessor):
             out_pdf.save(temp_pdf_path)
             out_pdf.close()
 
+            pdf_document.close()
+
             return page_num, temp_pdf_path
 
     def cleanup_temp_pdfs(self):
@@ -199,55 +208,6 @@ class TesseractOCR(OCRProcessor):
             except PermissionError:
                 print(f"Could not remove {temp_file} - file may be in use")
 
-    def process_document(self, pdf_path: Path, output_path: Path = None):
-        if not self.validate_pdf(pdf_path):
-            raise ValueError(f"Invalid or corrupted PDF file: {pdf_path}")
-
-        if output_path is None:
-            output_path = pdf_path.with_stem(f"{pdf_path.stem}_OCR")
-
-        if self.temp_dir is None:
-            self.initialize()
-
-        self.cleanup_temp_pdfs()
-
-        pdf_document = fitz.open(str(pdf_path))
-        num_pages = len(pdf_document)
-        pdf_document.close()
-
-        if self.progress_queue:
-            self.progress_queue.put(('total', num_pages))
-
-        page_args = [(page_num, fitz.open(str(pdf_path))[page_num]) for page_num in range(num_pages)]
-
-        results = []
-        with ThreadPoolExecutor(max_workers=self.get_optimal_threads()) as executor:
-            futures = {executor.submit(self.process_page, *args): args[0] for args in page_args}
-
-            for future in as_completed(futures):
-                page_num, temp_pdf_path = future.result()
-                results.append((temp_pdf_path, page_num))
-                if self.progress_queue:
-                    self.progress_queue.put(('update', 1))
-
-        results.sort(key=lambda x: x[1])
-
-        output_pdf = fitz.open()
-        for temp_pdf_path, _ in results:
-            output_pdf.insert_pdf(fitz.open(temp_pdf_path))
-
-            Path(temp_pdf_path).unlink(missing_ok=True)
-
-        output_pdf.save(output_path)
-        output_pdf.close()
-
-        # final cleanup
-        self.cleanup_temp_pdfs()
-
-        output_file = Path(output_path).name
-
-        if self.progress_queue:
-            self.progress_queue.put(('done', None))
 
 class GotOCR(OCRProcessor):
     def __init__(self, model_path: str, zoom: int = 2, progress_queue: Queue = None):
@@ -298,11 +258,18 @@ class GotOCR(OCRProcessor):
                 i += 1
         return '\n'.join(cleaned_lines)
 
-    def process_page(self, page_num: int, page) -> Tuple[int, str]:
+    def process_page(self, page_num: int, pdf_path: str) -> Tuple[int, str]:
+        pdf_document = fitz.open(pdf_path)
+        page = pdf_document[page_num]
+
         image = self.convert_page_to_image(page)
+
         with torch.inference_mode():
             text = self.model.chat_crop(self.tokenizer, image, ocr_type='ocr', gradio_input=True)
         text = self.clean_text(text)
+
+        pdf_document.close()
+
         return page_num, text
 
 def _process_documents_worker(

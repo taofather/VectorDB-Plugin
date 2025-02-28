@@ -110,7 +110,7 @@ libs = [
     "humanfriendly==10.0",
     "HyperPyYAML==1.2.2",
     "idna==3.10",
-    "img2pdf==0.6.0
+    "img2pdf==0.6.0",
     "importlib_metadata==8.6.1",
     "Jinja2==3.1.5",
     "jiter==0.8.2", # required by openai newer versions
@@ -825,8 +825,8 @@ VISION_MODELS = {
         'precision': 'autoselect',
         'quant': '4-bit',
         'size': '8b',
-        'repo_id': 'ctranslate2-4you/molmo-7B-O-bnb-4bit',
-        'cache_dir': 'ctranslate2-4you--molmo-7B-O-bnb-4bit',
+        'repo_id': 'ctranslate2-4you/molmo-7B-D-0924-bnb-4bit',
+        'cache_dir': 'ctranslate2-4you--molmo-7B-D-0924-bnb-4bit',
         'requires_cuda': True,
         'vram': '10.5 GB',
         'loader': 'loader_molmo'
