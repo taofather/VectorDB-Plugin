@@ -273,13 +273,13 @@ CHAT_MODELS = {
     },
     'Granite - 2b': {
         'model': 'Granite - 2b',
-        'repo_id': 'ibm-granite/granite-3.1-2b-instruct',
-        'cache_dir': 'ibm-granite--granite-3.1-2b-instruct',
+        'repo_id': 'ibm-granite/granite-3.2-2b-instruct',
+        'cache_dir': 'ibm-granite--granite-3.2-2b-instruct',
         'cps': 128.11,
         'context_length': 8192,
         'vram': 2292.18,
         'function': 'Granite_2b',
-        'precision': 'bfloat16', # created float32 version
+        'precision': 'bfloat16',
         'gated': False,
     },
     'Zephyr - 1.6b': {
@@ -328,13 +328,13 @@ CHAT_MODELS = {
     },
     'Granite - 8b': {
         'model': 'Granite - 8b',
-        'repo_id': 'ibm-granite/granite-3.1-8b-instruct',
-        'cache_dir': 'ibm-granite--granite-3.1-8b-instruct',
+        'repo_id': 'ibm-granite/granite-3.2-8b-instruct',
+        'cache_dir': 'ibm-granite--granite-3.2-8b-instruct',
         'cps': 137.73,
         'context_length': 8192,
         'vram': 5291.93,
         'function': 'Granite_8b',
-        'precision': 'bfloat16', # have float32 version
+        'precision': 'bfloat16',
         'gated': False,
     },
     'Deepseek R1 - 7b': {
@@ -413,17 +413,6 @@ CHAT_MODELS = {
         'function': 'Qwen_14b',
         'precision': 'bfloat16',
         'gated': False,
-    },
-    'Mistral Small - 22b': {
-        'model': 'Mistral Small - 22b',
-        'repo_id': 'mistralai/Mistral-Small-Instruct-2409',
-        'cache_dir': 'mistralai--Mistral-Small-Instruct-2409',
-        'cps': 98.33,
-        'context_length': 32768,
-        'vram': 13723.65,
-        'function': 'Mistral_Small_22b',
-        'precision': 'bfloat16',
-        'gated': True,
     },
     'Mistral Small 3 - 24b': {
         'model': 'Mistral Small 3 - 24b',
@@ -745,8 +734,8 @@ VISION_MODELS = {
         'precision': 'bfloat16',
         'quant': 'n/a',
         'size': '1b',
-        'repo_id': 'OpenGVLab/InternVL2_5-1B',
-        'cache_dir': 'OpenGVLab--InternVL2_5-1B',
+        'repo_id': 'ctranslate2-4you/InternVL2_5-1B',
+        'cache_dir': 'ctranslate2-4you--InternVL2_5-1B',
         'requires_cuda': True,
         'vram': '2.4 GB',
         'loader': 'loader_internvl2_5'
@@ -775,11 +764,21 @@ VISION_MODELS = {
         'precision': 'bfloat16',
         'quant': '4-bit',
         'size': '4b',
-        'repo_id': 'OpenGVLab/InternVL2_5-4B',
-        'cache_dir': 'OpenGVLab--InternVL2_5-4B',
+        'repo_id': 'ctranslate2-4you/InternVL2_5-4B',
+        'cache_dir': 'ctranslate2-4you--InternVL2_5-4B',
         'requires_cuda': True,
         'vram': '3.2 GB',
         'loader': 'loader_internvl2_5'
+    },
+    'Granite Vision - 2b': {
+        'precision': 'bfloat16',
+        'quant': '4-bit',
+        'size': '2b',
+        'repo_id': 'ibm-granite/granite-vision-3.2-2b',
+        'cache_dir': 'ibm-granite--granite-vision-3.2-2b',
+        'requires_cuda': True,
+        'vram': '4.1 GB',
+        'loader': 'loader_granite'
     },
     'Moondream2 - 1.9b': {
         'precision': 'float16',

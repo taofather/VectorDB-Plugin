@@ -11,8 +11,10 @@ import yaml
 from PIL import Image
 from tqdm import tqdm
 from transformers import (
-    AutoModelForCausalLM, AutoModel, AutoTokenizer, AutoProcessor, AutoConfig,
-    LlavaNextForConditionalGeneration, LlavaNextProcessor, BitsAndBytesConfig, GenerationConfig
+    AutoModelForCausalLM, AutoModel, AutoTokenizer, AutoProcessor, 
+    BlipForConditionalGeneration, BlipProcessor, LlamaTokenizer, 
+    LlavaForConditionalGeneration, LlavaNextForConditionalGeneration, 
+    LlavaNextProcessor, BitsAndBytesConfig, AutoModelForVision2Seq
 )
 
 from langchain_community.docstore.document import Document
@@ -64,8 +66,10 @@ def choose_image_loader():
     elif chosen_model in ["Florence-2-large", "Florence-2-base"]:
         loader_func = loader_florence2(config).process_images
     elif chosen_model == 'MiniCPM-V-2_6 - 8b':
-        loader_func = loader_minicpm_V_2_6(config).process_images        
-    elif chosen_model in ['Llava 1.6 Vicuna - 7b', 'Llava 1.6 Vicuna - 13b']:
+        loader_func = loader_minicpm_V_2_6(config).process_images
+    elif chosen_model == 'Granite Vision - 2b':
+        loader_func = loader_granite(config).process_images
+    elif chosen_model in ['Llava 1.6 Vicuna - 13b']:
         loader_func = loader_llava_next(config).process_images
     elif chosen_model == 'THUDM glm4v - 9b':
         loader_func = loader_glmv4(config).process_images
@@ -672,6 +676,76 @@ class loader_internvl2_5(BaseLoader):
             generation_config
         )
 
+        return response
+
+
+class loader_granite(BaseLoader):
+    def initialize_model_and_tokenizer(self):
+        chosen_model = self.config['vision']['chosen_model']
+        model_info = VISION_MODELS[chosen_model]
+        model_id = model_info['repo_id']
+        save_dir = model_info["cache_dir"]
+        cache_dir = CACHE_DIR / save_dir
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_quant_type="nf4",
+            llm_int8_skip_modules=[
+                "vision_tower",
+                "multi_modal_projector",
+                "language_model.lm_head",
+            ]
+        )
+
+        processor = AutoProcessor.from_pretrained(
+            model_id,
+            use_fast=True,
+            cache_dir=cache_dir
+        )
+
+        model = AutoModelForVision2Seq.from_pretrained(
+            model_id,
+            quantization_config=quantization_config,
+            torch_dtype=torch.bfloat16,
+            low_cpu_mem_usage=True,
+            cache_dir=cache_dir
+        ).eval()
+
+        my_cprint(f"Granite Vision 3.2-2b model loaded into memory...", "green")
+
+        return model, None, processor
+
+    @torch.inference_mode()
+    def process_single_image(self, raw_image):
+        user_message = "Describe in detail what this image depicts but limit your response to one paragraph with no line breaks in it."
+
+        prompt = f"""<|user|>
+<image>
+{user_message}
+<|assistant|>
+"""
+
+        inputs = self.processor(
+            images=raw_image,
+            text=prompt,
+            return_tensors="pt"
+        )
+
+        inputs = inputs.to(self.device)
+
+        output = self.model.generate(
+            **inputs,
+            max_new_tokens=1024,
+            do_sample=False,
+            num_beams=1,
+        )
+
+        response = self.processor.decode(output[0], skip_special_tokens=True)
+        response = response.split('<|assistant|>')[-1].strip()
+        response = ' '.join(line.strip() for line in response.split('\n') if line.strip())
+        
         return response
 
 """
