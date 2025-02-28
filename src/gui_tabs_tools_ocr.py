@@ -72,7 +72,8 @@ class OCRToolSettingsTab(QWidget):
         engine_selection_hbox.addWidget(engine_label)
 
         self.engine_combo = QComboBox()
-        self.engine_combo.addItems(["Tesseract", "GOT_OCR"])
+        # self.engine_combo.addItems(["Tesseract", "GOT_OCR"]) # temporarily disable GOT due to vram concerns
+        self.engine_combo.addItems(["Tesseract"])
         self.engine_combo.setCurrentText("Tesseract")
         engine_selection_hbox.addWidget(self.engine_combo)
 
@@ -154,9 +155,6 @@ class OCRToolSettingsTab(QWidget):
             f"""If using <b>Tesseract</b>, a new <b>.pdf</b> ending in <b>'_OCR'</b> has been saved
             in the same directory as the original file.<br><br>
 
-            If using <b>GOT_OCR</b>, a <b>.txt</b> file has been saved in the same
-            directory as the original .pdf.<br><br>
-
             {file_link}
             """
         )
@@ -170,13 +168,21 @@ class OCRToolSettingsTab(QWidget):
         backend = self.ENGINE_MAPPING[selected_engine]
 
         if backend == "got":
-            if not check_cuda_availability():
-                QMessageBox.warning(
-                    self,
-                    "CUDA Not Available",
-                    "GOT_OCR requires PyTorch with CUDA support. Please use Tesseract instead."
-                )
-                return
+            QMessageBox.information(
+                self,
+                "GOT_OCR Temporarily Disabled",
+                "The GOT_OCR backend is temporarily disabled due to memory usage concerns."
+            )
+            return
+
+        # if backend == "got":
+            # if not check_cuda_availability():
+                # QMessageBox.warning(
+                    # self,
+                    # "CUDA Not Available",
+                    # "GOT_OCR requires PyTorch with CUDA support. Please use Tesseract instead."
+                # )
+                # return
 
             page_count = get_pdf_page_count(self.selected_pdf_file)
             if page_count > 100:
