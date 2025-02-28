@@ -20,7 +20,7 @@ class OCRProcessor(ABC):
         print(f"\033[92mUsing {backend_name} backend\033[0m")
         if backend_name == "TesseractOCR":
             thread_count = self.get_optimal_threads()
-            print(f"\033[92mUsing {thread_count} threads\033[0m")
+            print(f"\033[92mUsing up to {thread_count} threads\033[0m")
 
     def convert_page_to_image(self, page) -> Image.Image:
         """Convert PDF page to PIL Image with specified zoom"""
@@ -39,7 +39,7 @@ class OCRProcessor(ABC):
 
     @abstractmethod
     def clean_text(self, text: str) -> str:
-        """Each OCR backend implements its own text cleaning method"""
+        """Each OCR backend implements its own text cleaning method, if needed."""
         pass
 
     def validate_pdf(self, pdf_path: Path) -> bool:
@@ -57,7 +57,6 @@ class OCRProcessor(ABC):
             return False
 
     def process_document(self, pdf_path: Path, output_path: Path = None):
-        """Process entire PDF document"""
         if not self.validate_pdf(pdf_path):
             raise ValueError(f"Invalid or corrupted PDF file: {pdf_path}")
 
@@ -97,51 +96,158 @@ class OCRProcessor(ABC):
     def get_optimal_threads() -> int:
         return max(4, psutil.cpu_count(logical=False) - 2)
 
+
 class TesseractOCR(OCRProcessor):
     def __init__(self, zoom: int = 2, progress_queue: Queue = None):
         super().__init__(zoom, progress_queue)
         self.tessdata_path = None
+        self.temp_dir = None
         self.show_progress = True
 
     def initialize(self):
-        from tesserocr import PyTessBaseAPI, PSM
+        import tempfile
+
         script_dir = Path(__file__).resolve().parent
+
+        # control temporary directory
+        # necessary in case the default temp locations don't have write permission
+        self.temp_dir = script_dir / "temp_ocr"
+        self.temp_dir.mkdir(exist_ok=True)
+
+        os.environ['TMP'] = str(self.temp_dir)
+        os.environ['TEMP'] = str(self.temp_dir)
+        tempfile.tempdir = str(self.temp_dir)
+
         self.tessdata_path = script_dir / 'share' / 'tessdata'
         os.environ['TESSDATA_PREFIX'] = str(self.tessdata_path)
 
     def clean_text(self, text: str) -> str:
-        """Tesseract-specific text cleaning"""
-        lines = text.split('\n')
-        processed_lines = []
-        i = 0
-        while i < len(lines):
-            current_line = lines[i].rstrip()
-            if current_line.endswith('-') and i < len(lines) - 1:
-                next_line = lines[i+1].lstrip()
-                if next_line and next_line[0].islower():
-                    joined_word = current_line[:-1] + next_line.split(' ', 1)[0]
-                    remaining_next_line = ' '.join(next_line.split(' ')[1:])
-                    processed_lines.append(joined_word)
-                    if remaining_next_line:
-                        lines[i+1] = remaining_next_line
-                    else:
-                        i += 1
-                else:
-                    processed_lines.append(current_line)
-            else:
-                processed_lines.append(current_line)
-            i += 1
-        return '\n'.join(processed_lines)
+        return text
 
     def process_page(self, page_num: int, page) -> Tuple[int, str]:
-        image = self.convert_page_to_image(page)
-        from tesserocr import PyTessBaseAPI, PSM
-        # create a new API instance for each page to ensure thread safety.
-        with PyTessBaseAPI(psm=PSM.AUTO, path=str(self.tessdata_path)) as api:
-            api.SetImage(image)
-            text = api.GetUTF8Text()
-        text = self.clean_text(text)
-        return page_num, text
+        import tempfile
+        import tesserocr
+        import time
+        from io import BytesIO
+        from ocrmypdf.hocrtransform import HocrTransform
+
+        fd, temp_pdf_path = tempfile.mkstemp(suffix=".pdf", dir=self.temp_dir)
+        os.close(fd)
+
+        out_pdf = fitz.open()
+
+        with tesserocr.PyTessBaseAPI(lang="eng", path=str(self.tessdata_path)) as api:
+            # remove rotation if present
+            page.remove_rotation()
+
+            # 2x page zoom for better OCR
+            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+            pil_image = Image.open(BytesIO(pix.tobytes("png")))
+
+            api.SetImage(pil_image)
+            hocr_text = api.GetHOCRText(0)
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".hocr", dir=self.temp_dir) as hocr_temp:
+                hocr_output = hocr_temp.name
+            Path(hocr_output).write_text(hocr_text, encoding="utf-8")
+
+            fd, text_pdf = tempfile.mkstemp(suffix=".pdf", dir=self.temp_dir)
+            os.close(fd)
+
+            pdf_width_pts = page.rect.width
+            pdf_height_pts = page.rect.height
+            dpi_x = (pix.width * 72) / pdf_width_pts
+            dpi_y = (pix.height * 72) / pdf_height_pts
+            dpi = (dpi_x + dpi_y) / 2.0
+
+            hocr_transform = HocrTransform(hocr_filename=hocr_output, dpi=dpi)
+            hocr_transform.width = pdf_width_pts
+            hocr_transform.height = pdf_height_pts
+            hocr_transform.to_pdf(out_filename=text_pdf, invisible_text=True)
+
+            out_pdf.insert_pdf(page.parent, from_page=page_num, to_page=page_num)
+
+            with fitz.open(text_pdf) as text_page:
+                out_pdf[0].show_pdf_page(
+                    out_pdf[0].rect,
+                    text_page,
+                    0,
+                    overlay=True
+                )
+
+            Path(hocr_output).unlink(missing_ok=True) # comment to keep the hocr file for DEBUG
+
+            for _ in range(10):
+                try:
+                    Path(text_pdf).unlink()
+                    break
+                except PermissionError:
+                    time.sleep(0.1)
+
+            out_pdf.save(temp_pdf_path)
+            out_pdf.close()
+
+            return page_num, temp_pdf_path
+
+    def cleanup_temp_pdfs(self):
+        if self.temp_dir is None:
+            return
+
+        for temp_file in Path(self.temp_dir).glob("tmp*.pdf"):
+            try:
+                temp_file.unlink()
+            except PermissionError:
+                print(f"Could not remove {temp_file} - file may be in use")
+
+    def process_document(self, pdf_path: Path, output_path: Path = None):
+        if not self.validate_pdf(pdf_path):
+            raise ValueError(f"Invalid or corrupted PDF file: {pdf_path}")
+
+        if output_path is None:
+            output_path = pdf_path.with_stem(f"{pdf_path.stem}_OCR")
+
+        if self.temp_dir is None:
+            self.initialize()
+
+        self.cleanup_temp_pdfs()
+
+        pdf_document = fitz.open(str(pdf_path))
+        num_pages = len(pdf_document)
+        pdf_document.close()
+
+        if self.progress_queue:
+            self.progress_queue.put(('total', num_pages))
+
+        page_args = [(page_num, fitz.open(str(pdf_path))[page_num]) for page_num in range(num_pages)]
+
+        results = []
+        with ThreadPoolExecutor(max_workers=self.get_optimal_threads()) as executor:
+            futures = {executor.submit(self.process_page, *args): args[0] for args in page_args}
+
+            for future in as_completed(futures):
+                page_num, temp_pdf_path = future.result()
+                results.append((temp_pdf_path, page_num))
+                if self.progress_queue:
+                    self.progress_queue.put(('update', 1))
+
+        results.sort(key=lambda x: x[1])
+
+        output_pdf = fitz.open()
+        for temp_pdf_path, _ in results:
+            output_pdf.insert_pdf(fitz.open(temp_pdf_path))
+
+            Path(temp_pdf_path).unlink(missing_ok=True)
+
+        output_pdf.save(output_path)
+        output_pdf.close()
+
+        # final cleanup
+        self.cleanup_temp_pdfs()
+
+        output_file = Path(output_path).name
+
+        if self.progress_queue:
+            self.progress_queue.put(('done', None))
 
 class GotOCR(OCRProcessor):
     def __init__(self, model_path: str, zoom: int = 2, progress_queue: Queue = None):
@@ -206,7 +312,7 @@ def _process_documents_worker(
     output_dir: Path,
     progress_queue: Queue
 ):
-    """Worker process that handles the actual OCR processing"""
+
     if backend.lower() == 'tesseract':
         processor = TesseractOCR(progress_queue=progress_queue)
     elif backend.lower() == 'got':

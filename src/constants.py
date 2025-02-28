@@ -79,6 +79,8 @@ libs = [
     "dataclasses-json==0.6.7",
     "datasets==3.3.1",
     "deepdiff==8.2.0", # required by unstructured
+    "Deprecated==1.2.18", # only needed by pikepdf
+    "deprecation==2.1.0", # only needed by ocrmypdf
     "dill==0.3.8", # datasets 3.2.0 requires <0.3.9; multiprocess 0.70.16 requires >=0.3.8
     "distro==1.9.0",
     "docx2txt==0.8",
@@ -108,6 +110,7 @@ libs = [
     "humanfriendly==10.0",
     "HyperPyYAML==1.2.2",
     "idna==3.10",
+    "img2pdf==0.6.0
     "importlib_metadata==8.6.1",
     "Jinja2==3.1.5",
     "jiter==0.8.2", # required by openai newer versions
@@ -143,6 +146,7 @@ libs = [
     "nltk==3.9.1", # not higher; gives unexplained error
     "numba==0.61.0", # only required by openai-whisper
     "numpy==1.26.4", # langchain libraries <2; numba <2.1; scipy <2.3; chattts <2.0.0
+    "ocrmypdf==16.9.0",
     "olefile==0.47",
     "openai==1.63.2", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
@@ -153,10 +157,14 @@ libs = [
     "orjson==3.10.15",
     "packaging==24.2",
     "pandas==2.2.3",
-    "peft==0.14.0", # only required by mississippi model
+    "pdfminer.six==20240706", # only needed by ocrmypdf
+    # "peft==0.14.0", # only required by mississippi model
+    "pikepdf==9.5.2", # only needed by ocrmypdf
     "pillow==11.1.0",
+    "pi-heif==0.21.0", # only needed by ocrmypdf, but not needed for my usage of ocrmypdf
     "pipdeptree",
     "platformdirs==4.3.6",
+    "pluggy==1.5.0", # only needed by ocrmypdf
     "propcache==0.2.1",
     "protobuf==5.29.3",
     "psutil==7.0.0",
@@ -1861,9 +1869,9 @@ scrape_documentation = {
         "URL": "https://tqdm.github.io",
         "folder": "tqdm"
     },
-    "Transformers 4.48.2": {
-        "URL": "https://huggingface.co/docs/transformers/v4.48.2/en",
-        "folder": "transformers_4482",
+    "Transformers 4.49.0": {
+        "URL": "https://huggingface.co/docs/transformers/v4.49.0/en",
+        "folder": "transformers_4490",
         "scraper_class": "HuggingfaceScraper"
     },
     "Transformers.js 3.0.0": {

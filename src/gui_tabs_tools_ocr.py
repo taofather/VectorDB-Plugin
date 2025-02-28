@@ -130,8 +130,36 @@ class OCRToolSettingsTab(QWidget):
 
     def show_success_message(self):
         self.status_label.setStyleSheet("color: #4CAF50;")
-        self.status_label.setText("Success! A .txt file has been saved in the same directory as the original .pdf.")
-        QMessageBox.information(self, "Success!", "A .txt file has been saved in the same directory as the original .pdf.")
+        self.status_label.setText("Success!")
+
+        if not self.selected_pdf_file:
+            return
+
+        original_file = Path(self.selected_pdf_file)
+        processed_file = None
+
+        if self.engine_combo.currentText() == "Tesseract":
+            processed_file = original_file.with_stem(f"{original_file.stem}_OCR").with_suffix(".pdf")
+        elif self.engine_combo.currentText() == "GOT_OCR":
+            processed_file = original_file.with_suffix(".txt")
+
+        if processed_file and processed_file.exists():
+            file_link = f'<a href="file:///{processed_file}" style="color: #4CAF50; text-decoration: none;">Open New File</a>'
+        else:
+            file_link = "The processed file could not be found."
+
+        QMessageBox.information(
+            self,
+            "Success!",
+            f"""If using <b>Tesseract</b>, a new <b>.pdf</b> ending in <b>'_OCR'</b> has been saved
+            in the same directory as the original file.<br><br>
+
+            If using <b>GOT_OCR</b>, a <b>.txt</b> file has been saved in the same
+            directory as the original .pdf.<br><br>
+
+            {file_link}
+            """
+        )
 
     def start_ocr_process(self):
         if not self.selected_pdf_file:
