@@ -10,17 +10,11 @@ from torchvision.transforms.functional import InterpolationMode
 import yaml
 from PIL import Image
 from tqdm import tqdm
-# from transformers import (
-    # AutoModelForCausalLM, AutoModel, AutoTokenizer, AutoProcessor, 
-    # BlipForConditionalGeneration, BlipProcessor, LlamaTokenizer, 
-    # LlavaForConditionalGeneration, LlavaNextForConditionalGeneration, 
-    # LlavaNextProcessor, BitsAndBytesConfig, AutoModelForVision2Seq, AutoConfig
-# )
 
 from transformers import (
     AutoModelForCausalLM, AutoModel, AutoTokenizer, AutoProcessor, BlipForConditionalGeneration, BlipProcessor,
     LlamaTokenizer, LlavaForConditionalGeneration, LlavaNextForConditionalGeneration, LlavaNextProcessor, BitsAndBytesConfig,
-    Qwen2_5_VLForConditionalGeneration, Qwen2_5_VLConfig
+    Qwen2_5_VLForConditionalGeneration, Qwen2_5_VLConfig, GenerationConfig
 )
 
 from langchain_community.docstore.document import Document
@@ -380,15 +374,12 @@ class loader_molmo(BaseLoader):
     def initialize_model_and_tokenizer(self):
         chosen_model = self.config['vision']['chosen_model']
         model_info = VISION_MODELS[chosen_model]
-
         model_path = model_info.get('model_path')
         model_id = model_info.get('repo_id')
-
         if model_path:
             model_source = model_path
         else:
             model_source = model_id
-
         cache_dir = CACHE_DIR / model_info.get('cache_dir', '')
         cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -396,19 +387,31 @@ class loader_molmo(BaseLoader):
             self.processor = AutoProcessor.from_pretrained(
                 model_source,
                 trust_remote_code=True,
-                torch_dtype='auto',
+                torch_dtype=torch.bfloat16,
                 device_map='auto',
                 cache_dir=cache_dir
             )
+
+            quantization_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.bfloat16,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_use_double_quant=True,
+            )
+
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_source,
                 trust_remote_code=True,
-                torch_dtype='auto',
+                quantization_config=quantization_config,
+                torch_dtype=torch.bfloat16,
                 device_map='auto',
                 cache_dir=cache_dir
             )
-            self.model.eval()
 
+            # convert vision backbone to float32
+            self.model.model.vision_backbone = self.model.model.vision_backbone.to(torch.float32)
+
+            self.model.eval()
             my_cprint(f"{chosen_model} vision model loaded into memory...", "green")
         except Exception as e:
             my_cprint(f"Error loading {chosen_model} model: {str(e)}", "red")
@@ -421,27 +424,22 @@ class loader_molmo(BaseLoader):
         if raw_image.mode != "RGB":
             raw_image = raw_image.convert("RGB")
 
-        image_kwargs = {
-            "max_crops": 24,  # Maximum number of 336x336 crops from the input image
-            "overlap_margins": [4, 4],  # [left/top, right/bottom] margins in patches between crops
-                                       # With patch_size=14, this means 56 pixels of overlap
+        user_prompt = "Describe this image in as much detail as possible but do not repeat yourself."
+
+        inputs = self.processor.process(images=[raw_image], text=user_prompt)
+
+        inputs = {
+            k: (v.to(device=self.device, dtype=torch.long) if k in ['input_ids', 'image_input_idx'] else 
+               v.to(device=self.device, dtype=torch.float32)).unsqueeze(0)
+            for k, v in inputs.items()
         }
-
-        user_prompt = "Explain everything you see in this picture but your response should be no more than one paragraph, but the paragraph can be as long as you want."
-
-        inputs = self.processor.process(
-            images=[raw_image], 
-            text=user_prompt,
-            images_kwargs=image_kwargs
-        )
-
-        inputs = {k: v.to(self.device).unsqueeze(0) for k, v in inputs.items()}
 
         try:
             generation_config = GenerationConfig(
                 max_new_tokens=1024,
-                stop_strings=["<|endoftext|>"]
+                eos_token_id=self.processor.tokenizer.eos_token_id
             )
+
             output = self.model.generate_from_batch(
                 inputs,
                 generation_config,
@@ -451,6 +449,7 @@ class loader_molmo(BaseLoader):
             generated_tokens = output[0, inputs['input_ids'].size(1):]
             generated_text = self.processor.tokenizer.decode(generated_tokens, skip_special_tokens=True)
             generated_text = ' '.join(line.strip() for line in generated_text.split('\n') if line.strip())
+
         except Exception as e:
             my_cprint(f"Error processing image: {str(e)}", "red")
             return ""
