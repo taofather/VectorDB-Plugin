@@ -833,7 +833,7 @@ VISION_MODELS = {
         'loader': 'loader_glmv4'
     },
     'Molmo-D-0924 - 8b': {
-        'precision': 'autoselect',
+        'precision': 'bfloat16',
         'quant': '4-bit',
         'size': '8b',
         'repo_id': 'ctranslate2-4you/molmo-7B-D-0924-bnb-4bit',
