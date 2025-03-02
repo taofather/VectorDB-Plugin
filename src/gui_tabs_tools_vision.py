@@ -231,7 +231,7 @@ class VisionToolSettingsTab(QWidget):
             model_col_width = 23
             count_col_width = 12
             time_col_width = 12
-            speed_col_width = 12  # New column width for char/sec
+            speed_col_width = 12
 
             temp_file.write(f"Image Path: {image_path}\n")
             temp_file.write(f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")

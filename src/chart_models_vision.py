@@ -16,18 +16,19 @@ def create_vision_models_comparison_plot():
     }
 
     data = [
-        {"model": "Florence2-Large (cpu)", "cps": 63.67, "memory": 9649.64},
-        {"model": "Florence2-Base (cpu)", "cps": 147.87, "memory": 4362.30},
-        {"model": "Florence2-Large - 772m", "cps": 564.86, "memory": 5284.24},
-        {"model": "Florence2-Base - 223m", "cps": 766.49, "memory": 2631.49},
-        {"model": "Mississippi - 2b", "cps": 320.00, "memory": 5300.00},
-        {"model": "Ovis1.6-Llama3.2 - 3b", "cps": 321.79, "memory": 9956.18},
-        {"model": "GLM4v - 14b", "cps": 140.65, "memory": 10350.07},
-        {"model": "Molmo-D-0924 - 8b", "cps": 146.60, "memory": 12321.12},
+        {"model": "Florence2-Large (cpu)", "cps": 66.27, "memory": 9659.42},
+        {"model": "Florence2-Base (cpu)", "cps": 156.84, "memory": 4366.43},
+        {"model": "Florence2-Large - 772m", "cps": 665.95, "memory": 5274.93},
+        {"model": "Florence2-Base - 223m", "cps": 970.53, "memory": 2625.93},
+        {"model": "THUDM glm4v - 9b", "cps": 200.96, "memory": 9802.12},
+        {"model": "Molmo-D-0924 - 8b", "cps": 194.65, "memory": 7693.93},
         {"model": "llava-v1.6-vicuna - 13b", "cps": 120.98, "memory": 11173.46},
-        {"model": "Moondream2 - 2b", "cps": 344.97, "memory": 4461.80},
-        {"model": "InternVL2.5 - 4b", "cps": 173.57, "memory": 3151.93},
-        {"model": "InternVL2.5 - 1b", "cps": 291.18, "memory": 2385.93},
+        # {"model": "Moondream2 - 2b", "cps": 344.97, "memory": 4461.80},
+        {"model": "Qwen VL - 3b", "cps": 178.31, "memory": 6306.30},
+        {"model": "Qwen VL - 7b", "cps": 173.67, "memory": 9559.89},
+        {"model": "Granite Vision - 2b", "cps": 217.64, "memory": 4094.18},
+        {"model": "InternVL2.5 - 4b", "cps": 199.29, "memory": 4548.99},
+        {"model": "InternVL2.5 - 1b", "cps": 288.64, "memory": 2292.93},
         {"model": "Ovis2 - 1b", "cps": 286.39, "memory": 4071.93},
         {"model": "Ovis2 - 2b", "cps": 312.08, "memory": 5846.49},
     ]
@@ -82,7 +83,6 @@ def create_vision_models_comparison_plot():
     for i, cps in enumerate(df["cps"]):
         ax2.text(i, cps, f'{cps:.2f}', ha='center', va='bottom', color='white')
 
-    # legend
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     category_patches = [Patch(facecolor='none', edgecolor=cat["color"], label=cat["label"], linewidth=2) 
@@ -96,10 +96,10 @@ def create_vision_models_comparison_plot():
 
     fig.tight_layout()
     plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.25)
-    
+
     return fig
 
 if __name__ == "__main__":
-    # This block will only run if the script is executed directly
+
     fig = create_vision_models_comparison_plot()
     plt.show()

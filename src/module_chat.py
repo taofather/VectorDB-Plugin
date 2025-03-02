@@ -594,18 +594,6 @@ class Qwen_14b(BaseModel):
 """
 
 
-class Mistral_Small_22b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Mistral Small - 22b']
-        super().__init__(model_info, bnb_bfloat16_settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<s>
-[INST] {system_message}
-
-{augmented_query}[/INST]"""
-
-
 class Mistral_Small_24b(BaseModel):
     def __init__(self, generation_settings):
         model_info = CHAT_MODELS['Mistral Small 3 - 24b']

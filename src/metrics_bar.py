@@ -10,6 +10,8 @@ from PySide6.QtCore import (
     QObject,
     QPointF,
     QTimer,
+    QThread,
+    Signal,
 )
 from PySide6.QtWidgets import (
     QWidget,
@@ -48,20 +50,20 @@ class MetricsStore:
         self.buffer_size = buffer_size
         self.metrics_history: List[SystemMetrics] = []
         self._subscribers: List[Callable[[SystemMetrics], None]] = []
-    
+
     def add_metrics(self, metrics: SystemMetrics) -> None:
         self.metrics_history.append(metrics)
         if len(self.metrics_history) > self.buffer_size:
             self.metrics_history.pop(0)
         self._notify_subscribers(metrics)
-    
+
     def subscribe(self, callback: Callable[[SystemMetrics], None]) -> None:
         self._subscribers.append(callback)
-    
+
     def unsubscribe(self, callback: Callable[[SystemMetrics], None]) -> None:
         if callback in self._subscribers:
             self._subscribers.remove(callback)
-    
+
     def _notify_subscribers(self, metrics: SystemMetrics) -> None:
         for subscriber in self._subscribers:
             subscriber(metrics)
@@ -96,7 +98,6 @@ class BatchCSVLogger(QObject):
         self.flush_interval = flush_interval
         self.buffer = []
 
-        # Open the CSV file and write the header row.
         self.file = open(self.filepath, 'w', newline='')
         self.writer = csv.writer(self.file)
         self.writer.writerow([
@@ -130,13 +131,11 @@ class BatchCSVLogger(QObject):
         self.buffer.clear()
 
     def close(self):
-
         self.timer.stop()
         self.flush()
         self.file.close()
 
     def __del__(self):
-
         try:
             self.close()
         except Exception:
@@ -148,7 +147,6 @@ def collect_cpu_metrics():
 
     cpu_percentages = []
     for cpu in cpu_times:
-
         total_active = sum(
             value for field, value in cpu._asdict().items() 
             if field not in ('idle', 'iowait')
@@ -198,44 +196,45 @@ def collect_power_metrics(handle):
     return power_percentage, power_limit
 
 
-class MetricsCollector(QObject):
-    def __init__(self, store: MetricsStore):
+class MetricsCollectorThread(QThread):
+    metrics_updated = Signal(SystemMetrics)
+    
+    def __init__(self, interval=200):
         super().__init__()
-        self.store = store
-        self.timer = QTimer()
-        self.timer.setInterval(200)
-        self.timer.timeout.connect(self._collect_metrics)
+        self.interval = interval
+        self.running = True
         self.gpu_available = HAS_NVIDIA_GPU
 
-    def start(self):
-        self.timer.start()
+    def run(self):
+        while self.running:
+            try:
+                cpu_usage = collect_cpu_metrics()
+                ram_usage_percent, _ = collect_ram_metrics()
+
+                if self.gpu_available:
+                    gpu_util, vram_usage = collect_gpu_metrics(HANDLE)
+                    power_usage, power_limit = collect_power_metrics(HANDLE)
+                else:
+                    gpu_util = vram_usage = power_usage = power_limit = None
+
+                metrics = SystemMetrics(
+                    timestamp=datetime.now(),
+                    cpu_usage=cpu_usage,
+                    ram_usage_percent=ram_usage_percent,
+                    gpu_utilization=gpu_util,
+                    vram_usage_percent=vram_usage,
+                    power_usage_percent=power_usage,
+                    power_limit_percent=power_limit
+                )
+
+                self.metrics_updated.emit(metrics)
+            except Exception as e:
+                print(f"Error collecting metrics: {e}")
+
+            self.msleep(self.interval)
 
     def stop(self):
-        self.timer.stop()
-    
-    def _collect_metrics(self) -> None:
-        from datetime import datetime
-        
-        cpu_usage = collect_cpu_metrics()
-        ram_usage_percent, _ = collect_ram_metrics()
-        
-        if self.gpu_available:
-            gpu_util, vram_usage = collect_gpu_metrics(HANDLE)
-            power_usage, power_limit = collect_power_metrics(HANDLE)
-        else:
-            gpu_util = vram_usage = power_usage = power_limit = None
-        
-        metrics = SystemMetrics(
-            timestamp=datetime.now(),
-            cpu_usage=cpu_usage,
-            ram_usage_percent=ram_usage_percent,
-            gpu_utilization=gpu_util,
-            vram_usage_percent=vram_usage,
-            power_usage_percent=power_usage,
-            power_limit_percent=power_limit
-        )
-        
-        self.store.add_metrics(metrics)
+        self.running = False
 
     def cleanup(self):
         self.stop()
@@ -252,10 +251,10 @@ class BaseVisualization(QWidget):
         self.metrics_store = metrics_store
         self.metrics_store.subscribe(self.update_metrics)
         self.has_nvidia_gpu = HAS_NVIDIA_GPU
-    
+
     def update_metrics(self, metrics: SystemMetrics):
         raise NotImplementedError("Visualization must implement update_metrics")
-    
+
     def cleanup(self):
         self.metrics_store.unsubscribe(self.update_metrics)
 
@@ -314,7 +313,7 @@ class BarVisualization(BaseVisualization):
     def update_metrics(self, metrics: SystemMetrics):
         self.cpu_bar.setValue(int(metrics.cpu_usage))
         self.cpu_percent_label.setText(f"{int(metrics.cpu_usage)}%")
-        
+
         self.ram_bar.setValue(int(metrics.ram_usage_percent))
         self.ram_percent_label.setText(f"{int(metrics.ram_usage_percent)}%")
 
@@ -348,18 +347,18 @@ class Sparkline(QWidget):
     def _create_gradient(self):
         pixmap = QPixmap(1, self.height())
         pixmap.fill(Qt.transparent)
-        
+
         painter = QPainter(pixmap)
         gradient = QLinearGradient(0, 0, 0, self.height())
-        
+
         fill_color = QColor(self.color)
         fill_color.setAlpha(60)
         gradient.setColorAt(0, fill_color)
         gradient.setColorAt(1, QColor(0, 0, 0, 0))
-        
+
         painter.fillRect(pixmap.rect(), gradient)
         painter.end()
-        
+
         QPixmapCache.insert(self._gradient_key, pixmap)
         return pixmap
 
@@ -652,7 +651,7 @@ class ArcGraph(QWidget):
     def _create_background(self):
         background = QPixmap(self.size())
         background.fill(Qt.transparent)
-        
+
         painter = QPainter(background)
         painter.setRenderHint(QPainter.Antialiasing)
         
@@ -660,7 +659,7 @@ class ArcGraph(QWidget):
         height = self.height()
         radius = min(width, height) / 2 - 10
         center = QPointF(width / 2, height / 2)
-        
+
         painter.setPen(QPen(QColor("#1e2126"), 8))
         painter.drawArc(
             int(center.x() - radius), 
@@ -688,7 +687,7 @@ class ArcGraph(QWidget):
         height = self.height()
         radius = min(width, height) / 2 - 10
         center = QPointF(width / 2, height / 2)
-        
+
         painter.setPen(QPen(self.color, 8))
         span_angle = -(self.value / 100.0) * 180
         painter.drawArc(
@@ -772,7 +771,7 @@ class MetricsWidget(QWidget):
         super().__init__(parent)
 
         QPixmapCache.setCacheLimit(10 * 1024)
-        
+
         self.metrics_store = MetricsStore(buffer_size=100)
 
         # DEBUG
@@ -782,7 +781,10 @@ class MetricsWidget(QWidget):
         self.init_ui()
         self.current_visualization_type = 1
         self.setToolTip("Right click for display options")
-        self.metrics_collector = MetricsCollector(self.metrics_store)
+
+        self.collector_thread = MetricsCollectorThread()
+        self.collector_thread.metrics_updated.connect(self.on_metrics_updated)
+
         self.start_metrics_collector()
 
     def init_ui(self):
@@ -790,6 +792,9 @@ class MetricsWidget(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.current_visualization = SparklineVisualization(self.metrics_store)
         self.layout.addWidget(self.current_visualization)
+
+    def on_metrics_updated(self, metrics):
+        self.metrics_store.add_metrics(metrics)
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
@@ -806,7 +811,7 @@ class MetricsWidget(QWidget):
 
         menu.addSeparator()
 
-        is_running = self.metrics_collector and self.metrics_collector.timer.isActive()
+        is_running = self.collector_thread and self.collector_thread.isRunning()
         control_action = menu.addAction("Stop Monitoring" if is_running else "Start Monitoring")
 
         action = menu.exec_(event.globalPos())
@@ -847,17 +852,21 @@ class MetricsWidget(QWidget):
         self.layout.addWidget(self.current_visualization)
 
     def start_metrics_collector(self):
-        if self.metrics_collector is None:
-            self.metrics_collector = MetricsCollector(self.metrics_store)
-        self.metrics_collector.start()
+        if not self.collector_thread.isRunning():
+            self.collector_thread.start()
 
     def stop_metrics_collector(self):
-        if self.metrics_collector:
-            self.metrics_collector.stop()
+        if self.collector_thread.isRunning():
+            self.collector_thread.stop()
+            self.collector_thread.wait()
 
     def cleanup(self):
-        if self.metrics_collector:
-            self.metrics_collector.cleanup()
+        if self.collector_thread.isRunning():
+            self.collector_thread.cleanup()
+            self.collector_thread.wait()
         self.current_visualization.cleanup()
         QPixmapCache.clear()
+
+    def closeEvent(self, event):
+        self.cleanup()
         super().closeEvent(event)

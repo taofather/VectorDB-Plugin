@@ -20,6 +20,38 @@ from PySide6.QtCore import QRunnable, QObject, Signal, QThreadPool
 from PySide6.QtWidgets import QApplication, QMessageBox
 from termcolor import cprint
 
+def set_cuda_paths():
+    import sys
+    import os
+    from pathlib import Path
+    
+    venv_base = Path(sys.executable).parent.parent
+    nvidia_base_path = venv_base / 'Lib' / 'site-packages' / 'nvidia'
+    cuda_path_runtime = nvidia_base_path / 'cuda_runtime' / 'bin'
+    cuda_path_runtime_lib = nvidia_base_path / 'cuda_runtime' / 'bin' / 'lib' / 'x64'
+    cuda_path_runtime_include = nvidia_base_path / 'cuda_runtime' / 'include'
+    cublas_path = nvidia_base_path / 'cublas' / 'bin'
+    cudnn_path = nvidia_base_path / 'cudnn' / 'bin'
+    nvrtc_path = nvidia_base_path / 'cuda_nvrtc' / 'bin'
+    nvcc_path = nvidia_base_path / 'cuda_nvcc' / 'bin'
+
+    paths_to_add = [
+        str(cuda_path_runtime),
+        str(cuda_path_runtime_lib),
+        str(cuda_path_runtime_include),
+        str(cublas_path),
+        str(cudnn_path),
+        str(nvrtc_path),
+        str(nvcc_path),
+    ]
+
+    current_value = os.environ.get('PATH', '')
+    new_value = os.pathsep.join(paths_to_add + [current_value] if current_value else paths_to_add)
+    os.environ['PATH'] = new_value
+
+    triton_cuda_path = nvidia_base_path / 'cuda_runtime'
+    os.environ['CUDA_PATH'] = str(triton_cuda_path)
+
 def check_pdfs_for_ocr(script_dir):
     import pymupdf
     import tempfile
@@ -83,37 +115,6 @@ def check_pdfs_for_ocr(script_dir):
 
     return True, ""
 
-def set_cuda_paths():
-    import sys
-    import os
-    from pathlib import Path
-    
-    venv_base = Path(sys.executable).parent.parent
-    nvidia_base_path = venv_base / 'Lib' / 'site-packages' / 'nvidia'
-    cuda_path_runtime = nvidia_base_path / 'cuda_runtime' / 'bin'
-    cuda_path_runtime_lib = nvidia_base_path / 'cuda_runtime' / 'bin' / 'lib' / 'x64'
-    cuda_path_runtime_include = nvidia_base_path / 'cuda_runtime' / 'include'
-    cublas_path = nvidia_base_path / 'cublas' / 'bin'
-    cudnn_path = nvidia_base_path / 'cudnn' / 'bin'
-    nvrtc_path = nvidia_base_path / 'cuda_nvrtc' / 'bin'
-    nvcc_path = nvidia_base_path / 'cuda_nvcc' / 'bin'
-
-    paths_to_add = [
-        str(cuda_path_runtime),
-        str(cuda_path_runtime_lib),
-        str(cuda_path_runtime_include),
-        str(cublas_path),
-        str(cudnn_path),
-        str(nvrtc_path),
-        str(nvcc_path),
-    ]
-
-    current_value = os.environ.get('PATH', '')
-    new_value = os.pathsep.join(paths_to_add + [current_value] if current_value else paths_to_add)
-    os.environ['PATH'] = new_value
-
-    triton_cuda_path = nvidia_base_path / 'cuda_runtime'
-    os.environ['CUDA_PATH'] = str(triton_cuda_path)
 
 class DownloadSignals(QObject):
     finished = Signal(bool, str)

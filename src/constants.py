@@ -50,18 +50,18 @@ libs = [
     "accelerate==1.4.0",
     "aiofiles==24.1.0",
     "aiohappyeyeballs==2.4.6",
-    "aiohttp==3.11.12", # langchain libraries require <4
+    "aiohttp==3.11.13", # langchain libraries require <4
     "aiosignal==1.3.2", # only required by aiohttp
     "anndata==0.11.3",
     "annotated-types==0.7.0",
     "anyio==4.8.0",
-    "array_api_compat==1.10.0", # only anndata requires
+    "array_api_compat==1.11.0", # only anndata requires
     "async-timeout==5.0.1",
     "attrs==25.1.0",
     "av==14.1.0",
     "backoff==2.2.1",
     "beautifulsoup4==4.13.3",
-    "bitsandbytes==0.45.2",
+    "bitsandbytes==0.45.3",
     "braceexpand==0.1.7",
     "certifi==2025.1.31",
     "cffi==1.17.1",
@@ -73,11 +73,11 @@ libs = [
     "colorama==0.4.6",
     "coloredlogs==15.0.1",
     "contourpy==1.3.1", # onlyk required by matplotlib
-    "cryptography==44.0.1", # only required by unstructured library
+    "cryptography==44.0.2", # only required by unstructured library
     "ctranslate2==4.5.0",
     "cycler==0.12.1",
     "dataclasses-json==0.6.7",
-    "datasets==3.3.1",
+    "datasets==3.3.2",
     "deepdiff==8.2.0", # required by unstructured
     "Deprecated==1.2.18", # only needed by pikepdf
     "deprecation==2.1.0", # only needed by ocrmypdf
@@ -106,7 +106,7 @@ libs = [
     "httpcore==1.0.7",
     "httpx==0.28.1",
     "httpx-sse==0.4.0",
-    "huggingface-hub==0.28.1", # tokenizers 0.20.3 requires >=0.16.4,<1.0
+    "huggingface-hub==0.29.1", # tokenizers 0.20.3 requires >=0.16.4,<1.0
     "humanfriendly==10.0",
     "HyperPyYAML==1.2.2",
     "idna==3.10",
@@ -120,19 +120,19 @@ libs = [
     "jsonpointer==3.0.0",
     "kiwisolver==1.4.8",
     "langchain==0.3.19",
-    "langchain-community==0.3.17",
-    "langchain-core==0.3.36",
+    "langchain-community==0.3.18",
+    "langchain-core==0.3.40",
     "langchain-huggingface==0.1.2",
     "langchain-text-splitters==0.3.6",
     "langdetect==1.0.9",
-    "langsmith==0.3.8",
+    "langsmith==0.3.11",
     "llvmlite==0.44.0", # only required by numba
     "lxml==5.3.1",
     "Markdown==3.7",
     "markdown-it-py==3.0.0",
     "MarkupSafe==3.0.2",
     "marshmallow==3.26.1",
-    "matplotlib==3.10.0", # uniquely requires pyparsing==3.1.2 cycler==0.12.1 kiwisolver==1.4.5
+    "matplotlib==3.10.1", # uniquely requires pyparsing==3.1.2 cycler==0.12.1 kiwisolver==1.4.5
     "mdurl==0.1.2",
     "more-itertools==10.6.0",
     "mpmath==1.3.0", # sympy 1.13.1 requires less than 1.4
@@ -165,7 +165,7 @@ libs = [
     "pipdeptree",
     "platformdirs==4.3.6",
     "pluggy==1.5.0", # only needed by ocrmypdf
-    "propcache==0.2.1",
+    "propcache==0.3.0",
     "protobuf==5.29.3",
     "psutil==7.0.0",
     "pyarrow==19.0.1",
@@ -175,9 +175,11 @@ libs = [
     "pydantic_core==2.27.2", # pydantic 2.10.6 requires pydantic_core==2.27.2
     "pydantic-settings==2.7.1",
     "Pygments==2.19.1",
+    "PyOpenGL==3.1.9",
+    "PyOpenGL-accelerate==3.1.9",
     "pypandoc==1.15",
     "pyparsing==3.2.1",
-    "pypdf==5.3.0",
+    "pypdf==5.3.1",
     "pyreadline3==3.5.4",
     "python-dateutil==2.9.0.post0",
     "python-docx==1.1.2",
@@ -194,7 +196,7 @@ libs = [
     "rich==13.9.4",
     "ruamel.yaml==0.18.10",
     "ruamel.yaml.clib==0.2.12",
-    "safetensors==0.5.2",
+    "safetensors==0.5.3",
     "scikit-learn==1.6.1",
     "scipy==1.15.2",
     "sentence-transformers==3.4.1",
@@ -217,19 +219,19 @@ libs = [
     "tessdata.eng==1.0.0",
     "threadpoolctl==3.5.0",
     "tiktoken==0.9.0",
-    "tiledb==0.33.3",
+    "tiledb==0.33.4",
     "tiledb-cloud==0.13.0",
     "tiledb-vector-search==0.11.0",
-    "timm==1.0.14",
+    "timm==1.0.15",
     "tokenizers==0.21.0",
     "tqdm==4.67.1",
     "transformers==4.49.0",
     "typing-inspect==0.9.0",
     "typing_extensions==4.12.2",
-    "unstructured-client==0.30.1",
+    "unstructured-client==0.30.6",
     "tzdata==2025.1",
     "urllib3==2.3.0", # requests 2.32.3 requires <3
-    "vector-quantize-pytorch==1.21.8",
+    "vector-quantize-pytorch==1.21.9",
     "vocos==0.1.0",
     "watchdog==6.0.0",
     "webdataset==0.2.111", # required by all TTS libraries
@@ -245,7 +247,7 @@ libs = [
 full_install_libs = [
     "PySide6==6.8.2.1",
     "pymupdf==1.25.3",
-    "unstructured==0.16.21"
+    "unstructured==0.16.23"
 ]
 
 CHAT_MODELS = {
@@ -780,16 +782,6 @@ VISION_MODELS = {
         'vram': '4.1 GB',
         'loader': 'loader_granite'
     },
-    'Moondream2 - 1.9b': {
-        'precision': 'float16',
-        'quant': 'n/a',
-        'size': '2b',
-        'repo_id': 'vikhyatk/moondream2',
-        'cache_dir': 'vikhyatk--moondream2',
-        'requires_cuda': True,
-        'vram': '4.6 GB',
-        'loader': 'loader_moondream'
-    },
     'Florence-2-large': {
         'precision': 'autoselect',
         'quant': 'n/a',
@@ -810,12 +802,32 @@ VISION_MODELS = {
         'vram': '2.4 GB',
         'loader': 'loader_ovis'
     },
+    'Qwen VL - 3b': {
+        'precision': 'bfloat16',
+        'quant': '4-bit',
+        'size': '3b',
+        'repo_id': 'Qwen/Qwen2.5-VL-3B-Instruct',
+        'cache_dir': 'Qwen--Qwen2.5-VL-3B-Instruct',
+        'requires_cuda': True,
+        'vram': '6.3 GB',
+        'loader': 'loader_qwenvl'
+    },
+    'Qwen VL - 7b': {
+        'precision': 'bfloat16',
+        'quant': '4-bit',
+        'size': '7b',
+        'repo_id': 'Qwen/Qwen2.5-VL-7B-Instruct',
+        'cache_dir': 'Qwen--Qwen2.5-VL-7B-Instruct',
+        'requires_cuda': True,
+        'vram': '9.6 GB',
+        'loader': 'loader_qwenvl'
+    },
     'THUDM glm4v - 9b': {
         'precision': 'bfloat16',
         'quant': '4-bit',
         'size': '9b',
-        'repo_id': 'THUDM/glm-4v-9b',
-        'cache_dir': 'THUDM--glm-4v-9b',
+        'repo_id': 'ctranslate2-4you/glm-4v-9b',
+        'cache_dir': 'ctranslate2-4you--glm-4v-9b',
         'requires_cuda': True,
         'vram': '10.5 GB',
         'loader': 'loader_glmv4'
@@ -1373,17 +1385,13 @@ TOOLTIPS = {
 
 scrape_documentation = {
     "Accelerate 1.3.0": {
-        "URL": "https://huggingface.co/docs/accelerate/v1.3.0/en",
-        "folder": "accelerate_130",
+        "URL": "https://huggingface.co/docs/accelerate/v1.4.0/en",
+        "folder": "accelerate_140",
         "scraper_class": "HuggingfaceScraper"
     },
     "aiohttp 3.9.5": {
-        "URL": "https://docs.aiohttp.org/en/v3.11.11/",
-        "folder": "aiohttp_31111"
-    },
-    "aiohttp": {
-        "URL": "https://docs.aiohttp.org/en/stable/",
-        "folder": "aiohttp"
+        "URL": "https://docs.aiohttp.org/en/v3.11.13/",
+        "folder": "aiohttp_31113"
     },
     "Argcomplete": {
         "URL": "https://kislyuk.github.io/argcomplete/",
@@ -1402,8 +1410,8 @@ scrape_documentation = {
         "folder": "beautiful_soup_4"
     },
     "bitsandbytes 0.45.1": {
-        "URL": "https://huggingface.co/docs/bitsandbytes/v0.45.1/en/index",
-        "folder": "bitsandbytes_0451",
+        "URL": "https://huggingface.co/docs/bitsandbytes/v0.45.2/en/index",
+        "folder": "bitsandbytes_0452",
         "scraper_class": "HuggingfaceScraper"
     },
     "Black": {
@@ -1489,8 +1497,8 @@ scrape_documentation = {
         "folder": "gtts"
     },
     "Huggingface Hub 0.28.1": {
-        "URL": "https://huggingface.co/docs/huggingface_hub/v0.28.1/en/",
-        "folder": "huggingface_hub_0281",
+        "URL": "https://huggingface.co/docs/huggingface_hub/v0.29.1/en/",
+        "folder": "huggingface_hub_0291",
         "scraper_class": "HuggingfaceScraper"
     },
     "humanfriendly": {
@@ -1759,8 +1767,8 @@ scrape_documentation = {
         "folder": "scikit_learn"
     },
     "SciPy 1.15.1": {
-        "URL": "https://docs.scipy.org/doc/scipy-1.15.1/",
-        "folder": "scipy_1151"
+        "URL": "https://docs.scipy.org/doc/scipy-1.15.2/",
+        "folder": "scipy_1152"
     },
     "Sentence-Transformers": {
         "URL": "https://www.sbert.net/docs",
@@ -1772,8 +1780,8 @@ scrape_documentation = {
         "scraper_class": "ReadthedocsScraper"
     },
     "SoundFile 0.11.0": {
-        "URL": "https://python-soundfile.readthedocs.io/en/0.11.0/",
-        "folder": "soundfile_0110",
+        "URL": "https://python-soundfile.readthedocs.io/en/0.13.1/",
+        "folder": "soundfile_0131",
         "scraper_class": "ReadthedocsScraper"
     },
     "sounddevice 0.5.1": {
@@ -1821,8 +1829,8 @@ scrape_documentation = {
         "scraper_class": "TileDBVectorSearchScraper"
     },
     "Timm 1.0.14": {
-        "URL": "https://huggingface.co/docs/timm/v1.0.14/en/",
-        "folder": "timm_1014",
+        "URL": "https://huggingface.co/docs/timm/v1.0.15/en/",
+        "folder": "timm_1015",
         "scraper_class": "HuggingfaceScraper"
     },
     "tokenizers": {
@@ -1830,24 +1838,14 @@ scrape_documentation = {
         "folder": "tokenizers_0203",
         "scraper_class": "HuggingfaceScraper"
     },
-    "torch 2.5.1": {
-        "URL": "https://pytorch.org/docs/2.5/",
-        "folder": "torch_251",
-        "scraper_class": "PyTorchScraper"
-    },
     "torch 2.6.0": {
         "URL": "https://pytorch.org/docs/2.6/",
-        "folder": "torch_260",
-        "scraper_class": "PyTorchScraper"
-    },
-    "Torchaudio 2.5.1": {
-        "URL": "https://pytorch.org/audio/2.5.0/",
-        "folder": "torchaudio_251",
+        "folder": "torch_26",
         "scraper_class": "PyTorchScraper"
     },
     "Torchaudio 2.6.0": {
         "URL": "https://pytorch.org/audio/2.6.0/",
-        "folder": "torchaudio_260",
+        "folder": "torchaudio_26",
         "scraper_class": "PyTorchScraper"
     },
     "Torchmetrics": {
@@ -1857,11 +1855,6 @@ scrape_documentation = {
     "Torchvision 0.21.0": {
         "URL": "https://pytorch.org/vision/0.21/",
         "folder": "torchvision_021",
-        "scraper_class": "PyTorchScraper"
-    },
-    "Torchvision 0.20.1": {
-        "URL": "https://pytorch.org/vision/0.20/",
-        "folder": "torchvision_0201",
         "scraper_class": "PyTorchScraper"
     },
     "tqdm": {
@@ -2371,6 +2364,16 @@ GPUS_AMD = {
         "Brand": "AMD",
         "Size (GB)": 16,
         "Shaders": 3840
+    },
+    "Radeon RX 9070 XT": {
+        "Brand": "AMD",
+        "Size (GB)": 16,
+        "Shaders": 4096
+    },
+    "Radeon RX 9070": {
+        "Brand": "AMD",
+        "Size (GB)": 16,
+        "Shaders": 3584
     },
     "Radeon RX 7900 GRE": {
         "Brand": "AMD",

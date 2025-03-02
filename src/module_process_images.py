@@ -10,11 +10,17 @@ from torchvision.transforms.functional import InterpolationMode
 import yaml
 from PIL import Image
 from tqdm import tqdm
+# from transformers import (
+    # AutoModelForCausalLM, AutoModel, AutoTokenizer, AutoProcessor, 
+    # BlipForConditionalGeneration, BlipProcessor, LlamaTokenizer, 
+    # LlavaForConditionalGeneration, LlavaNextForConditionalGeneration, 
+    # LlavaNextProcessor, BitsAndBytesConfig, AutoModelForVision2Seq, AutoConfig
+# )
+
 from transformers import (
-    AutoModelForCausalLM, AutoModel, AutoTokenizer, AutoProcessor, 
-    BlipForConditionalGeneration, BlipProcessor, LlamaTokenizer, 
-    LlavaForConditionalGeneration, LlavaNextForConditionalGeneration, 
-    LlavaNextProcessor, BitsAndBytesConfig, AutoModelForVision2Seq
+    AutoModelForCausalLM, AutoModel, AutoTokenizer, AutoProcessor, BlipForConditionalGeneration, BlipProcessor,
+    LlamaTokenizer, LlavaForConditionalGeneration, LlavaNextForConditionalGeneration, LlavaNextProcessor, BitsAndBytesConfig,
+    Qwen2_5_VLForConditionalGeneration, Qwen2_5_VLConfig
 )
 
 from langchain_community.docstore.document import Document
@@ -61,9 +67,7 @@ def choose_image_loader():
     
     chosen_model = config["vision"]["chosen_model"]
 
-    if chosen_model == 'Moondream2 - 1.9b':
-        loader_func = loader_moondream(config).process_images
-    elif chosen_model in ["Florence-2-large", "Florence-2-base"]:
+    if chosen_model in ["Florence-2-large", "Florence-2-base"]:
         loader_func = loader_florence2(config).process_images
     elif chosen_model == 'MiniCPM-V-2_6 - 8b':
         loader_func = loader_minicpm_V_2_6(config).process_images
@@ -75,10 +79,12 @@ def choose_image_loader():
         loader_func = loader_glmv4(config).process_images
     elif chosen_model == 'Molmo-D-0924 - 8b':
         loader_func = loader_molmo(config).process_images
-    elif chosen_model in ['Ovis1.6-Llama3.2 - 3b', 'Ovis2 - 1b', 'Ovis2 - 2b']:
+    elif chosen_model in ['Ovis2 - 1b', 'Ovis2 - 2b']:
         loader_func = loader_ovis(config).process_images
     elif chosen_model in ['InternVL2.5 - 1b', 'InternVL2.5 - 4b']:
         loader_func = loader_internvl2_5(config).process_images
+    elif chosen_model in ['Qwen VL - 3b', 'Qwen VL - 7b']:
+        loader_func = loader_qwenvl(config).process_images
     else:
         my_cprint("No valid image model specified in config.yaml", "red")
         return []
@@ -212,63 +218,20 @@ class loader_llava_next(BaseLoader):
 
         response = self.processor.decode(output[0], skip_special_tokens=True)
         model_response = response.split("ASSISTANT:")[-1].strip()
+        model_response = ' '.join(line.strip() for line in model_response.split('\n') if line.strip())
 
         return model_response
-
-
-class loader_moondream(BaseLoader):
-    """Most classes use CACHE_DIR consistently, but there's a slight inconsistency in the
-    loader_moondream class, which uses VISION_DIR instead of CACHE_DIR.
-    """
-    def initialize_model_and_tokenizer(self):
-        # moondream's approach uses the "vision" directory and does not create a nested folder like all other sub-classes
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.precision_type = torch.float16 if self.device.type == "cuda" else torch.float32
-
-        chosen_model = self.config['vision']['chosen_model']
-        model_id = VISION_MODELS[chosen_model]['repo_id']
-        cache_dir=VISION_DIR
-
-        model = AutoModelForCausalLM.from_pretrained(
-            model_id, 
-            trust_remote_code=True, 
-            revision="2024-08-26",
-            cache_dir=cache_dir,
-            low_cpu_mem_usage=True
-        ).to(self.device, dtype=self.precision_type)
-
-        model.eval()
-
-        my_cprint(f"Moondream2 vision model loaded with {self.precision_type} on {self.device}.", "green")
-
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_id, 
-            revision="2024-08-26", 
-            cache_dir=cache_dir
-        )
-
-        return model, tokenizer, None
-    
-    @torch.inference_mode()
-    def process_single_image(self, raw_image):
-        enc_image = self.model.encode_image(raw_image).to(
-            dtype=torch.float16 if self.device.type == "cuda" else torch.float32
-        )
-        summary = self.model.answer_question(enc_image, "Explain everything you see in this picture but your response should be no more than one paragraph, but the paragraph can be as long as you want.", self.tokenizer)
-
-        return summary
 
 
 class loader_florence2(BaseLoader):
     def __init__(self, config):
         super().__init__(config)
         self.my_cprint = my_cprint
-
+        
     def initialize_model_and_tokenizer(self):
         chosen_model = self.config['vision']['chosen_model']
         repo_id = VISION_MODELS[chosen_model]["repo_id"]
         save_dir = VISION_MODELS[chosen_model]["cache_dir"]
-
         cache_dir = CACHE_DIR / save_dir
         cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -279,7 +242,6 @@ class loader_florence2(BaseLoader):
             cache_dir=cache_dir
         )
         model.eval()
-
         processor = AutoProcessor.from_pretrained(
             repo_id, 
             trust_remote_code=True, 
@@ -289,28 +251,36 @@ class loader_florence2(BaseLoader):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         if self.device.type == "cuda":
-            model = model.to(self.device).half()
-            self.precision_type = "float16"
+            if torch.cuda.get_device_capability()[0] >= 8:
+                # For Ampere or newer GPUs (compute capability >= 8)
+                model = model.to(self.device).to(torch.bfloat16)
+                self.precision_type = "bfloat16"
+                self.model_dtype = torch.bfloat16
+            else:
+                # For older CUDA GPUs
+                model = model.to(self.device).half()
+                self.precision_type = "float16"
+                self.model_dtype = torch.float16
         else:
+            # For CPU
             model = model.to(self.device).float()
             self.precision_type = "float32"
+            self.model_dtype = torch.float32
 
-        self.my_cprint(f"{chosen_model} loaded with {self.precision_type}.", color="green")
+        device_type_display = "CUDA" if self.device.type == "cuda" else "CPU"
+        self.my_cprint(f"Running {chosen_model} on {device_type_display} in {self.precision_type} precision", color="green")
 
         self.model = model
         self.processor = processor
-
         return model, None, processor
 
     @torch.inference_mode()
     def process_single_image(self, raw_image):
         prompt = "<MORE_DETAILED_CAPTION>"
         inputs = self.processor(text=prompt, images=raw_image, return_tensors="pt")
-        
-        if self.device.type == "cuda":
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
-        inputs["pixel_values"] = inputs["pixel_values"].to(dtype=torch.float16 if self.precision_type == "float16" else torch.float32)
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        inputs["pixel_values"] = inputs["pixel_values"].to(dtype=self.model_dtype)
 
         generated_ids = self.model.generate(
             input_ids=inputs["input_ids"],
@@ -339,10 +309,20 @@ class loader_glmv4(BaseLoader):
         cache_dir = CACHE_DIR / save_dir
         cache_dir.mkdir(parents=True, exist_ok=True)
 
+        self.device = torch.device("cuda")
+        use_bfloat16 = torch.cuda.get_device_capability()[0] >= 8
+
+        if use_bfloat16:
+            compute_dtype = torch.bfloat16
+            self.precision_type = "bfloat16"
+        else:
+            compute_dtype = torch.float16
+            self.precision_type = "float16"
+
         quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_compute_dtype=compute_dtype,
         )
 
         model_config = AutoConfig.from_pretrained(model_id, cache_dir=cache_dir, trust_remote_code=True)
@@ -350,28 +330,28 @@ class loader_glmv4(BaseLoader):
 
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
-            torch_dtype=torch.bfloat16,
+            torch_dtype=compute_dtype,
             low_cpu_mem_usage=True,
             trust_remote_code=True,
             quantization_config=quantization_config,
             cache_dir=cache_dir
         )
-        model.eval()
 
+        model.eval()
         tokenizer = AutoTokenizer.from_pretrained(
             model_id,
             trust_remote_code=True,
             cache_dir=cache_dir
         )
 
-        my_cprint("GLM4V-9B vision model loaded into memory...", "green")
+        my_cprint(f"Running GLM4V-9B on CUDA in {self.precision_type} precision", "green")
 
         return model, tokenizer, None
 
     @torch.inference_mode()
     def process_single_image(self, raw_image):
-        query = "Explain everything you see in this picture but your response should be no more than one paragraph, but the paragraph can be as long as you want."
-        
+        query = "Describe this image in as much detail as possible but do not repeat yourself."
+
         inputs = self.tokenizer.apply_chat_template(
             [{"role": "user", "image": raw_image, "content": query}],
             add_generation_prompt=True,
@@ -379,9 +359,7 @@ class loader_glmv4(BaseLoader):
             return_tensors="pt",
             return_dict=True
         )
-
         inputs = inputs.to(self.device)
-
         gen_kwargs = {
             "max_length": 1024,
             "do_sample": False,
@@ -389,13 +367,12 @@ class loader_glmv4(BaseLoader):
             "top_p": None,
             "temperature": None
         }
-
         with torch.no_grad():
             outputs = self.model.generate(**inputs, **gen_kwargs)
-
         outputs = outputs[:, inputs['input_ids'].shape[1]:]
         description = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
+        description = ' '.join(line.strip() for line in description.split('\n') if line.strip())
+
         return description
 
 
@@ -473,6 +450,7 @@ class loader_molmo(BaseLoader):
 
             generated_tokens = output[0, inputs['input_ids'].size(1):]
             generated_text = self.processor.tokenizer.decode(generated_tokens, skip_special_tokens=True)
+            generated_text = ' '.join(line.strip() for line in generated_text.split('\n') if line.strip())
         except Exception as e:
             my_cprint(f"Error processing image: {str(e)}", "red")
             return ""
@@ -545,6 +523,8 @@ class loader_ovis(BaseLoader):
         )[0]
 
         output = self.tokenizer.decode(output_ids, skip_special_tokens=True)
+        output = ' '.join(line.strip() for line in output.split('\n') if line.strip())
+
         return output
 
 
@@ -559,9 +539,18 @@ class loader_internvl2_5(BaseLoader):
 
         quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
-            bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_quant_type="nf4",
+            llm_int8_skip_modules=[
+                "vision_model", # big impact
+                "language_model.model.norm", # low impact
+                "language_model.output", # low impact
+                "language_model.model.rotary_emb", # low impact
+                "language_model.lm_head", # medium impact
+                "mlp1", # big impact
+            ]
         )
+
         model = AutoModel.from_pretrained(
             model_id,
             quantization_config=quantization_config,
@@ -675,6 +664,7 @@ class loader_internvl2_5(BaseLoader):
             question,
             generation_config
         )
+        response = ' '.join(line.strip() for line in response.split('\n') if line.strip())
 
         return response
 
@@ -748,19 +738,119 @@ class loader_granite(BaseLoader):
         
         return response
 
+
+class loader_qwenvl(BaseLoader):
+    def initialize_model_and_tokenizer(self):
+        chosen_model = self.config['vision']['chosen_model']
+        model_info = VISION_MODELS[chosen_model]
+        model_id = model_info['repo_id']
+        precision = model_info['precision']
+        save_dir = model_info["cache_dir"]
+        cache_dir = CACHE_DIR / save_dir
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=True,
+            llm_int8_threshold=6.0,
+            llm_int8_skip_modules=[
+                "lm_head",
+                "merger",
+                "visual.blocks.0.attn",
+                "visual.blocks.0.mlp",
+                "visual.blocks.1.attn",
+                "visual.blocks.1.mlp",
+                "visual.blocks.2.attn",
+                "visual.blocks.2.mlp",
+                "visual.blocks.3.attn",
+                "visual.blocks.3.mlp",
+                "visual.blocks.4.attn",
+                "visual.blocks.5.mlp",
+                "visual.blocks.7.attn",
+                "visual.blocks.7.mlp",
+                "visual.blocks.8.mlp",
+                "visual.blocks.10.mlp",
+                "visual.blocks.12.mlp",
+                "visual.blocks.13.mlp",
+                "visual.blocks.14.attn",
+                "visual.blocks.14.mlp",
+                "visual.blocks.15.attn",
+                "visual.blocks.15.mlp",
+                "visual.blocks.17.mlp",
+                "visual.blocks.31.mlp.down_proj"
+            ],
+        )
+
+        processor = AutoProcessor.from_pretrained(
+            model_id,
+            use_fast=True,
+            min_pixels=28*28,
+            max_pixels=1280*28*28,
+            trust_remote_code=True,
+            cache_dir=cache_dir
+        )
+
+        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+            model_id,
+            quantization_config=quantization_config,
+            torch_dtype=torch.bfloat16,
+            low_cpu_mem_usage=True,
+            trust_remote_code=True,
+            cache_dir=cache_dir
+        )
+
+        model = model.to(self.device)
+        model.eval()
+
+        my_cprint(f"Qwen2.5-VL model loaded into memory...", "green")
+
+        return model, None, processor
+
+    @torch.inference_mode()
+    def process_single_image(self, raw_image):
+        user_message = "Describe in as much detail as possible what this image depicts?"
+
+        prompt = f"""<|im_start|>user
+{user_message} <|vis_start|><|image_pad|><|vis_end|>
+<|im_end|>
+<|im_start|>assistant
 """
+
+        inputs = self.processor(
+            images=raw_image,
+            text=prompt,
+            return_tensors="pt"
+        ).to(self.device)
+
+        output = self.model.generate(
+            **inputs,
+            max_new_tokens=1024,
+            do_sample=False,
+            top_k=None,
+            top_p=None,
+            num_beams=1,
+            temperature=None,
+        )
+
+        response = self.processor.decode(output[0], skip_special_tokens=True)
+        response = response.split('assistant')[-1].strip()
+        response = ' '.join(line.strip() for line in response.split('\n') if line.strip())
+        
+        return response
+
+
+"""
+* need to update
 +----------------------+-----------------------------------------+-----------+----------------+----------+
 | Sub-Class            | Config Details                          | Attention | Precision      | Device   |
 +----------------------+-----------------------------------------+-----------+----------------+----------+
 | loader_llava_next    | do_sample=False, no temperature control | SDPA      | float16 4-bit  | CUDA     |
-| loader_moondream     | No generation config (uses answer_      | SDPA      | float16        | CUDA     |
-|                      | question method)                        |           |                |          |
 | loader_florence2     | Comprehensive beam settings, no         | SDPA      | autoselect     | CPU/CUDA |
 |                      | sampling                                |           |                |          |
-| loader_minicpm_V_2_6 | sampling=False, no temperature          | FA2       | bfloat16 4-bit | CUDA     |
 | loader_glmv4         | do_sample=False, no temperature         | SDPA      | bfloat16 4-bit | CUDA     |
 | loader_molmo         | Uses GenerationConfig class             | SDPA      | float32 4-bit  | CUDA     |
-| loader_mississippi   | Uses repetition_penalty=1.1             | SDPA      | autoselect     | CUDA     |
 | loader_ovis          | repetition_penalty=1.0, use_cache=True  | SDPA      | autoselect     | CUDA     |
 +----------------------+-----------------------------------------+-----------+----------------+----------+
 """
