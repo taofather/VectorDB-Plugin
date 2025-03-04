@@ -49,16 +49,16 @@ priority_libs = {
 libs = [
     "accelerate==1.4.0",
     "aiofiles==24.1.0",
-    "aiohappyeyeballs==2.4.6",
+    "aiohappyeyeballs==2.4.8",
     "aiohttp==3.11.13", # langchain libraries require <4
     "aiosignal==1.3.2", # only required by aiohttp
     "anndata==0.11.3",
     "annotated-types==0.7.0",
     "anyio==4.8.0",
-    "array_api_compat==1.11.0", # only anndata requires
+    "array_api_compat==1.11.1", # only anndata requires
     "async-timeout==5.0.1",
     "attrs==25.1.0",
-    "av==14.1.0",
+    "av==14.2.0",
     "backoff==2.2.1",
     "beautifulsoup4==4.13.3",
     "bitsandbytes==0.45.3",
@@ -119,9 +119,9 @@ libs = [
     "jsonpath-python==1.0.6",
     "jsonpointer==3.0.0",
     "kiwisolver==1.4.8",
-    "langchain==0.3.19",
-    "langchain-community==0.3.18",
-    "langchain-core==0.3.40",
+    "langchain==0.3.20",
+    "langchain-community==0.3.19",
+    "langchain-core==0.3.41",
     "langchain-huggingface==0.1.2",
     "langchain-text-splitters==0.3.6",
     "langdetect==1.0.9",
@@ -148,7 +148,7 @@ libs = [
     "numpy==1.26.4", # langchain libraries <2; numba <2.1; scipy <2.3; chattts <2.0.0
     "ocrmypdf==16.9.0",
     "olefile==0.47",
-    "openai==1.63.2", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
+    "openai==1.65.2", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
     "optimum==1.24.0",
@@ -189,7 +189,7 @@ libs = [
     "python-oxmsg==0.0.2", # only required by unstructured library
     "pytz==2025.1",
     "PyYAML==6.0.2",
-    "rapidfuzz==3.12.1",
+    "rapidfuzz==3.12.2",
     "regex==2024.11.6",
     "requests==2.32.3",
     "requests-toolbelt==1.0.0",
