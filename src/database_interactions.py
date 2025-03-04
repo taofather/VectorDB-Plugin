@@ -129,6 +129,13 @@ class Stella400MEmbedding(BaseEmbeddingModel):
         logging.debug(f"is_cuda: {is_cuda}")
         logging.debug(f"use_xformers: {use_xformers}")
 
+        # Add this tokenizer configuration to fix the error
+        stella_kwargs["tokenizer_kwargs"] = {
+            "max_length": 8192,
+            "padding": True,
+            "truncation": True
+        }
+
         stella_kwargs["config_kwargs"] = {
             "use_memory_efficient_attention": use_xformers,
             "unpad_inputs": use_xformers,
