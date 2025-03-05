@@ -27,6 +27,7 @@ class ModelDownloader(QObject):
         self.model_type = model_type
         self._model_directory = None
         self.api = HfApi()
+        self.api.timeout = 60 # increase timeout
         disable_progress_bars()
         self.local_dir = self.get_model_directory()
 
@@ -43,7 +44,7 @@ class ModelDownloader(QObject):
 
     def check_repo_type(self, repo_id):
         try:
-            repo_info = self.api.repo_info(repo_id)
+            repo_info = self.api.repo_info(repo_id, timeout=60) # increase timeout
             if repo_info.private:
                 return "private"
             elif getattr(repo_info, 'gated', False):
@@ -158,7 +159,8 @@ class ModelDownloader(QObject):
                local_dir=str(local_dir),
                max_workers=4,
                ignore_patterns=final_ignore_patterns,
-               allow_patterns=allow_patterns
+               allow_patterns=allow_patterns,
+               etag_timeout=60 # increase timeout
            )
 
            print("\033[92mModel downloaded and ready to use.\033[0m")
