@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Optional, List, Callable
 from datetime import datetime
 import csv
+import threading
 
 import subprocess
 import psutil
@@ -50,22 +51,29 @@ class MetricsStore:
         self.buffer_size = buffer_size
         self.metrics_history: List[SystemMetrics] = []
         self._subscribers: List[Callable[[SystemMetrics], None]] = []
+        self._lock = threading.Lock()
 
     def add_metrics(self, metrics: SystemMetrics) -> None:
-        self.metrics_history.append(metrics)
-        if len(self.metrics_history) > self.buffer_size:
-            self.metrics_history.pop(0)
+        with self._lock:
+            self.metrics_history.append(metrics)
+            if len(self.metrics_history) > self.buffer_size:
+                self.metrics_history.pop(0)
         self._notify_subscribers(metrics)
 
     def subscribe(self, callback: Callable[[SystemMetrics], None]) -> None:
-        self._subscribers.append(callback)
+        with self._lock:
+            self._subscribers.append(callback)
 
     def unsubscribe(self, callback: Callable[[SystemMetrics], None]) -> None:
-        if callback in self._subscribers:
-            self._subscribers.remove(callback)
+        with self._lock:
+            if callback in self._subscribers:
+                self._subscribers.remove(callback)
 
     def _notify_subscribers(self, metrics: SystemMetrics) -> None:
-        for subscriber in self._subscribers:
+        with self._lock:
+            subscribers = self._subscribers.copy()
+        
+        for subscriber in subscribers:
             subscriber(metrics)
 
 def is_nvidia_gpu_available():
