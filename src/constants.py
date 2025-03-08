@@ -19,7 +19,10 @@ priority_libs = {
         ],
         "CPU": [
             # CPU specific links would go here
-        ]
+        ],
+        "COMMON": [
+            "https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.8.0-tesseract-5.5.0/tesserocr-2.8.0-cp311-cp311-win_amd64.whl",
+        ],
     },
     "cp312": {
         "GPU": [
@@ -38,10 +41,12 @@ priority_libs = {
             "nvidia-cuda-nvcc-cu12==12.6.77",
             "nvidia-cudnn-cu12==9.5.1.17",
             "nvidia-ml-py==12.570.86",
-
         ],
         "CPU": [
             # CPU specific links would go here
+        ],
+        "COMMON": [
+            "https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.8.0-tesseract-5.5.0/tesserocr-2.8.0-cp312-cp312-win_amd64.whl",
         ]
     }
 }
@@ -158,10 +163,9 @@ libs = [
     "packaging==24.2",
     "pandas==2.2.3",
     "pdfminer.six==20240706", # only needed by ocrmypdf
-    # "peft==0.14.0", # only required by mississippi model
     "pikepdf==9.5.2", # only needed by ocrmypdf
     "pillow==11.1.0",
-    "pi-heif==0.21.0", # only needed by ocrmypdf, but not needed for my usage of ocrmypdf
+    "pi-heif==0.21.0", # only needed by ocrmypdf, but not for my usage of ocrmypdf
     "pipdeptree",
     "platformdirs==4.3.6",
     "pluggy==1.5.0", # only needed by ocrmypdf
@@ -214,7 +218,6 @@ libs = [
     "tblib==1.7.0", # tiledb-cloud requires >= 1.7.0 but < 1.8.0
     "tenacity==9.0.0",
     "termcolor==2.5.0",
-    "https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.8.0-tesseract-5.5.0/tesserocr-2.8.0-cp311-cp311-win_amd64.whl",
     "tessdata==1.0.0",
     "tessdata.eng==1.0.0",
     "threadpoolctl==3.5.0",

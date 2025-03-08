@@ -196,8 +196,16 @@ subprocess.run(["pip", "install", "uv"], check=True)
 # 3. install priority_libs
 print("\nInstalling priority libraries:")
 try:
-    current_priority_libs = priority_libs[python_version][hardware_type]
-    priority_failed, priority_multiple = install_libraries(current_priority_libs)
+    hardware_specific_libs = priority_libs[python_version][hardware_type]
+
+    try:
+        common_libs = priority_libs[python_version]["COMMON"]
+    except KeyError:
+        common_libs = []
+
+    all_priority_libs = hardware_specific_libs + common_libs
+
+    priority_failed, priority_multiple = install_libraries(all_priority_libs)
 except KeyError:
     tkinter_message_box("Version Error", f"No libraries configured for Python {python_version} with {hardware_type} configuration", type="error")
     sys.exit(1)
