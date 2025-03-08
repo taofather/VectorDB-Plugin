@@ -63,7 +63,7 @@ Run the setup script:
    > Only ```Windows``` is supported for now.
 
 ```
-python setup_windows_.py
+python setup_windows.py
 ```
 
 [Back to Top](#top)
