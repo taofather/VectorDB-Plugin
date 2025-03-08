@@ -11,6 +11,31 @@ import torch
 from typing import Union, List, Dict, Tuple
 from multiprocessing import Process, Queue, Value
 
+############################
+# MONKEY PATCH BEGINNING
+############################
+# REMOVE MONKEY PATCH CODE IF THIS PR IS ACCEPTED: https://github.com/ocrmypdf/OCRmyPDF/pull/1493
+from ocrmypdf.hocrtransform import HocrTransform
+from pikepdf.canvas import TextDirection
+
+original_get_text_direction = HocrTransform._get_text_direction
+
+def fixed_get_text_direction(self, par):
+    """Get the text direction of the paragraph with None check."""
+    if par is None:
+        return TextDirection.LTR  # Default to left-to-right
+    
+    return (
+        TextDirection.RTL
+        if par.attrib.get('dir', 'ltr') == 'rtl'
+        else TextDirection.LTR
+    )
+
+HocrTransform._get_text_direction = fixed_get_text_direction
+############################
+# MONKEY PATCH ENDING
+############################
+
 class OCRProcessor(ABC):
     def __init__(self, zoom: int = 2, progress_queue: Queue = None):
         self.zoom = zoom
@@ -33,7 +58,7 @@ class OCRProcessor(ABC):
     def process_page(self, page_num: int, pdf_path: str) -> Tuple[int, str]:
         """
         Process a single page from a PDF file.
-        Each implementation should handle opening and closing the PDF.
+        Each OCR backend should handle opening and closing the PDF.
         """
         pass
 
@@ -113,8 +138,7 @@ class TesseractOCR(OCRProcessor):
 
         script_dir = Path(__file__).resolve().parent
 
-        # control temporary directory
-        # necessary in case the default temp locations don't have write permission
+        # specify temp dir since sometimes default locations don't have write permission
         self.temp_dir = script_dir / "temp_ocr"
         self.temp_dir.mkdir(exist_ok=True)
 
@@ -168,7 +192,8 @@ class TesseractOCR(OCRProcessor):
         output_pdf.save(output_path)
         output_pdf.close()
 
-        # final cleanup
+        self.optimize_final_pdf(pdf_path, output_path)
+
         self.cleanup_temp_pdfs()
 
         if self.progress_queue:
@@ -198,11 +223,23 @@ class TesseractOCR(OCRProcessor):
             pil_image = Image.open(BytesIO(pix.tobytes("png")))
 
             api.SetImage(pil_image)
+
             hocr_text = api.GetHOCRText(0)
 
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".hocr", dir=self.temp_dir) as hocr_temp:
-                hocr_output = hocr_temp.name
+            # # DEBUG
+            # if not hocr_text.strip():
+                # print(f"Warning: No text detected on page {page_num}. Skipping HOCR file creation.")
+            # else:
+                # hocr_output = f"{self.temp_dir}/page_{page_num}.hocr"
+                # Path(hocr_output).write_text(hocr_text, encoding="utf-8")
+                # file_size = Path(hocr_output).stat().st_size
+                # print(f"HOCR file saved: {hocr_output} (Size: {file_size} bytes)")
+
+            # name the hocr file by page number of the pdf
+            hocr_output = f"{self.temp_dir}/page_{page_num}.hocr"
             Path(hocr_output).write_text(hocr_text, encoding="utf-8")
+
+            # print(f"Processing page {page_num}, HOCR file saved: {hocr_output}") # DEBUG
 
             fd, text_pdf = tempfile.mkstemp(suffix=".pdf", dir=self.temp_dir)
             os.close(fd)
@@ -228,7 +265,7 @@ class TesseractOCR(OCRProcessor):
                     overlay=True
                 )
 
-            Path(hocr_output).unlink(missing_ok=True) # comment to keep the hocr file for DEBUG
+            Path(hocr_output).unlink(missing_ok=True) # DEBUG comment out to keep the hocr files
 
             for _ in range(10):
                 try:
@@ -243,6 +280,41 @@ class TesseractOCR(OCRProcessor):
             pdf_document.close()
 
             return page_num, temp_pdf_path
+
+    def optimize_final_pdf(self, original_pdf_path: Path, ocr_pdf_path: Path) -> None:
+        """Post-process the PDF to match original dimensions and apply optimization."""
+        # print(f"Optimizing OCR'd PDF: {ocr_pdf_path}")
+
+        with fitz.open(original_pdf_path) as original_doc:
+            orig_pages = []
+            for page in original_doc:
+                orig_pages.append({
+                    'width': page.rect.width,
+                    'height': page.rect.height,
+                    'mediabox': page.mediabox,
+                    'cropbox': page.cropbox if hasattr(page, 'cropbox') else None
+                })
+
+        temp_path = str(ocr_pdf_path) + ".optimized"
+
+        with fitz.open(ocr_pdf_path) as ocr_doc:
+            for i, page in enumerate(ocr_doc):
+                if i < len(orig_pages):
+                    orig = orig_pages[i]
+                    page.set_mediabox(orig['mediabox'])
+                    if orig['cropbox']:
+                        page.set_cropbox(orig['cropbox'])
+
+            ocr_doc.save(
+                temp_path,
+                garbage=4,
+                deflate=True,
+                clean=True,
+                linear=True
+            )
+
+        os.replace(temp_path, ocr_pdf_path)
+        # print(f"PDF optimization complete. Check final file size.")
 
     def cleanup_temp_pdfs(self):
         if self.temp_dir is None:

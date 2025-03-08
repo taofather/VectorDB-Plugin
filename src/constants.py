@@ -151,7 +151,7 @@ libs = [
     "nltk==3.9.1", # not higher; gives unexplained error
     "numba==0.61.0", # only required by openai-whisper
     "numpy==1.26.4", # langchain libraries <2; numba <2.1; scipy <2.3; chattts <2.0.0
-    "ocrmypdf==16.9.0",
+    "ocrmypdf==16.10.0",
     "olefile==0.47",
     "openai==1.65.2", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
