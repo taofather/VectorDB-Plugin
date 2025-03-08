@@ -12,9 +12,13 @@
   <a href="#contact">Contact</a>
 </div>
 
-This repository allows you to create and search a vector database for relevant context across a wide variety of documents and then get a response from the large language model that's more accurate.  This is commonly referred to as "retrieval augmented generation" (RAG) and it drastically reduces hallucinations from the LLM!  You can watch an introductory [Video](https://www.youtube.com/watch?v=8-ZAYI4MvtA) or read a [Medium article](https://medium.com/@vici0549/search-images-with-vector-database-retrieval-augmented-generation-rag-3d5a48881de5) about the program. <br>
+Create and search a vector database to get a response from the large language model that's more accurate.  This is commonly referred to as "retrieval augmented generation" (RAG)!  You can watch an introductory [Video](https://www.youtube.com/watch?v=8-ZAYI4MvtA) or read a [Medium article](https://medium.com/@vici0549/search-images-with-vector-database-retrieval-augmented-generation-rag-3d5a48881de5) about the program. <br>
 
+<details><summary>Graphic of How This Program Works</summary>
+  
 ![image](https://github.com/user-attachments/assets/b3784da7-91a5-426b-882c-756468ffdc20)
+
+</details>
 
 <div align="center">
   <h3><u>Requirements</u></h3>
