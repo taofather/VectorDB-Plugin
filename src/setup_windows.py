@@ -241,14 +241,18 @@ elif not all_failed:
 if all_failed:
     sys.exit(1)
 
-# 6. replace sourcode files
+# 6. clear triton cache
+from utilities import clean_triton_cache
+clean_triton_cache()
+
+# 7. replace sourcode files
 replace_sentence_transformer_file()
 replace_chattts_file()
 add_cuda_files()
 setup_vector_db()
 check_embedding_model_dimensions()
 
-# 7. Create directores if needed
+# 8. Create directores if needed
 def create_directory_structure():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     models_dir = os.path.join(base_dir, "Models")
@@ -265,7 +269,7 @@ def create_directory_structure():
 
 create_directory_structure()
 
-# 8. manually add jeeves database to config.yaml
+# 9. manually add jeeves database to config.yaml
 def update_config_yaml():
     import yaml
     script_dir = os.path.dirname(os.path.abspath(__file__))

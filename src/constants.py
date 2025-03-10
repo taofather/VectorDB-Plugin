@@ -5,7 +5,7 @@ priority_libs = {
             "https://download.pytorch.org/whl/cu124/torch-2.6.0%2Bcu124-cp311-cp311-win_amd64.whl#sha256=6a1fb2714e9323f11edb6e8abf7aad5f79e45ad25c081cde87681a18d99c29eb",
             "https://download.pytorch.org/whl/cu124/torchvision-0.21.0%2Bcu124-cp311-cp311-win_amd64.whl#sha256=000a013584ad2304ab30496318145f284ac364622addb5ee3a5abd2769ba146f",
             "https://download.pytorch.org/whl/cu124/torchaudio-2.6.0%2Bcu124-cp311-cp311-win_amd64.whl#sha256=a25e146ce66ea9a6aed39008cc2001891bdf75253af479a4c32096678b2073b3",
-            "https://github.com/woct0rdho/triton-windows/releases/download/v3.2.0-windows.post10/triton-3.2.0-cp311-cp311-win_amd64.whl",
+            "triton-windows==3.2.0.post12",
             "git+https://github.com/shashikg/WhisperS2T.git@e7f7e6dbfdc7f3a39454feb9dd262fd3653add8c",
             "git+https://github.com/BBC-Esq/WhisperSpeech.git@795f60157136b0052b9a1f576e88803f7783ab1f",
             "https://download.pytorch.org/whl/cu126/xformers-0.0.29.post3-cp311-cp311-win_amd64.whl", # requires torch 2.6.0
@@ -14,6 +14,7 @@ priority_libs = {
             "nvidia-cublas-cu12==12.4.5.8",
             "nvidia-cuda-nvrtc-cu12==12.4.127",
             "nvidia-cuda-nvcc-cu12==12.4.131",
+            "nvidia-cufft-cu12==11.2.1.3",
             "nvidia-cudnn-cu12==9.1.0.70",
             "nvidia-ml-py==12.570.86",
         ],
@@ -30,7 +31,7 @@ priority_libs = {
             "https://download.pytorch.org/whl/cu124/torch-2.6.0%2Bcu124-cp312-cp312-win_amd64.whl#sha256=3313061c1fec4c7310cf47944e84513dcd27b6173b72a349bb7ca68d0ee6e9c0",
             "https://download.pytorch.org/whl/cu124/torchvision-0.21.0%2Bcu124-cp312-cp312-win_amd64.whl#sha256=ec63c2ee792757492da40590e34b14f2fceda29050558c215f0c1f3b08149c0f",
             "https://download.pytorch.org/whl/cu124/torchaudio-2.6.0%2Bcu124-cp312-cp312-win_amd64.whl#sha256=004ff6bcee0ac78747253c09db67d281add4308a9b87a7bf1769da5914998639",
-            "https://github.com/woct0rdho/triton-windows/releases/download/v3.2.0-windows.post10/triton-3.2.0-cp312-cp312-win_amd64.whl",
+            "triton-windows==3.2.0.post12",
             "git+https://github.com/shashikg/WhisperS2T.git@e7f7e6dbfdc7f3a39454feb9dd262fd3653add8c",
             "git+https://github.com/BBC-Esq/WhisperSpeech.git@795f60157136b0052b9a1f576e88803f7783ab1f",
             "https://download.pytorch.org/whl/cu126/xformers-0.0.29.post3-cp312-cp312-win_amd64.whl", # requires torch 2.6.0
@@ -39,6 +40,7 @@ priority_libs = {
             "nvidia-cublas-cu12==12.4.5.8",
             "nvidia-cuda-nvrtc-cu12==12.4.127",
             "nvidia-cuda-nvcc-cu12==12.4.131",
+            "nvidia-cufft-cu12==11.2.1.3",
             "nvidia-cudnn-cu12==9.1.0.70",
             "nvidia-ml-py==12.570.86",
         ],
@@ -2862,7 +2864,7 @@ Torch & Python & Triton
 | 2.6.0  | cu126 |  3.12  |  3.2.0 |
 | 2.6.0  | cu126 |  3.11  |  3.2.0 |
 | 2.6.0  | cu124 |  3.13  |  3.2.0 |
-| 2.6.0  | cu124 |  3.12  |  3.2.0 |***
+| 2.6.0  | cu124 |  3.12  |  3.2.0 |
 | 2.6.0  | cu124 |  3.11  |  3.2.0 |
 | 2.5.1  | cu124 |  3.12  |  3.1.0 |
 | 2.5.1  | cu124 |  3.11  |  3.1.0 |
@@ -2964,7 +2966,7 @@ Xformers & Flash Attention 2 & CUDA
 | v0.0.27          | 2.3.0 |               |                                | *pypi
 | v0.0.26.post1    | 2.3.0 |               |                                | *pypi
 | v0.0.25.post1    | 2.2.2 |               |                                | *pypi
-+------------------+-------+---------------+--------------------------------f+
++------------------+-------+---------------+--------------------------------+
 * Torch support determined by https://github.com/facebookresearch/xformers/blob/main/.github/workflows/wheels.yml
 * FA2 support determined by by https://github.com/facebookresearch/xformers/blob/main/xformers/ops/fmha/flash.py
 * CUDA support determined by https://github.com/facebookresearch/xformers/blob/main/.github/actions/setup-build-cuda/action.yml

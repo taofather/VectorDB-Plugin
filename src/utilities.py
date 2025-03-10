@@ -52,6 +52,26 @@ def set_cuda_paths():
     triton_cuda_path = nvidia_base_path / 'cuda_runtime'
     os.environ['CUDA_PATH'] = str(triton_cuda_path)
 
+def clean_triton_cache():
+    """Remove Triton cache to ensure clean compilation with current CUDA paths."""
+    import shutil
+    from pathlib import Path
+
+    triton_cache_dir = Path.home() / '.triton' / 'cache'
+
+    if triton_cache_dir.exists():
+        try:
+            print(f"\nRemoving Triton cache at {triton_cache_dir}...")
+            shutil.rmtree(triton_cache_dir)
+            print("\033[92mTriton cache successfully removed.\033[0m")
+            return True
+        except Exception as e:
+            print(f"\033[91mWarning: Failed to remove Triton cache: {e}\033[0m")
+            return False
+    else:
+        print("\nNo Triton cache found to clean.")
+        return True
+
 def check_pdfs_for_ocr(script_dir):
     import pymupdf
     import tempfile
