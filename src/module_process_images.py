@@ -58,7 +58,7 @@ def run_loader_in_process(loader_func):
 def choose_image_loader():
     with open('config.yaml', 'r') as file:
         config = yaml.safe_load(file)
-    
+
     chosen_model = config["vision"]["chosen_model"]
 
     if chosen_model in ["Florence-2-large", "Florence-2-base"]:

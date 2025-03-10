@@ -1,5 +1,3 @@
-# compatible with langchain 0.3.15
-
 import os
 import sys
 import io
@@ -207,6 +205,12 @@ def split_documents(documents=None, text_documents_pdf=None):
             chunk_overlap = config["database"]["chunk_overlap"]
 
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+
+        # text_splitter = RecursiveCharacterTextSplitter(
+            # chunk_size=chunk_size, 
+            # chunk_overlap=chunk_overlap,
+            # length_function=len
+        # )
 
         texts = []
 
