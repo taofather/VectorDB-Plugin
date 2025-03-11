@@ -20,36 +20,6 @@ from PySide6.QtCore import QRunnable, QObject, Signal, QThreadPool
 from PySide6.QtWidgets import QApplication, QMessageBox
 from termcolor import cprint
 
-    """
-    Just FYI, the windows_utils.py script within the triton library does the following:
-
-    The script searches for CUDA files in this specific order:
-
-    1. **Environment Variables** (`find_cuda_env()`)
-       - First checks `CUDA_PATH` environment variable
-       - Then checks `CUDA_HOME` environment variable
-
-    2. **Bundled with Triton** (`find_cuda_bundled()`)
-       - Looks in `{python_site_packages}/triton/backends/nvidia`
-
-    3. **Pip Installation** (`find_cuda_pip()`)
-       - Looks in `{python_site_packages}/nvidia`
-
-    4. **Conda Installation** (`find_cuda_conda()`)
-       - Looks in `{conda_prefix}/Library`
-
-    5. **System-wide Installation** (`find_cuda_hardcoded()`)
-       - Searches in `Program Files\NVIDIA GPU Computing Toolkit\CUDA`
-       - Checks various CUDA versions (v12.*), prioritizing higher versions
-
-    At each location, it runs `check_and_find_cuda()` which verifies that these essential files exist:
-    - `ptxas.exe` (in bin directory)
-    - `cuda.h` (in include directory)
-    - `cuda.lib` (in lib/x64 directory)
-
-    The search stops as soon as it finds a valid CUDA installation with all the required files.
-    """
-
 def set_cuda_paths():
     import sys
     import os
