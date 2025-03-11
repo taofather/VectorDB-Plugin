@@ -732,6 +732,71 @@ class Exaone_32b(BaseModel):
 [|assistant|]"""
 
 
+class QwQ_32b(BaseModel):
+    def __init__(self, generation_settings):
+        model_info = CHAT_MODELS['QwQ - 32b']
+
+        custom_generation_settings = {
+            'max_length': generation_settings['max_length'],
+            'max_new_tokens': generation_settings['max_new_tokens'],
+            'do_sample': True,
+            'temperature': 0.6,
+            'top_p': 0.95,
+            'use_cache': True,
+            'num_beams': 1
+        }
+
+        super().__init__(model_info, bnb_bfloat16_settings, custom_generation_settings)
+
+    def create_prompt(self, augmented_query):
+        return f"""<|im_start|>system
+{system_message}<|im_end|>
+<|im_start|>user
+{augmented_query}<|im_end|>
+<|im_start|>assistant
+"""
+
+    def generate_response(self, inputs):
+        SHOW_THINKING = False
+        streamer = TextIteratorStreamer(
+            self.tokenizer, 
+            skip_prompt=True, 
+            skip_special_tokens=True
+        )
+
+        all_settings = {
+            **inputs, 
+            **self.generation_settings,
+            'streamer': streamer, 
+            'pad_token_id': self.tokenizer.pad_token_id,
+            'eos_token_id': self.tokenizer.eos_token_id
+        }
+
+        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
+        generation_thread.start()
+
+        if SHOW_THINKING:
+            # stream everything
+            for partial_response in streamer:
+                yield partial_response
+        else:
+            # only stream after </think> tag
+            buffer = ""
+            thinking_complete = False
+
+            for partial_response in streamer:
+                buffer += partial_response
+                if not thinking_complete and '</think>' in buffer:
+                    thinking_complete = True
+                    start_idx = buffer.rfind('</think>') + len('</think>')
+                    yield buffer[start_idx:].strip()
+                    buffer = ""
+                elif thinking_complete:
+                    yield partial_response
+
+        generation_thread.join()
+
+
 @torch.inference_mode()
 def generate_response(model_instance, augmented_query):
     prompt = model_instance.create_prompt(augmented_query)

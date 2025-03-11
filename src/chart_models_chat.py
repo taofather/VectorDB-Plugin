@@ -26,10 +26,11 @@ def create_chat_models_comparison_plot():
                 "InternLM 3 - 8b",
                 "Deepseek R1 - 14b",
                 "Qwen - 14b",
-                "Mistral Small - 22b",
+                "Mistral Small 3 - 24b",
                 "Qwen - 32b",
                 "Deepseek R1 - 32b",
                 "Exaone - 32b",
+                "QwQ - 32b",
             ],
             "color": "#2E8B57",
             "label": "8k Context"

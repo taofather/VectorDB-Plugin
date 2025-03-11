@@ -132,7 +132,7 @@ libs = [
     "langchain-huggingface==0.1.2",
     "langchain-text-splitters==0.3.6",
     "langdetect==1.0.9",
-    "langsmith==0.3.11",
+    "langsmith==0.3.13",
     "llvmlite==0.44.0", # only required by numba
     "lxml==5.3.1",
     "Markdown==3.7",
@@ -155,7 +155,7 @@ libs = [
     "numpy==1.26.4", # langchain libraries <2; numba <2.1; scipy <2.3; chattts <2.0.0
     "ocrmypdf==16.10.0",
     "olefile==0.47",
-    "openai==1.65.2", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
+    "openai==1.65.5", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
     "optimum==1.24.0",
@@ -432,14 +432,14 @@ CHAT_MODELS = {
         'precision': 'bfloat16',
         'gated': True,
     },
-    'Deepseek R1 - 32b': {
-        'model': 'Deepseek R1 - 32b',
-        'repo_id': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
-        'cache_dir': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
+    'QwQ - 32b': {
+        'model': 'QwQ - 32b',
+        'repo_id': 'Qwen/QwQ-32B',
+        'cache_dir': 'Qwen--QwQ-32B',
         'cps': 18,
         'context_length': 8192,
-        'vram': 22000,
-        'function': 'DeepseekR1_32b',
+        'vram': 21075.24,
+        'function': 'QwQ_32b',
         'precision': 'bfloat16',
         'gated': False,
     },
@@ -476,6 +476,17 @@ CHAT_MODELS = {
         # 'precision': 'float32',
         'gated': False,
     },
+    'Deepseek R1 - 32b': {
+        'model': 'Deepseek R1 - 32b',
+        'repo_id': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
+        'cache_dir': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
+        'cps': 18,
+        'context_length': 8192,
+        'vram': 22000,
+        'function': 'DeepseekR1_32b',
+        'precision': 'bfloat16',
+        'gated': False,
+    },
 }
 
 # overrides default max_length parameter of 8192
@@ -495,7 +506,8 @@ MODEL_MAX_NEW_TOKENS = {
     'Qwen Coder - 1.5b': 512,
     'Deepseek R1 - 7b': 2048,
     'Deepseek R1 - 14b': 2048,
-    'Deepseek R1 - 32b': 2048
+    'Deepseek R1 - 32b': 2048,
+    'QwQ - 32b': 2048,
 }
 
 VECTOR_MODELS = {
