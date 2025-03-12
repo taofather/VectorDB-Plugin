@@ -8,8 +8,7 @@ priority_libs = {
             "triton-windows==3.2.0.post12",
             "git+https://github.com/shashikg/WhisperS2T.git@e7f7e6dbfdc7f3a39454feb9dd262fd3653add8c",
             "git+https://github.com/BBC-Esq/WhisperSpeech.git@795f60157136b0052b9a1f576e88803f7783ab1f",
-            "https://download.pytorch.org/whl/cu126/xformers-0.0.29.post3-cp311-cp311-win_amd64.whl", # requires torch 2.6.0
-            # per https://github.com/pytorch/pytorch/blob/main/.github/scripts/generate_binary_build_matrix.py
+            "xformers==0.0.29.post3",
             "nvidia-cuda-runtime-cu12==12.4.127",
             "nvidia-cublas-cu12==12.4.5.8",
             "nvidia-cuda-nvrtc-cu12==12.4.127",
@@ -34,8 +33,7 @@ priority_libs = {
             "triton-windows==3.2.0.post12",
             "git+https://github.com/shashikg/WhisperS2T.git@e7f7e6dbfdc7f3a39454feb9dd262fd3653add8c",
             "git+https://github.com/BBC-Esq/WhisperSpeech.git@795f60157136b0052b9a1f576e88803f7783ab1f",
-            "https://download.pytorch.org/whl/cu126/xformers-0.0.29.post3-cp312-cp312-win_amd64.whl", # requires torch 2.6.0
-            # per https://github.com/pytorch/pytorch/blob/main/.github/scripts/generate_binary_build_matrix.py
+            "xformers==0.0.29.post3",
             "nvidia-cuda-runtime-cu12==12.4.127",
             "nvidia-cublas-cu12==12.4.5.8",
             "nvidia-cuda-nvrtc-cu12==12.4.127",
@@ -45,7 +43,7 @@ priority_libs = {
             "nvidia-ml-py==12.570.86",
         ],
         "CPU": [
-            # CPU specific links would go here
+            # CPU only libraries would go here
         ],
         "COMMON": [
             "https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.8.0-tesseract-5.5.0/tesserocr-2.8.0-cp312-cp312-win_amd64.whl",
@@ -54,9 +52,9 @@ priority_libs = {
 }
 
 libs = [
-    "accelerate==1.4.0",
+    "accelerate==1.5.1",
     "aiofiles==24.1.0",
-    "aiohappyeyeballs==2.5.0",
+    "aiohappyeyeballs==2.6.1",
     "aiohttp==3.11.13", # langchain libraries require <4
     "aiosignal==1.3.2", # only required by aiohttp
     "anndata==0.11.3",
@@ -64,7 +62,7 @@ libs = [
     "anyio==4.8.0",
     "array_api_compat==1.11.1", # only anndata requires
     "async-timeout==5.0.1",
-    "attrs==25.1.0",
+    "attrs==25.2.0",
     "av==14.2.0",
     "backoff==2.2.1",
     "beautifulsoup4==4.13.3",
@@ -113,14 +111,14 @@ libs = [
     "httpcore==1.0.7",
     "httpx==0.28.1",
     "httpx-sse==0.4.0",
-    "huggingface-hub==0.29.2", # tokenizers 0.20.3 requires >=0.16.4,<1.0
+    "huggingface-hub==0.29.3", # tokenizers 0.20.3 requires >=0.16.4,<1.0
     "humanfriendly==10.0",
     "HyperPyYAML==1.2.2",
     "idna==3.10",
     "img2pdf==0.6.0",
     "importlib_metadata==8.6.1",
     "Jinja2==3.1.6",
-    "jiter==0.8.2", # required by openai newer versions
+    "jiter==0.9.0", # required by openai newer versions
     "joblib==1.4.2",
     "jsonpatch==1.33",
     "jsonpath-python==1.0.6",
@@ -128,7 +126,7 @@ libs = [
     "kiwisolver==1.4.8",
     "langchain==0.3.20",
     "langchain-community==0.3.19",
-    "langchain-core==0.3.43",
+    "langchain-core==0.3.44",
     "langchain-huggingface==0.1.2",
     "langchain-text-splitters==0.3.6",
     "langdetect==1.0.9",
@@ -155,7 +153,7 @@ libs = [
     "numpy==1.26.4", # langchain libraries <2; numba <2.1; scipy <2.3; chattts <2.0.0
     "ocrmypdf==16.10.0",
     "olefile==0.47",
-    "openai==1.65.5", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
+    "openai==1.66.2", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
     "optimum==1.24.0",
@@ -213,18 +211,18 @@ libs = [
     "soundfile==0.13.1",
     "soupsieve==2.6",
     "speechbrain==0.5.16",
-    "SQLAlchemy==2.0.38", # langchain and langchain-community require less than 3.0.0
+    "SQLAlchemy==2.0.39", # langchain and langchain-community require less than 3.0.0
     "sseclient-py==1.8.0", # only required by Kobold
     "sympy==1.13.1", # torch 2.6.0 requires sympy==1.13.1
     "tabulate==0.9.0",
-    "tblib==1.7.0", # tiledb-cloud requires >= 1.7.0 but < 1.8.0
+    "tblib==3.0.0", # only tiledb-cloud requires
     "tenacity==9.0.0",
     "termcolor==2.5.0",
     "tessdata==1.0.0",
     "tessdata.eng==1.0.0",
     "threadpoolctl==3.5.0",
     "tiktoken==0.9.0",
-    "tiledb==0.33.4",
+    "tiledb==0.33.5",
     "tiledb-cloud==0.13.0",
     "tiledb-vector-search==0.11.0",
     "timm==1.0.15",
@@ -233,10 +231,10 @@ libs = [
     "transformers==4.49.0",
     "typing-inspect==0.9.0",
     "typing_extensions==4.12.2",
-    "unstructured-client==0.30.6",
+    "unstructured-client==0.31.1",
     "tzdata==2025.1",
     "urllib3==2.3.0", # requests 2.32.3 requires <3
-    "vector-quantize-pytorch==1.21.9",
+    "vector-quantize-pytorch==1.22.2",
     "vocos==0.1.0",
     "watchdog==6.0.0",
     "webdataset==0.2.111", # required by all TTS libraries
@@ -252,7 +250,7 @@ libs = [
 full_install_libs = [
     "PySide6==6.8.2.1",
     "pymupdf==1.25.3",
-    "unstructured==0.16.23"
+    "unstructured==0.17.0"
 ]
 
 CHAT_MODELS = {
