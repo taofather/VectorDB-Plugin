@@ -489,6 +489,40 @@ class Internlm3(BaseModel):
        generation_thread.join()
 
 
+class OLMo2_13b(BaseModel):
+    def __init__(self, generation_settings):
+        model_info = CHAT_MODELS['OLMo 2 - 13b']
+        settings = bnb_bfloat16_settings if torch.cuda.is_available() else {}
+        super().__init__(model_info, settings, generation_settings)
+
+    def create_prompt(self, augmented_query):
+        return f"""<|endoftext|><|system|>
+{system_message}
+<|user|>
+{augmented_query}
+<|assistant|>
+"""
+
+    def generate_response(self, inputs):
+        streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
+        
+        all_settings = {
+            **inputs, 
+            **self.generation_settings, 
+            'streamer': streamer, 
+            'pad_token_id': self.tokenizer.eos_token_id,
+            'eos_token_id': self.tokenizer.eos_token_id
+        }
+
+        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
+        generation_thread.start()
+
+        for partial_response in streamer:
+            yield partial_response
+
+        generation_thread.join()
+
+
 class DeepseekR1_14b(BaseModel):
     def __init__(self, generation_settings):
         model_info = CHAT_MODELS['Deepseek R1 - 14b']

@@ -24,7 +24,6 @@ def set_cuda_paths():
     import sys
     import os
     from pathlib import Path
-
     venv_base = Path(sys.executable).parent.parent
     nvidia_base_path = venv_base / 'Lib' / 'site-packages' / 'nvidia'
     cuda_path_runtime = nvidia_base_path / 'cuda_runtime' / 'bin'
@@ -34,7 +33,6 @@ def set_cuda_paths():
     cudnn_path = nvidia_base_path / 'cudnn' / 'bin'
     nvrtc_path = nvidia_base_path / 'cuda_nvrtc' / 'bin'
     nvcc_path = nvidia_base_path / 'cuda_nvcc' / 'bin'
-
     paths_to_add = [
         str(cuda_path_runtime),
         str(cuda_path_runtime_lib),
@@ -44,13 +42,15 @@ def set_cuda_paths():
         str(nvrtc_path),
         str(nvcc_path),
     ]
-
     current_value = os.environ.get('PATH', '')
-    new_value = os.pathsep.join(paths_to_add + [current_value] if current_value else paths_to_add)
+    new_value = os.pathsep.join(paths_to_add + ([current_value] if current_value else []))
     os.environ['PATH'] = new_value
 
     triton_cuda_path = nvidia_base_path / 'cuda_runtime'
-    os.environ['CUDA_PATH'] = str(triton_cuda_path)
+    current_cuda_path = os.environ.get('CUDA_PATH', '')
+    new_cuda_path = os.pathsep.join([str(triton_cuda_path)] + ([current_cuda_path] if current_cuda_path else []))
+    os.environ['CUDA_PATH'] = new_cuda_path
+
 
 def clean_triton_cache():
     """Remove Triton cache to ensure clean compilation with current CUDA paths."""

@@ -386,6 +386,17 @@ CHAT_MODELS = {
         'precision': 'bfloat16',
         'gated': False,
     },
+    'OLMo 2 - 13b': {
+        'model': 'OLMo 2 - 13b',
+        'repo_id': 'allenai/OLMo-2-1124-13B-Instruct',
+        'cache_dir': 'allenai--OLMo-2-1124-13B-Instruct',
+        'cps': 179.76,
+        'context_length': 8192,
+        'vram': 9849.80,
+        'function': 'OLMo2_13b',
+        'precision': 'bfloat16',
+        'gated': False,
+    },
     'Deepseek R1 - 14b': {
         'model': 'Deepseek R1 - 14b',
         'repo_id': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B',
