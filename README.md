@@ -93,7 +93,7 @@ python gui.py
 
 ### 🔍 Query a Vector Database
 * Select the database you want to search within the `Query Database Tab`.
-* Select `Local Models`, `Kobold`, `LM Studio` or `ChatGPT` for the backend tht you want to provide a response to your question.
+* Select `Local Models`, `Kobold`, `LM Studio` or `ChatGPT` for the backend that you want to provide a response to your question.
 * Click `Submit Question`.
   * The `chunks only` checkbox will display the results from the vector database without getting a response.
 
