@@ -239,10 +239,9 @@ class Exaone(BaseModel):
         model_info = CHAT_MODELS[model_name]
 
         settings = copy.deepcopy(bnb_bfloat16_settings)
-
         settings['tokenizer_settings']['trust_remote_code'] = True
         settings['model_settings']['trust_remote_code'] = True
-        settings['model_settings']['quantization_config'].bnb_4bit_use_double_quant = True
+
         super().__init__(model_info, settings, generation_settings)
 
     def create_prompt(self, augmented_query):
@@ -259,8 +258,7 @@ class Qwen(BaseModel):
         if '1.5b' in model_name.lower() and not torch.cuda.is_available():
             settings = {}
         else:
-            settings = copy.deepcopy(bnb_bfloat16_settings)
-            settings['model_settings']['quantization_config'].bnb_4bit_use_double_quant = True
+            settings = bnb_bfloat16_settings
 
         super().__init__(model_info, settings, generation_settings)
 
@@ -276,12 +274,11 @@ class Qwen(BaseModel):
 class QwenCoder(BaseModel):
     def __init__(self, generation_settings, model_name):
         model_info = CHAT_MODELS[model_name]
-
+        
         if '1.5b' in model_name.lower() and not torch.cuda.is_available():
             settings = {}
         else:
-            settings = copy.deepcopy(bnb_bfloat16_settings)
-            settings['model_settings']['quantization_config'].bnb_4bit_use_double_quant = True
+            settings = bnb_bfloat16_settings
 
         super().__init__(model_info, settings, generation_settings)
 
@@ -300,7 +297,7 @@ class QwenCoder(BaseModel):
 class DeepseekR1(BaseModel):
     def __init__(self, generation_settings, model_name):
         model_info = CHAT_MODELS[model_name]
-
+        
         custom_generation_settings = {
             'max_length': generation_settings['max_length'],
             'max_new_tokens': generation_settings['max_new_tokens'],
@@ -311,10 +308,10 @@ class DeepseekR1(BaseModel):
             'num_beams': 1
         }
 
-        settings = copy.deepcopy(bnb_bfloat16_settings)
-        settings['model_settings']['quantization_config'].bnb_4bit_use_double_quant = True
-        super().__init__(model_info, settings, custom_generation_settings)
+        settings = bnb_bfloat16_settings
 
+        super().__init__(model_info, settings, custom_generation_settings)
+        
     def create_prompt(self, augmented_query):
         return f"""<|begin_of_sentence|>{system_message}<|User|>{augmented_query}<|Assistant|><｜end_of_sentence｜><｜Assistant｜>"""
 
@@ -377,7 +374,7 @@ class Internlm3(BaseModel):
 
     def generate_response(self, inputs):
        inputs.pop('token_type_ids', None)
-       
+
        streamer = TextIteratorStreamer(
            self.tokenizer, 
            skip_prompt=True, 
