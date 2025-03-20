@@ -156,10 +156,13 @@ class BaseModel(ABC):
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         return inputs
 
-    def generate_response(self, inputs):
+    def generate_response(self, inputs, remove_token_type_ids=False):
         """
         Creates a TextIteratorStreamer to stream partial responses.
         """
+        if remove_token_type_ids:
+            inputs.pop('token_type_ids', None)
+            
         streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
         
         eos_token_id = self.tokenizer.eos_token_id
@@ -194,10 +197,15 @@ class BaseModel(ABC):
         gc.collect()
 
 
-class Zephyr_1_6B(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Zephyr - 1.6b']
-        settings = bnb_float16_settings if torch.cuda.is_available() else {}
+class Zephyr(BaseModel):
+    def __init__(self, generation_settings, model_name=None):
+        model_info = CHAT_MODELS[model_name]
+
+        if '1.6b' in model_name.lower():
+            settings = bnb_float16_settings if torch.cuda.is_available() else {}
+        else:
+            settings = bnb_bfloat16_settings
+
         super().__init__(model_info, settings, generation_settings)
 
     def create_prompt(self, augmented_query):
@@ -209,10 +217,15 @@ class Zephyr_1_6B(BaseModel):
 """
 
 
-class Granite_2b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Granite - 2b']
-        settings = bnb_bfloat16_settings if torch.cuda.is_available() else {}
+class Granite(BaseModel):
+    def __init__(self, generation_settings, model_name):
+        model_info = CHAT_MODELS[model_name]
+
+        if '2b' in model_name.lower() and not torch.cuda.is_available():
+            settings = {}
+        else:
+            settings = bnb_bfloat16_settings
+
         super().__init__(model_info, settings, generation_settings)
 
     def create_prompt(self, augmented_query):
@@ -221,12 +234,15 @@ class Granite_2b(BaseModel):
 <|start_of_role|>assistant<|end_of_role|>"""
 
 
-class Exaone_2_4b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Exaone - 2.4b']
+class Exaone(BaseModel):
+    def __init__(self, generation_settings, model_name):
+        model_info = CHAT_MODELS[model_name]
+
         settings = copy.deepcopy(bnb_bfloat16_settings)
+
         settings['tokenizer_settings']['trust_remote_code'] = True
         settings['model_settings']['trust_remote_code'] = True
+        settings['model_settings']['quantization_config'].bnb_4bit_use_double_quant = True
         super().__init__(model_info, settings, generation_settings)
 
     def create_prompt(self, augmented_query):
@@ -236,10 +252,16 @@ class Exaone_2_4b(BaseModel):
 [|assistant|]"""
 
 
-class Qwen_1_5b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Qwen - 1.5b']
-        settings = bnb_bfloat16_settings if torch.cuda.is_available() else {}
+class Qwen(BaseModel):
+    def __init__(self, generation_settings, model_name):
+        model_info = CHAT_MODELS[model_name]
+
+        if '1.5b' in model_name.lower() and not torch.cuda.is_available():
+            settings = {}
+        else:
+            settings = copy.deepcopy(bnb_bfloat16_settings)
+            settings['model_settings']['quantization_config'].bnb_4bit_use_double_quant = True
+
         super().__init__(model_info, settings, generation_settings)
 
     def create_prompt(self, augmented_query):
@@ -251,10 +273,16 @@ class Qwen_1_5b(BaseModel):
 """
 
 
-class QwenCoder_1_5b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Qwen Coder - 1.5b']
-        settings = bnb_bfloat16_settings if torch.cuda.is_available() else {}
+class QwenCoder(BaseModel):
+    def __init__(self, generation_settings, model_name):
+        model_info = CHAT_MODELS[model_name]
+
+        if '1.5b' in model_name.lower() and not torch.cuda.is_available():
+            settings = {}
+        else:
+            settings = copy.deepcopy(bnb_bfloat16_settings)
+            settings['model_settings']['quantization_config'].bnb_4bit_use_double_quant = True
+
         super().__init__(model_info, settings, generation_settings)
 
     def create_prompt(self, augmented_query):
@@ -266,82 +294,12 @@ class QwenCoder_1_5b(BaseModel):
 """
 
     def generate_response(self, inputs):
-        # Remove token_type_ids if it exists
-        inputs.pop('token_type_ids', None)
-
-        streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
-        eos_token_id = self.tokenizer.eos_token_id
-
-        all_settings = {**inputs, **self.generation_settings, 'streamer': streamer, 'eos_token_id': eos_token_id}
-
-        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
-        generation_thread.start()
-
-        for partial_response in streamer:
-            yield partial_response
-
-        generation_thread.join()
+        return super().generate_response(inputs, remove_token_type_ids=True)
 
 
-class Zephyr_3B(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Zephyr - 3b']
-        super().__init__(model_info, bnb_bfloat16_settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|system|>
-{system_message}<|endoftext|>
-<|user|>
-{augmented_query}<|endoftext|>
-<|assistant|>
-"""
-
-
-class QwenCoder_3b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Qwen Coder - 3b']
-        super().__init__(model_info, bnb_bfloat16_settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|im_start|>system
-{system_message}<|im_end|>
-<|im_start|>user
-{augmented_query}<|im_end|>
-<|im_start|>assistant
-"""
-
-    def generate_response(self, inputs):
-        # Remove token_type_ids if it exists
-        inputs.pop('token_type_ids', None)
-
-        streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
-        eos_token_id = self.tokenizer.eos_token_id
-
-        all_settings = {**inputs, **self.generation_settings, 'streamer': streamer, 'eos_token_id': eos_token_id}
-
-        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
-        generation_thread.start()
-
-        for partial_response in streamer:
-            yield partial_response
-
-        generation_thread.join()
-
-
-class Granite_8b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Granite - 8b']
-        super().__init__(model_info, bnb_bfloat16_settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|start_of_role|>system<|end_of_role|>{system_message}<|end_of_text|>
-<|start_of_role|>user<|end_of_role|>{augmented_query}<|end_of_text|>
-<|start_of_role|>assistant<|end_of_role|>"""
-
-
-class DeepseekR1_7b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Deepseek R1 - 7b']
+class DeepseekR1(BaseModel):
+    def __init__(self, generation_settings, model_name):
+        model_info = CHAT_MODELS[model_name]
 
         custom_generation_settings = {
             'max_length': generation_settings['max_length'],
@@ -353,7 +311,9 @@ class DeepseekR1_7b(BaseModel):
             'num_beams': 1
         }
 
-        super().__init__(model_info, bnb_bfloat16_settings, custom_generation_settings)
+        settings = copy.deepcopy(bnb_bfloat16_settings)
+        settings['model_settings']['quantization_config'].bnb_4bit_use_double_quant = True
+        super().__init__(model_info, settings, custom_generation_settings)
 
     def create_prompt(self, augmented_query):
         return f"""<|begin_of_sentence|>{system_message}<|User|>{augmented_query}<|Assistant|><｜end_of_sentence｜><｜Assistant｜>"""
@@ -399,55 +359,9 @@ class DeepseekR1_7b(BaseModel):
         generation_thread.join()
 
 
-class Exaone_7_8b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Exaone - 7.8b']
-        settings = copy.deepcopy(bnb_bfloat16_settings)
-        settings['tokenizer_settings']['trust_remote_code'] = True
-        settings['model_settings']['trust_remote_code'] = True
-        super().__init__(model_info, settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""[|system|]{system_message}[|endofturn|]
-[|user|]{augmented_query}
-[|endofturn|]
-[|assistant|]"""
-
-
-class QwenCoder_7b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Qwen Coder - 7b']
-        super().__init__(model_info, bnb_bfloat16_settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|im_start|>system
-{system_message}<|im_end|>
-<|im_start|>user
-{augmented_query}<|im_end|>
-<|im_start|>assistant
-"""
-
-    def generate_response(self, inputs):
-        # Remove token_type_ids if it exists
-        inputs.pop('token_type_ids', None)
-
-        streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
-        eos_token_id = self.tokenizer.eos_token_id
-
-        all_settings = {**inputs, **self.generation_settings, 'streamer': streamer, 'eos_token_id': eos_token_id}
-
-        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
-        generation_thread.start()
-
-        for partial_response in streamer:
-            yield partial_response
-
-        generation_thread.join()
-
-
 class Internlm3(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['InternLM 3 - 8b']
+    def __init__(self, generation_settings, model_name=None):
+        model_info = CHAT_MODELS[model_name]
         settings = copy.deepcopy(bnb_bfloat16_settings)
         settings['tokenizer_settings']['trust_remote_code'] = True
         settings['model_settings']['trust_remote_code'] = True
@@ -471,7 +385,7 @@ class Internlm3(BaseModel):
        )
        
        eos_token_id = self.tokenizer.convert_tokens_to_ids(['<|im_end|>'])[0]
-       
+
        all_settings = {
            **inputs, 
            **self.generation_settings, 
@@ -490,8 +404,8 @@ class Internlm3(BaseModel):
 
 
 class OLMo2_13b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['OLMo 2 - 13b']
+    def __init__(self, generation_settings, model_name=None):
+        model_info = CHAT_MODELS[model_name]
         settings = bnb_bfloat16_settings if torch.cuda.is_available() else {}
         super().__init__(model_info, settings, generation_settings)
 
@@ -505,7 +419,7 @@ class OLMo2_13b(BaseModel):
 
     def generate_response(self, inputs):
         streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
-        
+
         all_settings = {
             **inputs, 
             **self.generation_settings, 
@@ -523,114 +437,9 @@ class OLMo2_13b(BaseModel):
         generation_thread.join()
 
 
-class DeepseekR1_14b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Deepseek R1 - 14b']
-
-        custom_generation_settings = {
-            'max_length': generation_settings['max_length'],
-            'max_new_tokens': generation_settings['max_new_tokens'],
-            'do_sample': True,
-            'temperature': 0.6,
-            'top_p': 0.95,
-            'use_cache': True,
-            'num_beams': 1
-        }
-
-        super().__init__(model_info, bnb_bfloat16_settings, custom_generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|begin_of_sentence|>{system_message}<|User|>{augmented_query}<|Assistant|><｜end_of_sentence｜><｜Assistant｜>"""
-
-    def generate_response(self, inputs):
-        SHOW_THINKING = False
-        streamer = TextIteratorStreamer(
-            self.tokenizer, 
-            skip_prompt=True, 
-            skip_special_tokens=True
-        )
-
-        all_settings = {
-            **inputs, 
-            **self.generation_settings,
-            'streamer': streamer, 
-            'pad_token_id': self.tokenizer.pad_token_id,
-            'eos_token_id': self.tokenizer.eos_token_id
-        }
-
-        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
-        generation_thread.start()
-
-        if SHOW_THINKING:
-            # stream everything
-            for partial_response in streamer:
-                yield partial_response
-        else:
-            # only stream after </think> tag
-            buffer = ""
-            thinking_complete = False
-
-            for partial_response in streamer:
-                buffer += partial_response
-                if not thinking_complete and '</think>' in buffer:
-                    thinking_complete = True
-                    start_idx = buffer.rfind('</think>') + len('</think>')
-                    yield buffer[start_idx:].strip()
-                    buffer = ""
-                elif thinking_complete:
-                    yield partial_response
-
-        generation_thread.join()
-
-
-class QwenCoder_14b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Qwen Coder - 14b']
-        super().__init__(model_info, bnb_bfloat16_settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|im_start|>system
-{system_message}<|im_end|>
-<|im_start|>user
-{augmented_query}<|im_end|>
-<|im_start|>assistant
-"""
-
-    def generate_response(self, inputs):
-        # Remove token_type_ids if it exists
-        inputs.pop('token_type_ids', None)
-
-        streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
-        eos_token_id = self.tokenizer.eos_token_id
-
-        all_settings = {**inputs, **self.generation_settings, 'streamer': streamer, 'eos_token_id': eos_token_id}
-
-        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
-        generation_thread.start()
-
-        for partial_response in streamer:
-            yield partial_response
-
-        generation_thread.join()
-
-
-class Qwen_14b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Qwen - 14b']
-        super().__init__(model_info, bnb_bfloat16_settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|im_start|>system
-{system_message}<|im_end|>
-<|im_start|>user
-{augmented_query}<|im_end|>
-<|im_start|>assistant
-"""
-
-
 class Mistral_Small_24b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Mistral Small 3 - 24b']
+    def __init__(self, generation_settings, model_name=None):
+        model_info = CHAT_MODELS[model_name]
         super().__init__(model_info, bnb_bfloat16_settings, generation_settings)
 
     def create_prompt(self, augmented_query):
@@ -641,134 +450,9 @@ class Mistral_Small_24b(BaseModel):
 [INST]{augmented_query}[/INST]"""
 
 
-class DeepseekR1_32b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Deepseek R1 - 32b']
-
-        custom_generation_settings = {
-            'max_length': generation_settings['max_length'],
-            'max_new_tokens': generation_settings['max_new_tokens'],
-            'do_sample': True,
-            'temperature': 0.6,
-            'top_p': 0.95,
-            'use_cache': True,
-            'num_beams': 1
-        }
-
-        super().__init__(model_info, bnb_bfloat16_settings, custom_generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|begin_of_sentence|>{system_message}<|User|>{augmented_query}<|Assistant|><｜end_of_sentence｜><｜Assistant｜>"""
-
-    def generate_response(self, inputs):
-        SHOW_THINKING = False
-        streamer = TextIteratorStreamer(
-            self.tokenizer, 
-            skip_prompt=True, 
-            skip_special_tokens=True
-        )
-
-        all_settings = {
-            **inputs, 
-            **self.generation_settings,
-            'streamer': streamer, 
-            'pad_token_id': self.tokenizer.pad_token_id,
-            'eos_token_id': self.tokenizer.eos_token_id
-        }
-
-        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
-        generation_thread.start()
-
-        if SHOW_THINKING:
-            # stream everything
-            for partial_response in streamer:
-                yield partial_response
-        else:
-            # only stream after </think> tag
-            buffer = ""
-            thinking_complete = False
-
-            for partial_response in streamer:
-                buffer += partial_response
-                if not thinking_complete and '</think>' in buffer:
-                    thinking_complete = True
-                    start_idx = buffer.rfind('</think>') + len('</think>')
-                    yield buffer[start_idx:].strip()
-                    buffer = ""
-                elif thinking_complete:
-                    yield partial_response
-
-        generation_thread.join()
-
-
-class QwenCoder_32b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Qwen Coder - 32b']
-        settings = copy.deepcopy(bnb_bfloat16_settings)
-        settings['model_settings']['quantization_config'].bnb_4bit_use_double_quant = True
-        super().__init__(model_info, settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|im_start|>system
-{system_message}<|im_end|>
-<|im_start|>user
-{augmented_query}<|im_end|>
-<|im_start|>assistant
-"""
-
-    def generate_response(self, inputs):
-        # Remove token_type_ids if it exists
-        inputs.pop('token_type_ids', None)
-
-        streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
-        eos_token_id = self.tokenizer.eos_token_id
-
-        all_settings = {**inputs, **self.generation_settings, 'streamer': streamer, 'eos_token_id': eos_token_id}
-
-        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
-        generation_thread.start()
-
-        for partial_response in streamer:
-            yield partial_response
-
-        generation_thread.join()
-
-
-class Qwen_32b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Qwen - 32b']
-        settings = copy.deepcopy(bnb_bfloat16_settings)
-        settings['model_settings']['quantization_config'].bnb_4bit_use_double_quant = True
-        super().__init__(model_info, settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|im_start|>system
-{system_message}<|im_end|>
-<|im_start|>user
-{augmented_query}<|im_end|>
-<|im_start|>assistant
-"""
-
-
-class Exaone_32b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['Exaone - 32b']
-        settings = copy.deepcopy(bnb_bfloat16_settings)
-        settings['tokenizer_settings']['trust_remote_code'] = True
-        settings['model_settings']['trust_remote_code'] = True
-        settings['model_settings']['quantization_config'].bnb_4bit_use_double_quant = True
-        super().__init__(model_info, settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""[|system|]{system_message}[|endofturn|]
-[|user|]{augmented_query}
-[|endofturn|]
-[|assistant|]"""
-
-
 class QwQ_32b(BaseModel):
-    def __init__(self, generation_settings):
-        model_info = CHAT_MODELS['QwQ - 32b']
+    def __init__(self, generation_settings, model_name=None):
+        model_info = CHAT_MODELS[model_name]
 
         custom_generation_settings = {
             'max_length': generation_settings['max_length'],
@@ -840,16 +524,13 @@ def generate_response(model_instance, augmented_query):
 
 def choose_model(model_name):
     if model_name in CHAT_MODELS:
-
         model_class_name = CHAT_MODELS[model_name]['function']
         model_class = globals()[model_class_name]
 
         max_length = get_max_length(model_name)
-
         max_new_tokens = get_max_new_tokens(model_name)
-
         generation_settings = get_generation_settings(max_length, max_new_tokens)
 
-        return model_class(generation_settings)
+        return model_class(generation_settings, model_name)
     else:
         raise ValueError(f"Unknown model: {model_name}")
