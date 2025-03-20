@@ -342,6 +342,17 @@ CHAT_MODELS = {
         'precision': 'bfloat16',
         'gated': False,
     },
+    'Olympic Coder - 7b': {
+        'model': 'Olympic Coder - 7b',
+        'repo_id': 'open-r1/OlympicCoder-7B',
+        'cache_dir': 'open-r1--OlympicCoder-7B',
+        'cps': 241.99,
+        'context_length': 8192,
+        'vram': 6413.43,
+        'function': 'OlympicCoder',
+        'precision': 'bfloat16',
+        'gated': False,
+    },
     'Deepseek R1 - 7b': {
         'model': 'Deepseek R1 - 7b',
         'repo_id': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B',
@@ -463,6 +474,17 @@ CHAT_MODELS = {
         'precision': 'bfloat16',
         'gated': False,
     },
+    'Olympic Coder - 32b': {
+        'model': 'Olympic Coder - 32b',
+        'repo_id': 'open-r1/OlympicCoder-32B',
+        'cache_dir': 'open-r1/OlympicCoder-32B',
+        'cps': 97.47,
+        'context_length': 32768,
+        'vram': 21120.81,
+        'function': 'OlympicCoder',
+        'precision': 'bfloat16',
+        'gated': False,
+    },
     'Qwen - 32b': {
         'model': 'Qwen - 32b',
         'repo_id': 'Qwen/Qwen2.5-32B-Instruct',
@@ -517,6 +539,8 @@ MODEL_MAX_NEW_TOKENS = {
     'Deepseek R1 - 14b': 2048,
     'Deepseek R1 - 32b': 2048,
     'QwQ - 32b': 2048,
+    'Olympic Coder - 7b': 2048,
+    'Olympic Coder - 32b': 2048
 }
 
 VECTOR_MODELS = {
