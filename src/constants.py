@@ -52,17 +52,17 @@ priority_libs = {
 }
 
 libs = [
-    "accelerate==1.5.1",
+    "accelerate==1.5.2",
     "aiofiles==24.1.0",
     "aiohappyeyeballs==2.6.1",
-    "aiohttp==3.11.13", # langchain libraries require <4
+    "aiohttp==3.11.14", # langchain libraries require <4
     "aiosignal==1.3.2", # only required by aiohttp
     "anndata==0.11.3",
     "annotated-types==0.7.0",
-    "anyio==4.8.0",
-    "array_api_compat==1.11.1", # only anndata requires
+    "anyio==4.9.0",
+    "array_api_compat==1.11.2", # only anndata requires
     "async-timeout==5.0.1",
-    "attrs==25.2.0",
+    "attrs==25.3.0",
     "av==14.2.0",
     "backoff==2.2.1",
     "beautifulsoup4==4.13.3",
@@ -72,7 +72,7 @@ libs = [
     "cffi==1.17.1",
     "chardet==5.2.0",
     "charset-normalizer==3.4.1", # requests requires <4
-    "chattts==0.2.2",
+    "chattts==0.2.3",
     "click==8.1.8",
     "cloudpickle==3.1.1", # only required by tiledb-cloud and 3+ is only supported by tiledb-cloud 0.13+
     "colorama==0.4.6",
@@ -82,8 +82,8 @@ libs = [
     "ctranslate2==4.5.0",
     "cycler==0.12.1",
     "dataclasses-json==0.6.7",
-    "datasets==3.3.2",
-    "deepdiff==8.3.0", # required by unstructured
+    "datasets==3.4.1",
+    "deepdiff==8.4.2", # required by unstructured
     "Deprecated==1.2.18", # only needed by pikepdf
     "deprecation==2.1.0", # only needed by ocrmypdf
     "dill==0.3.8", # datasets 3.2.0 requires <0.3.9; multiprocess 0.70.16 requires >=0.3.8
@@ -95,14 +95,14 @@ libs = [
     "encodec==0.1.1",
     "et-xmlfile==2.0.0", # openpyxl requires; caution...openpyxl 3.1.5 (6/28/2024) predates et-xmlfile 2.0.0 (10/25/2024)
     "eval-type-backport==0.2.2", # only required by unstructured
-    "fastcore==1.7.29", # only required by whisperspeech
+    "fastcore==1.8.0", # only required by whisperspeech
     "fastprogress==1.0.3", # only required by whisperspeech
     "filetype==1.2.0",
-    "filelock==3.17.0",
+    "filelock==3.18.0",
     "fonttools==4.56.0", # only required by matplotlib
     "frozendict==2.4.6",
     "frozenlist==1.5.0",
-    "fsspec==2024.9.0", # datasets 3.2.0 requires <=2024.9.0
+    "fsspec==2024.12.0", # datasets 3.2.0 requires <=2024.12.0
     "greenlet==3.1.1",
     "gTTS==2.5.4",
     "h11==0.14.0",
@@ -124,13 +124,13 @@ libs = [
     "jsonpath-python==1.0.6",
     "jsonpointer==3.0.0",
     "kiwisolver==1.4.8",
-    "langchain==0.3.20",
-    "langchain-community==0.3.19",
-    "langchain-core==0.3.44",
+    "langchain==0.3.21",
+    "langchain-community==0.3.20",
+    "langchain-core==0.3.47",
     "langchain-huggingface==0.1.2",
-    "langchain-text-splitters==0.3.6",
+    "langchain-text-splitters==0.3.7",
     "langdetect==1.0.9",
-    "langsmith==0.3.13",
+    "langsmith==0.3.18",
     "llvmlite==0.44.0", # only required by numba
     "lxml==5.3.1",
     "Markdown==3.7",
@@ -142,7 +142,7 @@ libs = [
     "more-itertools==10.6.0",
     "mpmath==1.3.0", # sympy 1.13.1 requires less than 1.4
     "msg-parser==1.2.0",
-    "multidict==6.1.0",
+    "multidict==6.2.0",
     "multiprocess==0.70.16", # datasets 3.2.0 requires <0.70.17
     "mypy-extensions==1.0.0",
     "natsort==8.4.0",
@@ -153,7 +153,7 @@ libs = [
     "numpy==1.26.4", # langchain libraries <2; numba <2.1; scipy <2.3; chattts <2.0.0
     "ocrmypdf==16.10.0",
     "olefile==0.47",
-    "openai==1.66.2", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
+    "openai==1.68.2", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
     "optimum==1.24.0",
@@ -165,9 +165,9 @@ libs = [
     "pdfminer.six==20240706", # only needed by ocrmypdf
     "pikepdf==9.5.2", # only needed by ocrmypdf
     "pillow==11.1.0",
-    "pi-heif==0.21.0", # only needed by ocrmypdf, but not for my usage of ocrmypdf
+    "pi-heif==0.22.0", # only needed by ocrmypdf, but not for my usage of ocrmypdf
     "pipdeptree",
-    "platformdirs==4.3.6",
+    "platformdirs==4.3.7",
     "pluggy==1.5.0", # only needed by ocrmypdf
     "propcache==0.3.0",
     "protobuf==5.29.3",
@@ -183,7 +183,7 @@ libs = [
     "PyOpenGL-accelerate==3.1.9",
     "pypandoc==1.15",
     "pyparsing==3.2.1",
-    "pypdf==5.3.1",
+    "pypdf==5.4.0",
     "pyreadline3==3.5.4",
     "python-dateutil==2.9.0.post0",
     "python-docx==1.1.2",
@@ -220,19 +220,19 @@ libs = [
     "termcolor==2.5.0",
     "tessdata==1.0.0",
     "tessdata.eng==1.0.0",
-    "threadpoolctl==3.5.0",
+    "threadpoolctl==3.6.0",
     "tiktoken==0.9.0",
-    "tiledb==0.33.5",
+    "tiledb==0.33.6",
     "tiledb-cloud==0.13.0",
     "tiledb-vector-search==0.11.0",
     "timm==1.0.15",
-    "tokenizers==0.21.0",
+    "tokenizers==0.21.1",
     "tqdm==4.67.1",
-    "transformers==4.49.0",
+    "transformers==4.50.0",
     "typing-inspect==0.9.0",
     "typing_extensions==4.12.2",
-    "unstructured-client==0.31.1",
-    "tzdata==2025.1",
+    "unstructured-client==0.31.3",
+    "tzdata==2025.2",
     "urllib3==2.3.0", # requests 2.32.3 requires <3
     "vector-quantize-pytorch==1.22.2",
     "vocos==0.1.0",
@@ -249,8 +249,8 @@ libs = [
 
 full_install_libs = [
     "PySide6==6.8.2.1",
-    "pymupdf==1.25.3",
-    "unstructured==0.17.0"
+    "pymupdf==1.25.4",
+    "unstructured==0.17.2"
 ]
 
 CHAT_MODELS = {
