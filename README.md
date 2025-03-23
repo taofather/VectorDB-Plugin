@@ -71,7 +71,7 @@ python setup_windows.py
 <a name="using-the-program"></a>
 <div align="center"> <h2>🖥️Usage🖥️</h2></div>
 
-### 🔥Important🔥
+### 🔥Ask Jeeves🔥
 * Instructions on how to use the program are being consolidated into the `Ask Jeeves` functionality, which can be accessed from the "Ask Jeeves" menu option.  Please create an issue if Jeeves is not working.
 
 ### Start the Program
