@@ -77,7 +77,7 @@ libs = [
     "cloudpickle==3.1.1", # only required by tiledb-cloud and 3+ is only supported by tiledb-cloud 0.13+
     "colorama==0.4.6",
     "coloredlogs==15.0.1",
-    "contourpy==1.3.1", # onlyk required by matplotlib
+    "contourpy==1.3.1", # only required by matplotlib
     "cryptography==44.0.2", # only required by unstructured library
     "ctranslate2==4.5.0",
     "cycler==0.12.1",
@@ -474,6 +474,17 @@ CHAT_MODELS = {
         'precision': 'bfloat16',
         'gated': False,
     },
+    'Reka Flash - 21b': {
+        'model': 'Reka Flash - 21b',
+        'repo_id': 'RekaAI/reka-flash-3',
+        'cache_dir': 'RekaAI--reka-flash-3',
+        'cps': 171.93,
+        'context_length': 8192,
+        'vram': 13339.87,
+        'function': 'RekaFlash',
+        'precision': 'bfloat16',
+        'gated': False,
+    },
     'Mistral Small 3 - 24b': {
         'model': 'Mistral Small 3 - 24b',
         'repo_id': 'mistralai/Mistral-Small-24B-Instruct-2501',
@@ -587,7 +598,8 @@ MODEL_MAX_NEW_TOKENS = {
     'Olympic Coder - 32b': 4096,
     'Exaone Deep - 2.4b': 4096,
     'Exaone Deep - 7.8b': 4096,
-    'Exaone Deep - 32b': 4096
+    'Exaone Deep - 32b': 4096,
+    'Reka Flash - 21b': 4096
 }
 
 VECTOR_MODELS = {
