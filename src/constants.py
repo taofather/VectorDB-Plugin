@@ -88,7 +88,7 @@ libs = [
     "deprecation==2.1.0", # only needed by ocrmypdf
     "dill==0.3.8", # datasets 3.2.0 requires <0.3.9; multiprocess 0.70.16 requires >=0.3.8
     "distro==1.9.0",
-    "docx2txt==0.8",
+    "docx2txt==0.9",
     "einops==0.8.1",
     "einx==0.3.0",
     "emoji==2.14.1",
@@ -126,7 +126,7 @@ libs = [
     "kiwisolver==1.4.8",
     "langchain==0.3.21",
     "langchain-community==0.3.20",
-    "langchain-core==0.3.47",
+    "langchain-core==0.3.48",
     "langchain-huggingface==0.1.2",
     "langchain-text-splitters==0.3.7",
     "langdetect==1.0.9",
@@ -159,10 +159,10 @@ libs = [
     "optimum==1.24.0",
     "ordered-set==4.1.0",
     "orderly-set==5.3.0", # deepdiff 8.2.0 requires orderly-set=5.3.0,<6
-    "orjson==3.10.15",
+    "orjson==3.10.16",
     "packaging==24.2",
     "pandas==2.2.3",
-    "pdfminer.six==20240706", # only needed by ocrmypdf
+    "pdfminer.six==20250324", # only needed by ocrmypdf
     "pikepdf==9.5.2", # only needed by ocrmypdf
     "pillow==11.1.0",
     "pi-heif==0.22.0", # only needed by ocrmypdf, but not for my usage of ocrmypdf
@@ -170,7 +170,7 @@ libs = [
     "platformdirs==4.3.7",
     "pluggy==1.5.0", # only needed by ocrmypdf
     "propcache==0.3.0",
-    "protobuf==5.29.3",
+    "protobuf==6.30.1",
     "psutil==7.0.0",
     "pyarrow==19.0.1",
     "pybase16384==0.3.8", # only required by chattts
@@ -182,12 +182,12 @@ libs = [
     "PyOpenGL==3.1.9",
     "PyOpenGL-accelerate==3.1.9",
     "pypandoc==1.15",
-    "pyparsing==3.2.1",
+    "pyparsing==3.2.3",
     "pypdf==5.4.0",
     "pyreadline3==3.5.4",
     "python-dateutil==2.9.0.post0",
     "python-docx==1.1.2",
-    "python-dotenv==1.0.1",
+    "python-dotenv==1.1.0",
     "python-iso639==2025.2.18",
     "python-magic==0.4.27",
     "python-oxmsg==0.0.2", # only required by unstructured library
@@ -234,7 +234,7 @@ libs = [
     "unstructured-client==0.31.3",
     "tzdata==2025.2",
     "urllib3==2.3.0", # requests 2.32.3 requires <3
-    "vector-quantize-pytorch==1.22.2",
+    "vector-quantize-pytorch==1.22.3",
     "vocos==0.1.0",
     "watchdog==6.0.0",
     "webdataset==0.2.111", # required by all TTS libraries
