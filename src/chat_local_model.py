@@ -194,7 +194,7 @@ class LocalModelChat:
                         remaining_tokens = model_instance.max_length - (prepend_token_count + user_question_token_count + context_token_count + response_token_count)
                         total_tokens = prepend_token_count + context_token_count + user_question_token_count + response_token_count
 
-                        if model_name in ["Deepseek R1 - 7b", "Deepseek R1 - 14b", "Deepseek R1 - 32b", "QwQ - 32b"], "Exaone Deep - 2.4b", "Olympic Coder - 7b", "Exaone Deep - 7.8b", "Reka Flash - 21b", "Exaone Deep - 32b", "Olympic Coder - 32b", :
+                        if model_name in ["Deepseek R1 - 7b", "Deepseek R1 - 14b", "Deepseek R1 - 32b", "QwQ - 32b", "Exaone Deep - 2.4b", "Olympic Coder - 7b", "Exaone Deep - 7.8b", "Reka Flash - 21b", "Exaone Deep - 32b", "Olympic Coder - 32b"]:
                             token_count_string = (
                                 "<span style='color:#FF4136;'>(Token counts not accurate.  Thinking process tokens not included.)</span><br>"
                                 f"<span style='color:#2ECC40;'>available tokens ({model_instance.max_length})</span>"
