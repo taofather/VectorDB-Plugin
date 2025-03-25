@@ -1,4 +1,4 @@
-# custom code compatible with chattts 0.2.2
+# custom code compatible with chattts 0.2.3
 # adds the "local_dir" parameter
 
 import os
@@ -29,6 +29,7 @@ from .utils import (
 from .utils import logger as utils_logger
 
 from .norm import Normalizer
+
 
 class Chat:
     def __init__(self, logger=logging.getLogger(__name__)):
@@ -65,104 +66,102 @@ class Chat:
         return not not_finish
 
     def download_models(
-       self,
-       source: Literal["huggingface", "local", "custom"] = "local",
-       force_redownload=False,
-       custom_path: Optional[torch.serialization.FILE_LIKE] = None,
-       cache_dir: Optional[str] = None,
-       local_dir: Optional[str] = None,
+        self,
+        source: Literal["huggingface", "local", "custom"] = "local",
+        force_redownload=False,
+        custom_path: Optional[torch.serialization.FILE_LIKE] = None,
+        cache_dir: Optional[str] = None,
+        local_dir: Optional[str] = None,
     ) -> Optional[str]:
-       if source == "local":
-           download_path = local_dir if local_dir else (cache_dir if cache_dir else os.getcwd())
-           if (
-               not check_all_assets(Path(download_path), self.sha256_map, update=True)
-               or force_redownload
-           ):
-               with tempfile.TemporaryDirectory() as tmp:
-                   download_all_assets(tmpdir=tmp, homedir=download_path)
-               if not check_all_assets(
-                   Path(download_path), self.sha256_map, update=False
-               ):
-                   self.logger.error(
-                       "download to local path %s failed.", download_path
-                   )
-                   return None
+        if source == "local":
+            download_path = local_dir if local_dir else (custom_path if custom_path is not None else os.getcwd())
+            if (
+                not check_all_assets(Path(download_path), self.sha256_map, update=True)
+                or force_redownload
+            ):
+                with tempfile.TemporaryDirectory() as tmp:
+                    download_all_assets(tmpdir=tmp, homedir=download_path)
+                if not check_all_assets(
+                    Path(download_path), self.sha256_map, update=False
+                ):
+                    self.logger.error(
+                        "download to local path %s failed.", download_path
+                    )
+                    return None
+        elif source == "huggingface":
+            try:
+                if local_dir:
+                    download_path = snapshot_download(
+                        repo_id="2Noise/ChatTTS",
+                        allow_patterns=["*.yaml", "*.json", "*.safetensors", "spk_stat.pt", "tokenizer.pt"],
+                        local_dir=local_dir,
+                        force_download=force_redownload
+                    )
+                    if not check_all_assets(Path(download_path), self.sha256_map, update=False):
+                        self.logger.error("Model verification failed")
+                        return None
+                elif cache_dir:
+                    download_path = snapshot_download(
+                        repo_id="2Noise/ChatTTS",
+                        allow_patterns=["*.yaml", "*.json", "*.safetensors", "spk_stat.pt", "tokenizer.pt"],
+                        cache_dir=cache_dir,
+                        force_download=force_redownload
+                    )
+                    if not check_all_assets(Path(download_path), self.sha256_map, update=False):
+                        self.logger.error("Model verification failed")
+                        return None
+                else:
+                    try:
+                        download_path = (
+                            get_latest_modified_file(
+                                os.path.join(
+                                    os.getenv(
+                                        "HF_HOME", os.path.expanduser("~/.cache/huggingface")
+                                    ),
+                                    "hub/models--2Noise--ChatTTS/snapshots",
+                                )
+                            )
+                            if custom_path is None
+                            else get_latest_modified_file(
+                                os.path.join(custom_path, "models--2Noise--ChatTTS/snapshots")
+                            )
+                        )
+                    except:
+                        download_path = None
+                    if download_path is None or force_redownload:
+                        self.logger.log(
+                            logging.INFO,
+                            f"download from HF: https://huggingface.co/2Noise/ChatTTS",
+                        )
+                        try:
+                            download_path = snapshot_download(
+                                repo_id="2Noise/ChatTTS",
+                                allow_patterns=["*.yaml", "*.json", "*.safetensors", "spk_stat.pt", "tokenizer.pt"],
+                                cache_dir=custom_path,
+                                force_download=force_redownload,
+                            )
+                        except:
+                            download_path = None
+                        else:
+                            self.logger.log(
+                                logging.INFO,
+                                f"load latest snapshot from cache: {download_path}",
+                            )
+            except Exception as e:
+                self.logger.error(f"Failed to download models: {str(e)}")
+                download_path = None
+        elif source == "custom":
+            self.logger.log(logging.INFO, f"try to load from local: {custom_path}")
+            if not check_all_assets(Path(custom_path), self.sha256_map, update=False):
+                self.logger.error("check models in custom path %s failed.", custom_path)
+                return None
+            download_path = custom_path
 
-       elif source == "huggingface":
-           try:
-               if local_dir:
-                   download_path = snapshot_download(
-                       repo_id="2Noise/ChatTTS",
-                       allow_patterns=["*.yaml", "*.json", "*.safetensors", "spk_stat.pt", "tokenizer.pt"],
-                       local_dir=local_dir,
-                       force_download=force_redownload
-                   )
-                   if not check_all_assets(Path(download_path), self.sha256_map, update=False):
-                       self.logger.error("Model verification failed")
-                       return None
-               elif cache_dir:
-                   download_path = snapshot_download(
-                       repo_id="2Noise/ChatTTS",
-                       allow_patterns=["*.yaml", "*.json", "*.safetensors", "spk_stat.pt", "tokenizer.pt"],
-                       cache_dir=cache_dir,
-                       force_download=force_redownload
-                   )
-                   if not check_all_assets(Path(download_path), self.sha256_map, update=False):
-                       self.logger.error("Model verification failed")
-                       return None
-               else:
-                   try:
-                       download_path = (
-                           get_latest_modified_file(
-                               os.path.join(
-                                   os.getenv(
-                                       "HF_HOME", os.path.expanduser("~/.cache/huggingface")
-                                   ),
-                                   "hub/models--2Noise--ChatTTS/snapshots",
-                               )
-                           )
-                           if custom_path is None
-                           else get_latest_modified_file(
-                               os.path.join(custom_path, "models--2Noise--ChatTTS/snapshots")
-                           )
-                       )
-                   except:
-                       download_path = None
-                   if download_path is None or force_redownload:
-                       self.logger.log(
-                           logging.INFO,
-                           f"download from HF: https://huggingface.co/2Noise/ChatTTS",
-                       )
-                       try:
-                           download_path = snapshot_download(
-                               repo_id="2Noise/ChatTTS",
-                               allow_patterns=["*.yaml", "*.json", "*.safetensors", "spk_stat.pt", "tokenizer.pt"],
-                           )
-                           if not check_all_assets(Path(download_path), self.sha256_map, update=False):
-                               self.logger.error("Model verification failed")
-                               return None
-                       except:
-                           download_path = None
-                       else:
-                           self.logger.log(
-                               logging.INFO, f"load latest snapshot from cache: {download_path}"
-                           )
-           except Exception as e:
-               self.logger.error(f"Failed to download models: {str(e)}")
-               download_path = None
+        if download_path is None:
+            self.logger.error("Model download failed")
+            return None
 
-       elif source == "custom":
-           self.logger.log(logging.INFO, f"try to load from local: {custom_path}")
-           if not check_all_assets(Path(custom_path), self.sha256_map, update=False):
-               self.logger.error("check models in custom path %s failed.", custom_path)
-               return None
-           download_path = custom_path
-
-       if download_path is None:
-           self.logger.error("Model download failed")
-           return None
-
-       return download_path
+        return download_path
 
     def load(
         self,
@@ -178,7 +177,13 @@ class Chat:
         cache_dir: Optional[str] = None,
         local_dir: Optional[str] = None,
     ) -> bool:
-        download_path = self.download_models(source, force_redownload, custom_path, cache_dir, local_dir)
+        download_path = self.download_models(
+            source, 
+            force_redownload, 
+            custom_path, 
+            cache_dir, 
+            local_dir
+        )
         if download_path is None:
             return False
         return self._load(
@@ -780,120 +785,3 @@ class Chat:
         del emb, input_ids
 
         return result
-
-"""
-Yes, it would be possible to implement an inheritance structure to extend the functionality of the original Chat class without modifying the source code. Here's how you could do it:
-
-```python
-from chattts.core import Chat as BaseChat
-from typing import Literal, Optional
-import torch
-from pathlib import Path
-import logging
-import os
-from huggingface_hub import snapshot_download
-
-class ExtendedChat(BaseChat):
-    def __init__(self, logger=logging.getLogger(__name__)):
-        super().__init__(logger)
-
-    def download_models(
-        self,
-        source: Literal["huggingface", "local", "custom"] = "local",
-        force_redownload=False,
-        custom_path: Optional[torch.serialization.FILE_LIKE] = None,
-        cache_dir: Optional[str] = None,
-        local_dir: Optional[str] = None,
-    ) -> Optional[str]:
-        if source == "local":
-            download_path = local_dir if local_dir else (cache_dir if cache_dir else os.getcwd())
-            if (
-                not self.check_all_assets(Path(download_path), self.sha256_map, update=True)
-                or force_redownload
-            ):
-                with tempfile.TemporaryDirectory() as tmp:
-                    self.download_all_assets(tmpdir=tmp, homedir=download_path)
-                if not self.check_all_assets(
-                    Path(download_path), self.sha256_map, update=False
-                ):
-                    self.logger.error(
-                        "download to local path %s failed.", download_path
-                    )
-                    return None
-
-        elif source == "huggingface":
-            try:
-                if local_dir:
-                    download_path = snapshot_download(
-                        repo_id="2Noise/ChatTTS",
-                        allow_patterns=["*.yaml", "*.json", "*.safetensors", "spk_stat.pt", "tokenizer.pt"],
-                        local_dir=local_dir,
-                        force_download=force_redownload
-                    )
-                    if not self.check_all_assets(Path(download_path), self.sha256_map, update=False):
-                        self.logger.error("Model verification failed")
-                        return None
-                else:
-                    # Call parent class implementation for default behavior
-                    return super().download_models(source, force_redownload, custom_path)
-
-            except Exception as e:
-                self.logger.error(f"Failed to download models: {str(e)}")
-                download_path = None
-
-        elif source == "custom":
-            return super().download_models(source, force_redownload, custom_path)
-
-        if download_path is None:
-            self.logger.error("Model download failed")
-            return None
-
-        return download_path
-
-    def load(
-        self,
-        source: Literal["huggingface", "local", "custom"] = "local",
-        force_redownload=False,
-        compile: bool = False,
-        custom_path: Optional[torch.serialization.FILE_LIKE] = None,
-        device: Optional[torch.device] = None,
-        coef: Optional[torch.Tensor] = None,
-        use_flash_attn=False,
-        use_vllm=False,
-        experimental: bool = False,
-        cache_dir: Optional[str] = None,
-        local_dir: Optional[str] = None,
-    ) -> bool:
-        download_path = self.download_models(
-            source, 
-            force_redownload, 
-            custom_path, 
-            cache_dir, 
-            local_dir
-        )
-        if download_path is None:
-            return False
-            
-        return self._load(
-            device=device,
-            compile=compile,
-            coef=coef,
-            use_flash_attn=use_flash_attn,
-            use_vllm=use_vllm,
-            experimental=experimental,
-            **{
-                k: os.path.join(download_path, v)
-                for k, v in asdict(self.config.path).items()
-            },
-        )
-```
-
-You could then use this extended class in your code like this:
-
-```python
-from extended_chat import ExtendedChat
-
-chat = ExtendedChat()
-chat.load(source="huggingface", local_dir="path/to/local/dir")
-```
-"""
