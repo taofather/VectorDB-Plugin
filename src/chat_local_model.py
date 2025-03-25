@@ -1,5 +1,3 @@
-# chat_local_model.py
-
 import time
 import logging
 
@@ -13,7 +11,6 @@ from database_interactions import QueryVectorDB
 from utilities import format_citations, my_cprint, normalize_chat_text
 from constants import rag_string
 
-# DECLARE SIGNALS
 class LocalModelSignals(QObject):
     response_signal = Signal(str)  # 7.
     citations_signal = Signal(str)  # 8.
@@ -26,7 +23,7 @@ class LocalModelSignals(QObject):
 class LocalModelChat:
     def __init__(self):
         self.model_process = None
-        self.model_pipe = None  # create a pipe for interprocess communication
+        self.model_pipe = None
         self.current_model = None
         self.signals = LocalModelSignals()
 
@@ -34,12 +31,9 @@ class LocalModelChat:
         if self.current_model != model_name:
             if self.is_model_loaded():
                 self.terminate_current_process()
-            
-            # make the pipe bidirectional pipe with parent process and child process ends
+
             parent_conn, child_conn = Pipe()
-            # assign the parent process end of the pipe
             self.model_pipe = parent_conn
-            # assign the child process end to the "_local_model_process" method
             self.model_process = Process(target=self._local_model_process, args=(child_conn, model_name))
             self.model_process.start()
             self.current_model = model_name
@@ -86,7 +80,7 @@ class LocalModelChat:
             self.signals.error_signal.emit("Model not loaded. Please start a model first.")
             return
 
-        # Sends the information selected by a user in gui_tabs_database_query.py to the new child process
+        # sends the information selected by a user in gui_tabs_database_query.py to the new child process
         self.model_pipe.send(("question", (user_question, selected_model, selected_database)))
 
     def is_model_loaded(self):
@@ -102,7 +96,7 @@ class LocalModelChat:
     def _listen_for_response(self):
         """
         Listens every second for messages coming through the pipe from the child process. When a message is received, the
-        "message type" determines which signal is emitted.
+        message type determines which signal is emitted.
         """
         while True:
             if not self.model_pipe or not isinstance(self.model_pipe, PipeConnection):
@@ -181,7 +175,7 @@ class LocalModelChat:
                             conn.send(("error", error_message))
                             conn.send(("finished", None))
                             continue
-                        
+
                         augmented_query = f"{rag_string}\n\n---\n\n" + "\n\n---\n\n".join(contexts) + "\n\n-----\n\n" + user_question
                         # DEBUG
                         # print(augmented_query)
@@ -190,23 +184,19 @@ class LocalModelChat:
                         prepend_token_count = len(model_instance.tokenizer.encode(rag_string))
                         context_token_count = len(model_instance.tokenizer.encode("\n\n---\n\n".join(contexts)))
                         user_question_token_count = len(model_instance.tokenizer.encode(user_question))
-                        
+
                         full_response = ""
-                        # pipe to "_listen_for_response" in the parent process
                         for partial_response in module_chat.generate_response(model_instance, augmented_query):
                             full_response += partial_response
                             conn.send(("partial_response", partial_response))
 
                         response_token_count = len(model_instance.tokenizer.encode(full_response))
-                        # calculate available tokens
                         remaining_tokens = model_instance.max_length - (prepend_token_count + user_question_token_count + context_token_count + response_token_count)
-                        
-                        # construct string for qlabel in gui
                         total_tokens = prepend_token_count + context_token_count + user_question_token_count + response_token_count
 
-                        if model_name == "Marco-o1 - 7b":  # or however the model is identified in your CHAT_MODELS
+                        if model_name in ["Deepseek R1 - 7b", "Deepseek R1 - 14b", "Deepseek R1 - 32b", "QwQ - 32b"]:
                             token_count_string = (
-                                "<span style='color:#FF4136;'>(Token counts not accurate for Marco-o1 model due to thought process)</span><br>"
+                                "<span style='color:#FF4136;'>(Token counts not accurate.  Thinking process tokens not included.)</span><br>"
                                 f"<span style='color:#2ECC40;'>available tokens ({model_instance.max_length})</span>"
                                 f"<span style='color:#FF4136;'> - rag instruction ({prepend_token_count}) - query ({user_question_token_count})"
                                 f" - contexts ({context_token_count}) - response ({response_token_count})</span>"
@@ -220,16 +210,13 @@ class LocalModelChat:
                                 f"<span style='color:white;'> = {remaining_tokens} remaining tokens.</span>"
                             )
 
-                        # pipe to "_listen_for_response" in parent process
                         conn.send(("token_counts", token_count_string))
 
                         with open('chat_history.txt', 'w', encoding='utf-8') as f:
                             normalized_response = normalize_chat_text(full_response)
                             f.write(normalized_response)
                         citations = format_citations(metadata_list)
-                        # pipe to "_listen_for_response" in parent process
                         conn.send(("citations", citations))
-                        # pipe to "_listen_for_response" in parent process
                         conn.send(("finished", None))
                     elif message_type == "exit":
                         break
@@ -241,57 +228,8 @@ class LocalModelChat:
                     conn.send(("error", str(e)))
                     conn.send(("finished", None))
         finally:
-            # module_chat.cleanup_resources(model_instance, model_instance.tokenizer)
             conn.close()
             my_cprint("Local chat model removed from memory.", "red")
 
 def is_cuda_available():
     return torch.cuda.is_available()
-
-"""
-[Main Process]
-    |
-    |         DatabaseQueryTab (GUI)                 LocalModelChat
-    |         ---------------------                  --------------
-    |              |                                     |
-    |        [Submit Button]                             |
-    |              |                                     |
-    |         on_submit_button_clicked()                 |
-    |              |                                     |
-    |              |---> start_model_process() --------->|
-    |              |          Creates Pipe               |
-    |              |                                     |
-    |              |                           _local_model_process (Child Process)
-    |              |                                     |
-    |              |                            [Load Model Instance]
-    |              |                                     |
-    |              |---> start_chat() ------------------>|
-    |              |     (question, model, database)     |
-    |              |                                     |
-    |              |                    [QueryVectorDB Search]
-    |              |                                     |
-    |              |                    [Generate Response]
-    |                                                    |
-    |    Pipe Communication (Parent)        Pipe Communication (Child)
-    |    ------------------------           ------------------------
-    |         |                                        |
-    |    [_listen_for_response]                   Send Messages:
-    |         |                                   - ("partial_response", text)
-    |         |                                   - ("citations", text)
-    |         |                                   - ("error", text)
-    |         |                                   - ("finished", None)
-    |         |                                   - ("token_counts", text)
-    |         |                                        |
-    |    Signal Emissions:                             |
-    |    - response_signal                             |
-    |    - citations_signal                            |
-    |    - error_signal                                |
-    |    - finished_signal                             |
-    |    - token_count_signal                          |
-    |         |                                        |
-    |    [GUI Updates]                                 |
-    |    - update_response_local_model()               |
-    |    - display_citations_in_widget()               |
-    |    - show_error_message()                        |
-    |    - update_token_count_label()                  |
-"""

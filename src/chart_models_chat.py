@@ -9,44 +9,46 @@ def create_chat_models_comparison_plot():
     model_categories = {
         "coding": {
             "models": [
-                "Qwen Coder - 7b",
-                "Qwen Coder - 14b",
-                "Qwen Coder - 32b"
-            ],
-            "color": "#DAA520",
-            "label": "Coding Focused (8k context)"
-        },
-        "long_context": {
-            "models": [
-                # "Granite - 2b",
-                "Exaone - 2.4b",
-                "Granite - 8b",
-                "Exaone - 7.8b",
-                "Deepseek R1 - 7b",
-                "InternLM 3 - 8b",
-                "Deepseek R1 - 14b",
-                "Qwen - 14b",
-                "Mistral Small 3 - 24b",
-                "Qwen - 32b",
-                "Deepseek R1 - 32b",
-                "Exaone - 32b",
-                "QwQ - 32b",
-            ],
-            "color": "#2E8B57",
-            "label": "8k Context"
-        },
-        "coding_standard_context": {
-            "models": [
                 "Qwen Coder - 1.5b",
                 "Qwen Coder - 3b",
+                "Qwen Coder - 7b",
+                "Qwen Coder - 14b",
+                "Qwen Coder - 32b",
             ],
-            "color": "#4682B4",
-            "label": "Coding Focused (4k context)"
+            # "color": "#CC5500", # orange
+            # "color": "#8B0000", # red
+            # "color": "#4682B4", # light blue
+            "color": "#DAA520", # gold
+            "label": "Coding Focused"
+        },
+        "thinking": {
+            "models": [
+                "Exaone Deep - 2.4b",
+                "Deepseek R1 - 7b",
+                "Exaone Deep - 7.8b",
+                "Deepseek R1 - 14b",
+                "QwQ - 32b",
+                "Exaone Deep - 32b",
+                "Deepseek R1 - 32b",
+            ],
+            "color": "#CC5500", # orange
+            # "color": "#2E8B57", # green
+            "label": "Thinking"
+        },
+        "coding_and_thinking": {
+            "models": [
+                "Olympic Coder - 7b",
+                "Olympic Coder - 32b"
+            ],
+            "color": "#8B0000", # red
+            # "color": "#6A0DAD", # purple
+            # "color": "#4682B4", # light blue
+            "label": "Coding Focused and Thinking"
         }
     }
 
     df = pd.DataFrame([
-        {"model": model, "cps": data["cps"], "vram": data["vram"] / 1024}  # Convert MB to GB
+        {"model": model, "cps": data["cps"], "vram": data["vram"] / 1024}
         for model, data in CHAT_MODELS.items()
     ])
     df = df.sort_values(by="vram")
@@ -57,7 +59,7 @@ def create_chat_models_comparison_plot():
     fig.patch.set_facecolor('#2e2e2e')
     ax1.set_facecolor('#2e2e2e')
 
-    ax1.set_title("BitsAndBytes (4-bit); RTX 4090; num_beams=1; max context=4096", fontsize=16, color='white', pad=5)
+    ax1.set_title("BitsAndBytes (4-bit) - RTX 4090 - 4096 context limit", fontsize=14, color='white', pad=5)
 
     ax2 = ax1.twinx()
 

@@ -269,8 +269,34 @@ def create_directory_structure():
 
 create_directory_structure()
 
-# 9. manually add jeeves database to config.yaml
+# 9.
 def update_config_yaml():
+    """
+    Updates config.yaml with necessary configurations, but only if needed:
+
+    1. If 'created_databases' parent key doesn't exist, creates it
+    2. If 'user_manual' mapping doesn't exist under 'created_databases', adds it with:
+       - chunk_overlap: 549
+       - chunk_size: 1100
+       - model: path to the BAAI vector model
+
+    3. If 'openai' parent key doesn't exist, creates it
+    4. For each child key under 'openai', adds only if missing:
+       - api_key: empty string 
+       - model: 'gpt-4o-mini'
+       - reasoning_effort: 'medium'
+
+    5. If 'server' parent key doesn't exist, creates it
+    6. For each child key under 'server', adds only if missing:
+       - api_key: empty string
+       - connection_str: 'http://localhost:1234/v1'
+       - show_thinking: 'medium'
+
+    7. Removes any unauthorized child keys from the 'server' mapping,
+       keeping only 'api_key', 'connection_str', and 'show_thinking'
+
+    Existing values are preserved when already present in the configuration.
+    """
     import yaml
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, 'config.yaml')

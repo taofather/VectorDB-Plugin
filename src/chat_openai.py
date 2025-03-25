@@ -35,20 +35,31 @@ class ChatGPTChat:
     def connect_to_chatgpt(self, augmented_query):
         openai_config = self.config.get('openai', {})
         model = openai_config.get('model', 'gpt-4o-mini')
+        """
+        +-----------------+--------+---------+
+        |      Model      | Input  |  Output |
+        +-----------------+--------+---------+
+        | gpt-4.5-preview | $75.00 | $150.00 |
+        | gpt-4o          | $2.50  | $10.00  |
+        | gpt-4o-mini     | $0.15  | $0.60   |
+        | o1              | $15.00 | $60.00  |
+        | o3-mini         | $1.10  | $4.40   |
+        | o1-mini         | $1.10  | $4.40   |
+        +-----------------+--------+---------+
+        """
         reasoning_effort = openai_config.get('reasoning_effort', 'medium')
         api_key = openai_config.get('api_key')
-        
+
         if not api_key:
             raise ValueError("OpenAI API key not found in config.yaml.\n\n  Please set it within the 'File' menu.")
-        
+
         client = OpenAI(api_key=api_key)
-        
+
         messages = [
             {"role": "system", "content": system_message},
             {"role": "user", "content": augmented_query}
         ]
 
-        # base parameters
         completion_params = {
             "model": model,
             "messages": messages,
@@ -58,7 +69,7 @@ class ChatGPTChat:
 
         # only for thinking models
         # see here before implementing: https://platform.openai.com/docs/guides/reasoning
-        if model in ["o1", "o3-mini"]:
+        if model in ["o1", "o3-mini", "o1-mini"]:
             completion_params["reasoning_effort"] = reasoning_effort
 
         stream = client.chat.completions.create(**completion_params)
