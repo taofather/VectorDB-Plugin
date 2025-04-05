@@ -29,6 +29,7 @@ class ModelSelectionDialog(QDialog):
         self.checkboxes = {}
         for model_name, info in models.items():
             checkbox = QCheckBox(f"{model_name} (VRAM: {info['vram']})")
+            checkbox.setChecked(True)
             self.checkboxes[model_name] = checkbox
             layout.addWidget(checkbox)
         
