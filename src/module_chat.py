@@ -8,7 +8,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStream
 import threading
 from abc import ABC, abstractmethod
 
-from constants import CHAT_MODELS, system_message, MODEL_MAX_TOKENS, MODEL_MAX_NEW_TOKENS
+from constants import CHAT_MODELS, system_message
 from utilities import my_cprint, has_bfloat16_support
 
 # logging.getLogger("transformers").setLevel(logging.WARNING) # adjust to see deprecation and other non-fatal errors
@@ -20,10 +20,14 @@ def get_model_settings(base_settings, attn_implementation):
     return settings
     
 def get_max_length(model_name):
-    return MODEL_MAX_TOKENS.get(model_name, 8192)
+    if model_name in CHAT_MODELS:
+        return CHAT_MODELS[model_name].get('max_tokens', 8192)
+    return 8192
 
 def get_max_new_tokens(model_name):
-    return MODEL_MAX_NEW_TOKENS.get(model_name, 1024)
+    if model_name in CHAT_MODELS:
+        return CHAT_MODELS[model_name].get('max_new_tokens', 1024)
+    return 1024
 
 def get_generation_settings(max_length, max_new_tokens):
     return {
