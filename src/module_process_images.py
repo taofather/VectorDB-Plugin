@@ -14,7 +14,7 @@ from tqdm import tqdm
 from transformers import (
     AutoModelForCausalLM, AutoModel, AutoTokenizer, AutoProcessor, BlipForConditionalGeneration, BlipProcessor,
     LlamaTokenizer, LlavaForConditionalGeneration, LlavaNextForConditionalGeneration, LlavaNextProcessor, BitsAndBytesConfig,
-    Qwen2_5_VLForConditionalGeneration, Qwen2_5_VLConfig, GenerationConfig, AutoConfig
+    Qwen2_5_VLForConditionalGeneration, Qwen2_5_VLConfig, GenerationConfig, AutoConfig, AutoModelForVision2Seq
 )
 
 from langchain_community.docstore.document import Document
