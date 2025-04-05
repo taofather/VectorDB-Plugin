@@ -525,7 +525,7 @@ CHAT_MODELS = {
     'Olympic Coder - 32b': {
         'model': 'Olympic Coder - 32b',
         'repo_id': 'open-r1/OlympicCoder-32B',
-        'cache_dir': 'open-r1/OlympicCoder-32B',
+        'cache_dir': 'open-r1--OlympicCoder-32B',
         'cps': 105.36,
         'vram': 19743.93,
         'function': 'OlympicCoder',
@@ -536,7 +536,7 @@ CHAT_MODELS = {
     'Deepseek R1 - 32b': {
         'model': 'Deepseek R1 - 32b',
         'repo_id': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
-        'cache_dir': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
+        'cache_dir': 'deepseek-ai--DeepSeek-R1-Distill-Qwen-32B',
         'cps': 113.13,
         'vram': 19819.43,
         'function': 'DeepseekR1',

@@ -98,7 +98,7 @@ class BaseModel(ABC):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         script_dir = Path(__file__).resolve().parent
-        cache_dir = script_dir / "Models" / "chat" / model_info['cache_dir']
+        cache_dir = script_dir / "Models" / "chat" / self.model_info['cache_dir']
 
         # rewrite bfloat dictionary to float16 if bfloat16 not supported
         if self.device == "cuda" and not has_bfloat16_support():
