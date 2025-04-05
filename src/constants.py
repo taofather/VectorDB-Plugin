@@ -1795,12 +1795,8 @@ scrape_documentation = {
         "URL": "https://numpy.org/doc/1.26/",
         "folder": "numpy_126"
     },
-    "NumPy 2.2": {
-        "URL": "https://numpy.org/doc/stable/",
-        "folder": "numpy"
-    },
     "NumPy (latest stable)": {
-        "URL": "https://numpy.org/doc/stable/index.html",
+        "URL": "https://numpy.org/doc/stable/",
         "folder": "numpy"
     },
     "ocrmypdf": {
