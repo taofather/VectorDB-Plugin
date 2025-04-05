@@ -265,6 +265,7 @@ class ExaoneDeep(BaseModel):
             'temperature': 0.6,
             'top_p': 0.95,
             'use_cache': True,
+            # 'repetition_penalty': 1.15, # infrequently works with 2.4b model
             'num_beams': 1
         }
 
@@ -272,15 +273,14 @@ class ExaoneDeep(BaseModel):
         settings['tokenizer_settings']['trust_remote_code'] = True
         settings['model_settings']['trust_remote_code'] = True
 
-        super().__init__(model_info, settings, generation_settings)
-        
+        super().__init__(model_info, settings, custom_generation_settings)
+
     def create_prompt(self, augmented_query):
-        return f"""[|system|]{system_message}[|endofturn|]
-[|user|]{augmented_query}
+        return f"""[|user|]{system_message} {augmented_query}
 [|assistant|]"""
 
     def generate_response(self, inputs):
-        SHOW_THINKING = False
+        SHOW_THINKING = True
         streamer = TextIteratorStreamer(
             self.tokenizer, 
             skip_prompt=True, 
@@ -309,9 +309,9 @@ class ExaoneDeep(BaseModel):
 
             for partial_response in streamer:
                 buffer += partial_response
-                if not thinking_complete and '</thought>' in buffer:
+                if not thinking_complete and '</thought>\n' in buffer:
                     thinking_complete = True
-                    start_idx = buffer.rfind('</thought>') + len('</thought>')
+                    start_idx = buffer.rfind('</thought>\n') + len('</thought>\n')
                     yield buffer[start_idx:].strip()
                     buffer = ""
                 elif thinking_complete:
@@ -433,8 +433,10 @@ class OlympicCoder(BaseModel):
             'max_length': generation_settings['max_length'],
             'max_new_tokens': generation_settings['max_new_tokens'],
             'do_sample': True,
-            'temperature': 0.6,
-            'top_p': 0.95,
+            'temperature': 0.7,
+            'top_p': 0.8,
+            'top_k': 20,
+            'repetition_penalty': 1.1,
             'use_cache': True,
             'num_beams': 1
         }
@@ -449,11 +451,9 @@ class OlympicCoder(BaseModel):
 <|im_start|>user
 {augmented_query}<|im_end|>
 <|im_start|>assistant
-<think>
 """
 
     def generate_response(self, inputs):
-        SHOW_THINKING = False
         streamer = TextIteratorStreamer(
             self.tokenizer, 
             skip_prompt=True, 
@@ -464,30 +464,17 @@ class OlympicCoder(BaseModel):
             **inputs, 
             **self.generation_settings,
             'streamer': streamer, 
-            'pad_token_id': self.tokenizer.eos_token_id
         }
 
         generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
         generation_thread.start()
 
-        if SHOW_THINKING:
-            # stream everything
-            for partial_response in streamer:
-                yield partial_response
-        else:
-            # only stream after </think> tag
-            buffer = ""
-            thinking_complete = False
+        full_response = ""  # Accumulate the entire response here
 
-            for partial_response in streamer:
-                buffer += partial_response
-                if not thinking_complete and '</think>' in buffer:
-                    thinking_complete = True
-                    start_idx = buffer.rfind('</think>') + len('</think>')
-                    yield buffer[start_idx:].strip()
-                    buffer = ""
-                elif thinking_complete:
-                    yield partial_response
+        # Always stream everything
+        for partial_response in streamer:
+            full_response += partial_response  # Accumulate the partial response
+            yield partial_response
 
         generation_thread.join()
 
