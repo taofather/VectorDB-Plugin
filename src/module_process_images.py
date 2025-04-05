@@ -13,8 +13,8 @@ from tqdm import tqdm
 
 from transformers import (
     AutoModelForCausalLM, AutoModel, AutoTokenizer, AutoProcessor, BlipForConditionalGeneration, BlipProcessor,
-    LlamaTokenizer, LlavaForConditionalGeneration, LlavaNextForConditionalGeneration, LlavaNextProcessor, BitsAndBytesConfig,
-    Qwen2_5_VLForConditionalGeneration, Qwen2_5_VLConfig, GenerationConfig, AutoConfig, AutoModelForVision2Seq
+    LlamaTokenizer, LlavaForConditionalGeneration, BitsAndBytesConfig, Qwen2_5_VLForConditionalGeneration,
+    Qwen2_5_VLConfig, GenerationConfig, AutoConfig, AutoModelForVision2Seq
 )
 
 from langchain_community.docstore.document import Document
@@ -67,8 +67,6 @@ def choose_image_loader():
         loader_func = loader_minicpm_V_2_6(config).process_images
     elif chosen_model == 'Granite Vision - 2b':
         loader_func = loader_granite(config).process_images
-    elif chosen_model in ['Llava 1.6 Vicuna - 13b']:
-        loader_func = loader_llava_next(config).process_images
     elif chosen_model == 'THUDM glm4v - 9b':
         loader_func = loader_glmv4(config).process_images
     elif chosen_model == 'Molmo-D-0924 - 8b':
@@ -151,70 +149,6 @@ class BaseLoader:
 
     def process_single_image(self, raw_image):
         raise NotImplementedError("Subclasses must implement.")
-
-
-class loader_llava_next(BaseLoader):
-    def initialize_model_and_tokenizer(self):
-        from transformers.image_utils import PILImageResampling
-        chosen_model = self.config['vision']['chosen_model']
-
-        model_info = VISION_MODELS[chosen_model]
-        model_id = model_info['repo_id']
-        save_dir = model_info["cache_dir"]
-        cache_dir = CACHE_DIR / save_dir
-        cache_dir.mkdir(parents=True, exist_ok=True)
-
-        quantization_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.float16,
-        )
-
-        model = LlavaNextForConditionalGeneration.from_pretrained(
-            model_id,
-            quantization_config=quantization_config,
-            torch_dtype=torch.float16,
-            low_cpu_mem_usage=True,
-            cache_dir=cache_dir
-        )
-        model.eval()
-
-        my_cprint(f"{chosen_model} vision model loaded into memory...", "green")
-
-        processor = LlavaNextProcessor.from_pretrained(
-            model_id, 
-            cache_dir=cache_dir,
-            images_kwargs={
-                "size": {"shortest_edge": 672},  # must be multiple of 336
-                "image_grid_pinpoints": [
-                    [672, 672],
-                    [336, 1344],
-                    [1344, 336],
-                    [672, 336],
-                    [336, 672]
-                ],
-                "resample": PILImageResampling.LANCZOS,
-                "do_pad": True
-            }
-        )
-
-        return model, None, processor
-
-    @ torch.inference_mode()
-    def process_single_image(self, raw_image):
-        user_prompt = "Explain everything you see in this picture but your response should be no more than one paragraph, but the paragraph can be as long as you want."
-        prompt = f"USER: <image>\n{user_prompt} ASSISTANT:"
-        inputs = self.processor(text=prompt, images=raw_image, return_tensors="pt")
-        inputs["pixel_values"] = inputs["pixel_values"].to(dtype=torch.float16)
-        inputs = inputs.to(self.device)
-
-        output = self.model.generate(**inputs, max_new_tokens=1024, do_sample=False)
-
-        response = self.processor.decode(output[0], skip_special_tokens=True)
-        model_response = response.split("ASSISTANT:")[-1].strip()
-        model_response = ' '.join(line.strip() for line in model_response.split('\n') if line.strip())
-
-        return model_response
 
 
 class loader_florence2(BaseLoader):
