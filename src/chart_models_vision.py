@@ -22,7 +22,6 @@ def create_vision_models_comparison_plot():
         {"model": "Florence2-Base - 223m", "cps": 970.53, "memory": 2625.93},
         {"model": "THUDM glm4v - 9b", "cps": 200.96, "memory": 9802.12},
         {"model": "Molmo-D-0924 - 8b", "cps": 194.65, "memory": 7693.93},
-        {"model": "llava-v1.6-vicuna - 13b", "cps": 120.98, "memory": 11173.46},
         {"model": "Qwen VL - 3b", "cps": 178.31, "memory": 6306.30},
         {"model": "Qwen VL - 7b", "cps": 173.67, "memory": 9559.89},
         {"model": "Granite Vision - 2b", "cps": 217.64, "memory": 4094.18},
