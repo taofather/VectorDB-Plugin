@@ -1490,8 +1490,8 @@ TOOLTIPS = {
 
 scrape_documentation = {
     "Accelerate 1.5.2": {
-        "URL": "https://huggingface.co/docs/accelerate/v1.5.2/en",
-        "folder": "accelerate_140",
+        "URL": "https://huggingface.co/docs/accelerate/v1.6.0/en",
+        "folder": "accelerate_160",
         "scraper_class": "HuggingfaceScraper"
     },
     "aiohappyeyeballs": {
@@ -1538,8 +1538,8 @@ scrape_documentation = {
         "folder": "beautiful_soup_4"
     },
     "bitsandbytes 0.45.2": {
-        "URL": "https://huggingface.co/docs/bitsandbytes/v0.45.2/en/index",
-        "folder": "bitsandbytes_0452",
+        "URL": "https://huggingface.co/docs/bitsandbytes/v0.45.4/en/index",
+        "folder": "bitsandbytes_0454",
         "scraper_class": "HuggingfaceScraper"
     },
     "Black": {
@@ -1598,8 +1598,8 @@ scrape_documentation = {
         # "scraper_class": "HuggingfaceScraper"
     },
     "datasets 3.4.1": {
-        "URL": "https://huggingface.co/docs/datasets/v3.4.1/en/index",
-        "folder": "datasets_0341",
+        "URL": "https://huggingface.co/docs/datasets/v3.5.0/en/index",
+        "folder": "datasets_0350",
         "scraper_class": "HuggingfaceScraper"
     },
     "deepdiff 8.4.2": {
@@ -1666,8 +1666,8 @@ scrape_documentation = {
         # "scraper_class": "HuggingfaceScraper"
     },
     "Huggingface Hub 0.29.3": {
-        "URL": "https://huggingface.co/docs/huggingface_hub/v0.29.3/en/",
-        "folder": "huggingface_hub_0293",
+        "URL": "https://huggingface.co/docs/huggingface_hub/v0.30.1/en/",
+        "folder": "huggingface_hub_0301",
         "scraper_class": "HuggingfaceScraper"
     },
     "humanfriendly": {
@@ -1794,6 +1794,10 @@ scrape_documentation = {
     "NumPy 1.26": {
         "URL": "https://numpy.org/doc/1.26/",
         "folder": "numpy_126"
+    },
+    "NumPy 2.2": {
+        "URL": "https://numpy.org/doc/stable/",
+        "folder": "numpy"
     },
     "NumPy (latest stable)": {
         "URL": "https://numpy.org/doc/stable/index.html",
@@ -2113,11 +2117,11 @@ scrape_documentation = {
         "folder": "tqdm"
     },
     "Transformers 4.49.0": {
-        "URL": "https://huggingface.co/docs/transformers/v4.49.0/en",
-        "folder": "transformers_4490",
+        "URL": "https://huggingface.co/docs/transformers/v4.50.0/en",
+        "folder": "transformers_4500",
         "scraper_class": "HuggingfaceScraper"
     },
-    "Transformers.js 3.0.0": {
+    "Transformers.js 3.x": {
         "URL": "https://huggingface.co/docs/transformers.js/v3.0.0/en/",
         "folder": "transformers_js_300",
         "scraper_class": "HuggingfaceScraper"
