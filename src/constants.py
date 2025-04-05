@@ -52,12 +52,12 @@ priority_libs = {
 }
 
 libs = [
-    "accelerate==1.5.2",
+    "accelerate==1.6.0",
     "aiofiles==24.1.0",
     "aiohappyeyeballs==2.6.1",
-    "aiohttp==3.11.14", # langchain libraries require <4
+    "aiohttp==3.11.16", # langchain libraries require <4
     "aiosignal==1.3.2", # only required by aiohttp
-    "anndata==0.11.3",
+    "anndata==0.11.4",
     "annotated-types==0.7.0",
     "anyio==4.9.0",
     "array_api_compat==1.11.2", # only anndata requires
@@ -66,7 +66,7 @@ libs = [
     "av==14.2.0",
     "backoff==2.2.1",
     "beautifulsoup4==4.13.3",
-    "bitsandbytes==0.45.3",
+    "bitsandbytes==0.45.4",
     "braceexpand==0.1.7",
     "certifi==2025.1.31",
     "cffi==1.17.1",
@@ -82,11 +82,11 @@ libs = [
     "ctranslate2==4.5.0",
     "cycler==0.12.1",
     "dataclasses-json==0.6.7",
-    "datasets==3.4.1",
+    "datasets==3.5.0",
     "deepdiff==8.4.2", # required by unstructured
     "Deprecated==1.2.18", # only needed by pikepdf
     "deprecation==2.1.0", # only needed by ocrmypdf
-    "dill==0.3.8", # datasets 3.2.0 requires <0.3.9; multiprocess 0.70.16 requires >=0.3.8
+    "dill==0.3.8", # datasets 3.5.0 requires <0.3.9; multiprocess 0.70.16 requires >=0.3.8
     "distro==1.9.0",
     "docx2txt==0.9",
     "einops==0.8.1",
@@ -99,10 +99,10 @@ libs = [
     "fastprogress==1.0.3", # only required by whisperspeech
     "filetype==1.2.0",
     "filelock==3.18.0",
-    "fonttools==4.56.0", # only required by matplotlib
+    "fonttools==4.57.0", # only required by matplotlib
     "frozendict==2.4.6",
     "frozenlist==1.5.0",
-    "fsspec==2024.12.0", # datasets 3.2.0 requires <=2024.12.0
+    "fsspec==2024.12.0", # datasets 3.5.0 requires <=2024.12.0
     "greenlet==3.1.1",
     "gTTS==2.5.4",
     "h11==0.14.0",
@@ -111,7 +111,7 @@ libs = [
     "httpcore==1.0.7",
     "httpx==0.28.1",
     "httpx-sse==0.4.0",
-    "huggingface-hub==0.29.3", # tokenizers 0.20.3 requires >=0.16.4,<1.0
+    "huggingface-hub==0.30.1", # tokenizers 0.21.1 requires >=0.16.4,<1.0
     "humanfriendly==10.0",
     "HyperPyYAML==1.2.2",
     "idna==3.10",
@@ -124,13 +124,13 @@ libs = [
     "jsonpath-python==1.0.6",
     "jsonpointer==3.0.0",
     "kiwisolver==1.4.8",
-    "langchain==0.3.21",
-    "langchain-community==0.3.20",
-    "langchain-core==0.3.48",
+    "langchain==0.3.23",
+    "langchain-community==0.3.21",
+    "langchain-core==0.3.51",
     "langchain-huggingface==0.1.2",
-    "langchain-text-splitters==0.3.7",
+    "langchain-text-splitters==0.3.8",
     "langdetect==1.0.9",
-    "langsmith==0.3.18",
+    "langsmith==0.3.24",
     "llvmlite==0.44.0", # only required by numba
     "lxml==5.3.1",
     "Markdown==3.7",
@@ -142,18 +142,24 @@ libs = [
     "more-itertools==10.6.0",
     "mpmath==1.3.0", # sympy 1.13.1 requires less than 1.4
     "msg-parser==1.2.0",
-    "multidict==6.2.0",
-    "multiprocess==0.70.16", # datasets 3.2.0 requires <0.70.17
+    "multidict==6.3.2",
+    "multiprocess==0.70.16", # datasets 3.5.0 requires <0.70.17
     "mypy-extensions==1.0.0",
     "natsort==8.4.0",
     "nest-asyncio==1.6.0",
     "networkx==3.4.2",
     "nltk==3.9.1", # not higher; gives unexplained error
-    "numba==0.61.0", # only required by openai-whisper
-    "numpy==1.26.4", # langchain libraries <2; numba <2.1; scipy <2.3; chattts <2.0.0
+    "numba==0.61.0", # only required by openai-whisper and chattts
+    # langchain 0.3.23 requires <3,>=1.26.4
+    # langchain-community 0.3.21 requires >=1.26.2,<3
+    # langchain-core 0.3.51 requires numpy >=1.24.0, <2.0.0 if python is less than 3.12 and <3,>=1.26.0 if 3.12+
+    # numba 0.61.0 requires >=1.24,<2.2
+    # scipy 1.15.2 requires >=1.23.5,<2.5
+    # chattts 0.2.3 says it requires <2.0.0 but Claude cays 2+ is compatible
+    "numpy==1.26.4",
     "ocrmypdf==16.10.0",
     "olefile==0.47",
-    "openai==1.68.2", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
+    "openai==1.70.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
     "optimum==1.24.0",
@@ -162,22 +168,22 @@ libs = [
     "orjson==3.10.16",
     "packaging==24.2",
     "pandas==2.2.3",
-    "pdfminer.six==20250324", # only needed by ocrmypdf
-    "pikepdf==9.5.2", # only needed by ocrmypdf
+    "pdfminer.six==20250327", # only needed by ocrmypdf
+    "pikepdf==9.6.0", # only needed by ocrmypdf
     "pillow==11.1.0",
     "pi-heif==0.22.0", # only needed by ocrmypdf, but not for my usage of ocrmypdf
     "pipdeptree",
     "platformdirs==4.3.7",
     "pluggy==1.5.0", # only needed by ocrmypdf
-    "propcache==0.3.0",
-    "protobuf==6.30.1",
+    "propcache==0.3.1",
+    "protobuf==6.30.2",
     "psutil==7.0.0",
     "pyarrow==19.0.1",
     "pybase16384==0.3.8", # only required by chattts
     "pycparser==2.22",
-    "pydantic==2.10.6",
-    "pydantic_core==2.27.2", # pydantic 2.10.6 requires pydantic_core==2.27.2
-    "pydantic-settings==2.7.1",
+    "pydantic==2.11.2",
+    "pydantic_core==2.33.1", # pydantic 2.11.2 requires pydantic_core==2.33.1
+    "pydantic-settings==2.8.1",
     "Pygments==2.19.1",
     "PyOpenGL==3.1.9",
     "PyOpenGL-accelerate==3.1.9",
@@ -191,19 +197,19 @@ libs = [
     "python-iso639==2025.2.18",
     "python-magic==0.4.27",
     "python-oxmsg==0.0.2", # only required by unstructured library
-    "pytz==2025.1",
+    "pytz==2025.2",
     "PyYAML==6.0.2",
-    "rapidfuzz==3.12.2",
+    "rapidfuzz==3.13.0",
     "regex==2024.11.6",
     "requests==2.32.3",
     "requests-toolbelt==1.0.0",
-    "rich==13.9.4",
+    "rich==14.0.0",
     "ruamel.yaml==0.18.10",
     "ruamel.yaml.clib==0.2.12",
     "safetensors==0.5.3",
     "scikit-learn==1.6.1",
     "scipy==1.15.2",
-    "sentence-transformers==3.4.1",
+    "sentence-transformers==4.0.2",
     "sentencepiece==0.2.0",
     "six==1.17.0",
     "sniffio==1.3.1",
@@ -211,30 +217,30 @@ libs = [
     "soundfile==0.13.1",
     "soupsieve==2.6",
     "speechbrain==0.5.16",
-    "SQLAlchemy==2.0.39", # langchain and langchain-community require less than 3.0.0
+    "SQLAlchemy==2.0.40", # langchain and langchain-community require less than 3.0.0
     "sseclient-py==1.8.0", # only required by Kobold
     "sympy==1.13.1", # torch 2.6.0 requires sympy==1.13.1
     "tabulate==0.9.0",
-    "tblib==3.0.0", # only tiledb-cloud requires
-    "tenacity==9.0.0",
-    "termcolor==2.5.0",
+    "tblib==3.1.0", # only tiledb-cloud requires
+    "tenacity==9.1.2",
+    "termcolor==3.0.1",
     "tessdata==1.0.0",
     "tessdata.eng==1.0.0",
     "threadpoolctl==3.6.0",
     "tiktoken==0.9.0",
     "tiledb==0.33.6",
     "tiledb-cloud==0.13.0",
-    "tiledb-vector-search==0.11.0",
+    "tiledb-vector-search==0.12.0",
     "timm==1.0.15",
     "tokenizers==0.21.1",
     "tqdm==4.67.1",
-    "transformers==4.50.0",
+    "transformers==4.50.3",
     "typing-inspect==0.9.0",
-    "typing_extensions==4.12.2",
-    "unstructured-client==0.31.3",
+    "typing_extensions==4.13.1",
+    "unstructured-client==0.32.1",
     "tzdata==2025.2",
     "urllib3==2.3.0", # requests 2.32.3 requires <3
-    "vector-quantize-pytorch==1.22.3",
+    "vector-quantize-pytorch==1.22.10",
     "vocos==0.1.0",
     "watchdog==6.0.0",
     "webdataset==0.2.111", # required by all TTS libraries
@@ -248,8 +254,8 @@ libs = [
 ]
 
 full_install_libs = [
-    "PySide6==6.8.2.1",
-    "pymupdf==1.25.4",
+    "PySide6==6.9.0",
+    "pymupdf==1.25.5",
     "unstructured==0.17.2"
 ]
 
