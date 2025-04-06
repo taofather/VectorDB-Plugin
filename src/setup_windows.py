@@ -269,11 +269,9 @@ def create_directory_structure():
 
 create_directory_structure()
 
-# 9.
+# 9. Update config.yaml with necessary configurations, but only if needed
 def update_config_yaml():
     """
-    Updates config.yaml with necessary configurations, but only if needed:
-
     1. If 'created_databases' parent key doesn't exist, creates it
     2. If 'user_manual' mapping doesn't exist under 'created_databases', adds it with:
        - chunk_overlap: 549

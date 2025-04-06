@@ -95,7 +95,7 @@ libs = [
     "encodec==0.1.1",
     "et-xmlfile==2.0.0", # openpyxl requires; caution...openpyxl 3.1.5 (6/28/2024) predates et-xmlfile 2.0.0 (10/25/2024)
     "eval-type-backport==0.2.2", # only required by unstructured
-    "fastcore==1.8.0", # only required by whisperspeech
+    "fastcore==1.8.1", # only required by whisperspeech
     "fastprogress==1.0.3", # only required by whisperspeech
     "filetype==1.2.0",
     "filelock==3.18.0",
@@ -132,7 +132,7 @@ libs = [
     "langdetect==1.0.9",
     "langsmith==0.3.24",
     "llvmlite==0.44.0", # only required by numba
-    "lxml==5.3.1",
+    "lxml==5.3.2",
     "Markdown==3.7",
     "markdown-it-py==3.0.0",
     "MarkupSafe==3.0.2",
@@ -234,7 +234,7 @@ libs = [
     "timm==1.0.15",
     "tokenizers==0.21.1",
     "tqdm==4.67.1",
-    "transformers==4.50.3",
+    "transformers==4.51.0",
     "typing-inspect==0.9.0",
     "typing_extensions==4.13.1",
     "unstructured-client==0.32.1",
@@ -296,18 +296,18 @@ CHAT_MODELS = {
         'max_tokens': 4096,
         'max_new_tokens': 2048,
     },
-    'Zephyr - 1.6b': {
-        'model': 'Zephyr - 1.6b',
-        'repo_id': 'stabilityai/stablelm-2-zephyr-1_6b',
-        'cache_dir': 'stabilityai--stablelm-2-zephyr-1_6b',
-        'cps': 330.36,
-        'vram': 2147.93,
-        'function': 'Zephyr',
-        'precision': 'float16',
-        'gated': False,
-        'max_tokens': 4096,
-        'max_new_tokens': 512,
-    },
+    # 'Zephyr - 1.6b': {
+        # 'model': 'Zephyr - 1.6b',
+        # 'repo_id': 'stabilityai/stablelm-2-zephyr-1_6b',
+        # 'cache_dir': 'stabilityai--stablelm-2-zephyr-1_6b',
+        # 'cps': 330.36,
+        # 'vram': 2147.93,
+        # 'function': 'Zephyr',
+        # 'precision': 'float16',
+        # 'gated': False,
+        # 'max_tokens': 4096,
+        # 'max_new_tokens': 512,
+    # },
     'Granite - 2b': {
         'model': 'Granite - 2b',
         'repo_id': 'ibm-granite/granite-3.2-2b-instruct',
@@ -354,17 +354,17 @@ CHAT_MODELS = {
         # 'max_tokens': 4096,
         # 'max_new_tokens': 2048,
     # },
-    'Zephyr - 3b': {
-        'model': 'Zephyr - 3b',
-        'repo_id': 'stabilityai/stablelm-zephyr-3b',
-        'cache_dir': 'stabilityai--stablelm-zephyr-3b',
-        'cps': 283.48,
-        'vram': 2811.18,
-        'function': 'Zephyr',
-        'precision': 'bfloat16',
-        'gated': False,
-        'max_tokens': 4096,
-    },
+    # 'Zephyr - 3b': {
+        # 'model': 'Zephyr - 3b',
+        # 'repo_id': 'stabilityai/stablelm-zephyr-3b',
+        # 'cache_dir': 'stabilityai--stablelm-zephyr-3b',
+        # 'cps': 283.48,
+        # 'vram': 2811.18,
+        # 'function': 'Zephyr',
+        # 'precision': 'bfloat16',
+        # 'gated': False,
+        # 'max_tokens': 4096,
+    # },
     'Granite - 8b': {
         'model': 'Granite - 8b',
         'repo_id': 'ibm-granite/granite-3.2-8b-instruct',
@@ -2061,9 +2061,9 @@ scrape_documentation = {
         "URL": "https://tqdm.github.io",
         "folder": "tqdm"
     },
-    "Transformers 4.49.0": {
-        "URL": "https://huggingface.co/docs/transformers/v4.50.0/en",
-        "folder": "transformers_4500",
+    "Transformers 4.51": {
+        "URL": "https://huggingface.co/docs/transformers/v4.51.0/en",
+        "folder": "transformers_4510",
         "scraper_class": "HuggingfaceScraper"
     },
     "Transformers.js 3.x": {

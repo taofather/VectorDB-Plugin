@@ -23,13 +23,14 @@ def create_chat_models_comparison_plot():
         },
         "thinking": {
             "models": [
-                "Exaone Deep - 2.4b",
+                "Deepseek R1 - 1.5b",
                 "Deepseek R1 - 7b",
                 "Exaone Deep - 7.8b",
                 "Deepseek R1 - 14b",
                 "QwQ - 32b",
                 "Exaone Deep - 32b",
                 "Deepseek R1 - 32b",
+                "Reka Flash - 21b",
             ],
             "color": "#CC5500", # orange
             # "color": "#2E8B57", # green

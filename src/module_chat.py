@@ -117,7 +117,7 @@ class BaseModel(ABC):
         if tokenizer_kwargs:
             tokenizer_settings.update(tokenizer_kwargs)
         if hf_token:
-            tokenizer_settings['use_auth_token'] = hf_token
+            tokenizer_settings['token'] = hf_token
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_info['repo_id'], **tokenizer_settings)
 
@@ -139,7 +139,7 @@ class BaseModel(ABC):
             model_settings['device_map'] = "cpu"
 
         if hf_token:
-            model_settings['use_auth_token'] = hf_token
+            model_settings['token'] = hf_token
 
         self.model = AutoModelForCausalLM.from_pretrained(model_info['repo_id'], **model_settings)
         self.model.eval()
