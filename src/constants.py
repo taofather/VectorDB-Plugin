@@ -712,63 +712,6 @@ VECTOR_MODELS = {
             'precision': 'float32'
         },
     ],
-    'sentence-transformers': [
-        {
-            'name': 'static-retrieval-mrl-en-v1',
-            'dimensions': 1024,
-            'max_sequence': 8192,
-            'size_mb': 125,
-            'repo_id': 'sentence-transformers/static-retrieval-mrl-en-v1',
-            'cache_dir': 'sentence-transformers--static-retrieval-mrl-en-v1',
-            'type': 'vector',
-            'parameters': '110m',
-            'precision': 'float32'
-        },
-        {
-            'name': 'sentence-t5-base',
-            'dimensions': 768,
-            'max_sequence': 256,
-            'size_mb': 219,
-            'repo_id': 'sentence-transformers/sentence-t5-base',
-            'cache_dir': 'sentence-transformers--sentence-t5-base',
-            'type': 'vector',
-            'parameters': '110m',
-            'precision': 'float16'
-        },
-        {
-            'name': 'sentence-t5-large',
-            'dimensions': 768,
-            'max_sequence': 256,
-            'size_mb': 670,
-            'repo_id': 'sentence-transformers/sentence-t5-large',
-            'cache_dir': 'sentence-transformers--sentence-t5-large',
-            'type': 'vector',
-            'parameters': '335m',
-            'precision': 'float16'
-        },
-        {
-            'name': 'sentence-t5-xl',
-            'dimensions': 768,
-            'max_sequence': 256,
-            'size_mb': 2480,
-            'repo_id': 'sentence-transformers/sentence-t5-xl',
-            'cache_dir': 'sentence-transformers--sentence-t5-xl',
-            'type': 'vector',
-            'parameters': '1240m',
-            'precision': 'float16'
-        },
-        {
-            'name': 'sentence-t5-xxl',
-            'dimensions': 768,
-            'max_sequence': 256,
-            'size_mb': 9230,
-            'repo_id': 'sentence-transformers/sentence-t5-xxl',
-            'cache_dir': 'sentence-transformers--sentence-t5-xxl',
-            'type': 'vector',
-            'parameters': '4860m',
-            'precision': 'float16'
-        },
-    ],
     'Snowflake': [
         {
             'name': 'arctic-embed-m-v2.0',
@@ -1486,8 +1429,8 @@ scrape_documentation = {
         "URL": "https://www.crummy.com/software/BeautifulSoup/bs4/doc/",
         "folder": "beautiful_soup_4"
     },
-    "bitsandbytes 0.45.2": {
-        "URL": "https://huggingface.co/docs/bitsandbytes/v0.45.4/en/index",
+    "bitsandbytes 0.45.4": {
+        "URL": "https://huggingface.co/docs/bitsandbytes/v0.45.4/en/",
         "folder": "bitsandbytes_0454",
         "scraper_class": "HuggingfaceScraper"
     },
@@ -2911,7 +2854,6 @@ master_questions = [
     "What happens if I exceed the context limit or maximum sequence length and how does the chunk size and overlap setting relate?",
     "How many context should I retrieve when querying the vector database?",
     "What does the chunks only checkbox do?",
-    "What are embedding or vector models?",
     "Which embedding or vector model should I choose?",
     "What are the characteristics of vector or embedding models?",
     "What does precision mean regarding embedding models specifically?",
@@ -2925,14 +2867,9 @@ master_questions = [
     "How can I transcribe an audio file to be put into the vector database?",
     "What is a good batch size to use when transcribing an audio file in this program?",
     "What are the distil variants of the whisper models when transcribing and audio file?",
-    "What whisper model should I choose to transcribe a file?",
     "What are floating point formats, precision, and quantization?",
-    "What are the common floating point formats?",
-    "What does float16 mean?",
-    "What is the bfloat16 floating point format?",
     "What is the float16 floating point format?",
-    "What does exponent mean in floating point formats?",
-    "What are precision and range in floating point formats?",
+    "What is the bfloat16 floating point format?",
     "What is the difference between float32, bfloat16 and float16?",
     "What is quantization?",
     "What settings are available in this program and how can I adjust them?",
@@ -2996,7 +2933,6 @@ master_questions = [
     "What is the Ovis 2 vision model?",
     "What is the GLM4v vision model?",
     "What is the Molmo-D-0924 vision model?",
-    "What is the Llava 1.6 vision model?",
     "What is the Granite Vision model?",
     "What are the Qwen2.5-VL vision models?",
     "Do you have any tips for choosing a vision model?",

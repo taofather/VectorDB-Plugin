@@ -22,12 +22,9 @@ class VectorModelsTab(QWidget):
        self.model_radiobuttons.setExclusive(True)
        self.stretch_factors = {
            'BAAI': 4,
-           # 'hkunlp': 2,
-           'sentence-transformers': 6,
            'NovaSearch': 3,
            'intfloat': 4,
            'Alibaba-NLP': 4,
-           # 'Answerdotai': 3,
            'IBM': 3,
            'Snowflake': 3,
        }
@@ -40,8 +37,8 @@ class VectorModelsTab(QWidget):
 
        existing_vector_directories = {d.name for d in vector_models_dir.iterdir() if d.is_dir()}
 
-       headers = ["Select", "Model Name", "Precision", "Parameters", "Dimensions", "Max Sequence", "Size (MB)", "Downloaded"]
-       column_stretch_factors = [1, 3, 2, 2, 2, 2, 2, 2]
+       headers = ["Select", "Model Name", "Original Precision", "Parameters", "Dimensions", "Max Sequence", "Size (MB)", "Downloaded"]
+       column_stretch_factors = [1, 2, 2, 1, 1, 1, 1, 1]
 
        def add_centered_widget(grid, widget, row, col):
            grid.addWidget(widget, row, col, alignment=Qt.AlignCenter)
