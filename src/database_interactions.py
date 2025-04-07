@@ -241,18 +241,17 @@ class CreateVectorDB:
             encode_kwargs['batch_size'] = 2
         else:
             batch_size_mapping = {
-                'stella_en_1.5B': 2,
-                'gte-modernbert-base': 4,
-                'gte-large': 4,
-                'bge-large': 4,
-                'e5-large': 4,
-                'arctic-embed-l': 4,
-                'stella_en_400M_v5': 5,
+                'stella_en_1.5B': 4,
+                'e5-large': 7,
+                'arctic-embed-l': 7,
                 'e5-base': 6,
-                'bge-base': 6,
+                'e5-small': 10,
+                'gte-large': 12,
                 'Granite-30m-English': 12,
-                'e5-small': 14,
-                'bge-small': 14,
+                'bge-small': 12,
+                'gte-base': 14,
+                'arctic-embed-m': 14,
+                'stella_en_400M_v5': 20,
             }
 
             for key, value in batch_size_mapping.items():
