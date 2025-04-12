@@ -27,7 +27,7 @@ Create and search a vector database to get a response from the large language mo
 |---|
 
 The above link downloads Visual Studio as an example.  Make sure to install the required SDKs, however.
- 
+
 > <details>
 >   <summary>EXAMPLE error when no compiler installed:</summary>
 >   <img src="https://github.com/BBC-Esq/VectorDB-Plugin-for-LM-Studio/blob/main/src/Assets/sample_error.png?raw=true">
@@ -47,7 +47,8 @@ The above link downloads Visual Studio as an example.  Make sure to install the 
   
 ### Step 1
 Download the ZIP file for the latest "release."  Extract its contents and navigate to the `src` folder.
-  * NOTE: If you simply clone this repository you will get the development version, which might not be stable.
+> [!CAUTION]
+> If you simply clone this repository you will get the development version, which might not be stable.
 ### Step 2
 Within the `src` folder, create a [virtual environment](https://realpython.com/python-virtual-environments-a-primer/):
 ```
@@ -71,8 +72,8 @@ python setup_windows.py
 <a name="using-the-program"></a>
 <div align="center"> <h2>🖥️Usage🖥️</h2></div>
 
-### 🔥Ask Jeeves🔥
-* Instructions on how to use the program are being consolidated into the `Ask Jeeves` functionality, which can be accessed from the "Ask Jeeves" menu option.  Please create an issue if Jeeves is not working.
+> [!IMPORTANT]
+> Instructions on how to use the program are being consolidated into the `Ask Jeeves` functionality, which can be accessed from the "Ask Jeeves" menu option.  Please create an issue if Jeeves is not working.
 
 ### Start the Program
 ```
@@ -82,25 +83,25 @@ python setup_windows.py
 python gui.py
 ```
 
-### 🏗️ Create a Vector Database
-* Download an embedding model from the ```Models Tab```.
-* Set the `chunk size` and `chunk overlap` settings within the `Settings Tab`.
-* Within the `Create Database Tab`, select the files that you want in the vector database.
-  * 📄 Non-audio files (including 🖼️ images) can be selected by clicking the `Choose Files` button.
-  * 🎵 Audio files must be transcribed first within the `Tools Tab`.
-* Select the embedding model you want to use.
-* Click `Create Vector Database`.
+### 🏗️ Create a Vector Database Download an embedding model from the ```Models Tab```.
+1. Set the `chunk size` and `chunk overlap` settings within the `Settings Tab`.
+2. Within the `Create Database Tab`, select the files that you want in the vector database.
+> 🖼️ images can be selected by clicking the `Choose Files` button.\
+> 🎵 Audio files must be transcribed first within the `Tools Tab`.
+3. Select the embedding model you want to use.
+4. Click `Create Vector Database`.
 
 ### 🔍 Query a Vector Database
 * Select the database you want to search within the `Query Database Tab`.
 * Select `Local Models`, `Kobold`, `LM Studio` or `ChatGPT` for the backend that you want to provide a response to your question.
 * Click `Submit Question`.
-  * The `chunks only` checkbox will display the results from the vector database without getting a response.
+  > The `chunks only` checkbox will display the results from the vector database without getting a response.
 
 ### ❓ Which Backend Should I Use?
-If you use either the `Kobold` or `LM Studio` you must be familiar with those programs.  For example, `LM Studio` must be running in "server mode" and handles the prompt formatting.  However,`Kobold` automatically starts in server mode but requires you to specify the prompt formatting.  For more information:
-* Kobold [home page](https://github.com/LostRuins/koboldcpp), [instructions](https://github.com/LostRuins/koboldcpp/wiki), and [Discord server](https://koboldai.org/discord)
-* LM Studio [home page](https://lmstudio.ai/), [instructions](https://lmstudio.ai/docs), and [Discord server](https://discord.gg/aPQfnNkxGC).
+If you use either the `Kobold` or `LM Studio` you must be familiar with those programs.  For example, `LM Studio` must be running in "server mode" and handles the prompt formatting.  However,`Kobold` automatically starts in server mode but requires you to specify the prompt formatting.
+> [!TIP]
+> Kobold [home page](https://github.com/LostRuins/koboldcpp), [instructions](https://github.com/LostRuins/koboldcpp/wiki), and [Discord server](https://koboldai.org/discord)\
+> LM Studio [home page](https://lmstudio.ai/), [instructions](https://lmstudio.ai/docs), and [Discord server](https://discord.gg/aPQfnNkxGC).
 
 ### 🗑️ Deleting a Database
 * In the `Manage Databases Tab`, select a database and click `Delete Database`.
