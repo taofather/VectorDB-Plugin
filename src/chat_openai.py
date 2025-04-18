@@ -1,3 +1,4 @@
+# chat_openai.py
 import gc
 import logging
 from pathlib import Path
@@ -15,37 +16,49 @@ ROOT_DIRECTORY = Path(__file__).resolve().parent
 
 contexts_output_file_path = ROOT_DIRECTORY / "contexts.txt"
 metadata_output_file_path = ROOT_DIRECTORY / "metadata.txt"
+chat_history_output_file_path = ROOT_DIRECTORY / "chat_history.txt"
+
 
 class ChatGPTSignals(QObject):
     response_signal = Signal(str)
     error_signal = Signal(str)
     finished_signal = Signal()
-    citation_signal = Signal(str)
+    citations_signal = Signal(str)
+
 
 class ChatGPTChat:
-    def __init__(self):
-        self.signals = ChatGPTSignals()
+    def __init__(self, override_model: str = None):
+        self.response_callback = lambda x: None
+        self.error_callback = lambda x: None
+        self.finished_callback = lambda: None
+        self.citations_callback = lambda x: None
         self.config = self.load_configuration()
+        if override_model:
+            self.config.setdefault('openai', {})['model'] = override_model
         self.query_vector_db = None
 
     def load_configuration(self):
-        with open('config.yaml', 'r') as config_file:
+        config_path = ROOT_DIRECTORY / 'config.yaml'
+        with config_path.open('r', encoding='utf-8') as config_file:
             return yaml.safe_load(config_file)
 
     def connect_to_chatgpt(self, augmented_query):
         openai_config = self.config.get('openai', {})
-        model = openai_config.get('model', 'gpt-4o-mini')
+        model = openai_config.get('model', 'gpt-4.1-mini')
         """
-        +-----------------+--------+---------+
-        |      Model      | Input  |  Output |
-        +-----------------+--------+---------+
-        | gpt-4.5-preview | $75.00 | $150.00 |
-        | gpt-4o          | $2.50  | $10.00  |
-        | gpt-4o-mini     | $0.15  | $0.60   |
-        | o1              | $15.00 | $60.00  |
-        | o3-mini         | $1.10  | $4.40   |
-        | o1-mini         | $1.10  | $4.40   |
-        +-----------------+--------+---------+
+        +--------------+--------+--------+-------------+------------+
+        |     Model    | Input  | Output | Max Context | Max Output |
+        +--------------+--------+--------+-------------+------------+
+        | gpt-4o       | $5.00  | $15.00 | 128,000     | 16,384     |
+        | gpt-4o-mini  | $0.15  | $0.60  | 128,000     | 16,384     |
+        | o1           | $15.00 | $60.00 | 200,000     | 100,000    |
+        | o3-mini      | $1.10  | $4.40  | 200,000     | 100,000    |
+        | o1-mini      | $1.10  | $4.40  | 128,000     | 65,536     |
+        | 04-mini      | $1.10  | $4.40  | 200,000     | 100,000    |
+        | gpt-4.1      | $2.00  | $8.00  | 1,047,576   | 32,768     |
+        | gpt-4.1-mini | $0.40  | $1.60  | 1,047,576   | 32,768     |
+        | gpt-4.1-nano | $0.10  | $0.40  | 1,047,576   | 32,768     |
+        +--------------+--------+--------+-------------+------------+
         """
         reasoning_effort = openai_config.get('reasoning_effort', 'medium')
         api_key = openai_config.get('api_key')
@@ -106,8 +119,8 @@ class ChatGPTChat:
         self.save_metadata_to_file(metadata_list)
         
         if not contexts:
-            self.signals.error_signal.emit("No relevant contexts found.")
-            self.signals.finished_signal.emit()
+            self.error_callback("No relevant contexts found.")
+            self.finished_callback()
             return
 
         augmented_query = f"{rag_string}\n\n---\n\n" + "\n\n---\n\n".join(contexts) + f"\n\n-----\n\n{query}"
@@ -115,29 +128,52 @@ class ChatGPTChat:
         full_response = ""
         response_generator = self.connect_to_chatgpt(augmented_query)
         for response_chunk in response_generator:
-            self.signals.response_signal.emit(response_chunk)
+            self.response_callback(response_chunk)
             full_response += response_chunk
 
-        with open('chat_history.txt', 'w', encoding='utf-8') as f:
+        with chat_history_output_file_path.open('w', encoding='utf-8') as f:
             normalized_response = normalize_chat_text(full_response)
             f.write(normalized_response)
 
-        self.signals.response_signal.emit("\n")
+        self.response_callback("\n")
 
         citations = self.handle_response_and_cleanup(full_response, metadata_list)
-        self.signals.citation_signal.emit(citations)
-        self.signals.finished_signal.emit()
+        self.citations_callback(citations)
+        self.finished_callback()
+
 
 class ChatGPTThread(QThread):
-    def __init__(self, query, selected_database):
+    response_signal = Signal(str)
+    error_signal = Signal(str)
+    finished_signal = Signal()
+    citations_signal = Signal(str)
+
+    def __init__(self, query, selected_database, model_name: str = None):
         super().__init__()
         self.query = query
         self.selected_database = selected_database
-        self.chatgpt_chat = ChatGPTChat()
+        self.chatgpt_chat = ChatGPTChat(override_model=model_name)
+
+        self.chatgpt_chat.response_callback = self.on_response
+        self.chatgpt_chat.error_callback = self.on_error
+        self.chatgpt_chat.finished_callback = self.on_finished
+        self.chatgpt_chat.citations_callback = self.on_citations
+
+    def on_response(self, text):
+        self.response_signal.emit(text)
+
+    def on_error(self, error):
+        self.error_signal.emit(error)
+
+    def on_finished(self):
+        self.finished_signal.emit()
+
+    def on_citations(self, citations):
+        self.citations_signal.emit(citations)
 
     def run(self):
         try:
             self.chatgpt_chat.ask_chatgpt(self.query, self.selected_database)
         except Exception as e:
             logging.error(f"Error in ChatGPTThread: {str(e)}")
-            self.chatgpt_chat.signals.error_signal.emit(str(e))
+            self.on_error(str(e))

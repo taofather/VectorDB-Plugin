@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, 
     QComboBox, QFileDialog, QMessageBox
 )
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import QThread, Signal, QTimer
 from module_ocr import process_documents
 
 def check_cuda_availability():
@@ -203,12 +203,25 @@ class OCRToolSettingsTab(QWidget):
 
         self.setButtons(False)
 
+        if self.worker_thread and self.worker_thread.isRunning():
+            self.worker_thread.wait()
+
         self.worker_thread = OcrWorkerThread(self.selected_pdf_file, backend, self.model_path)
         self.worker_thread.finished_signal.connect(self.ocr_finished)
         self.worker_thread.start()
 
     def ocr_finished(self, success, message):
         self.setButtons(True)
+
+        if self.worker_thread:
+            self.worker_thread.quit()
+            self.worker_thread.wait()
+            self.worker_thread = None
+
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(1000, lambda: self._show_completion_message(success, message))
+
+    def _show_completion_message(self, success, message):
         if success:
             self.show_success_message()
         else:

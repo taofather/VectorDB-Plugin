@@ -1,3 +1,4 @@
+# gui_tabs_database_query.py
 import logging
 from pathlib import Path
 import multiprocessing
@@ -42,20 +43,29 @@ class ChunksOnlyThread(QThread):
             )
             self.process.start()
 
-            result = result_queue.get()
-            self.chunks_ready.emit(result)
-
-            self.process.join()
-            self.process = None
+            try:
+                result = result_queue.get(timeout=30)
+                self.chunks_ready.emit(result)
+            except multiprocessing.queues.Empty:
+                self.chunks_ready.emit("Error: Timed out waiting for database response")
+            
+            if self.process and self.process.is_alive():
+                self.process.join(timeout=2)
+                if self.process.is_alive():
+                    self.process.terminate()
+                self.process = None
 
         except Exception as e:
             logging.exception(f"Error in chunks only thread: {e}")
             self.chunks_ready.emit(f"Error querying database: {str(e)}")
+        finally:
+            pass
 
     def stop(self):
         if self.process and self.process.is_alive():
             self.process.terminate()
             self.process.join()
+
 
 def run_tts_in_process(config_path, input_text_file):
     from module_tts import run_tts  # Import here to avoid potential circular imports
@@ -72,11 +82,13 @@ class RefreshingComboBox(QComboBox):
         self.addItems(self.parent().load_created_databases())
         super(RefreshingComboBox, self).showPopup()
 
+
 class GuiSignals(QObject):
     response_signal = Signal(str)
     citations_signal = Signal(str)
     error_signal = Signal(str)
     finished_signal = Signal()
+
 
 class CustomTextBrowser(QTextBrowser):
     '''
@@ -101,6 +113,7 @@ class CustomTextBrowser(QTextBrowser):
             QDesktopServices.openUrl(name)
         else:
             super().doSetSource(name, type)
+
 
 class DatabaseQueryTab(QWidget):
     def __init__(self):
@@ -135,7 +148,14 @@ class DatabaseQueryTab(QWidget):
 
         self.model_source_combo = QComboBox()
         self.model_source_combo.setToolTip(TOOLTIPS["MODEL_BACKEND_SELECT"])
-        self.model_source_combo.addItems(["Local Model", "Kobold", "LM Studio", "ChatGPT 4o mini"])
+        self.model_source_combo.addItems([
+            "Local Model",
+            "Kobold",
+            "LM Studio",
+            "gpt-4.1-nano",
+            "gpt-4.1-mini",
+            "gpt-4.1",
+        ])
         self.model_source_combo.setCurrentText("Local Model")
         self.model_source_combo.currentTextChanged.connect(self.on_model_source_changed)
         hbox1_layout.addWidget(self.model_source_combo)
@@ -170,9 +190,9 @@ class DatabaseQueryTab(QWidget):
         hbox1_layout.addWidget(self.eject_button)
 
         if not torch.cuda.is_available():
-            self.model_source_combo.setItemData(1, 0, Qt.UserRole - 1)
+            self.model_source_combo.setItemData(0, 0, Qt.UserRole - 1)
             tooltip_text = "The Local Model option requires GPU-acceleration."
-            self.model_source_combo.setItemData(1, tooltip_text, Qt.ToolTipRole)
+            self.model_source_combo.setItemData(0, tooltip_text, Qt.ToolTipRole)
             self.model_combo_box.setEnabled(False)
             self.model_combo_box.setToolTip(tooltip_text)
             disabled_style = "QComboBox:disabled { color: #707070; }"
@@ -243,22 +263,16 @@ class DatabaseQueryTab(QWidget):
         return []
 
     def on_submit_button_clicked(self):
-        if not self.text_input.toPlainText().strip():
-            QMessageBox.warning(self, "Error", "Please enter a question before submitting.")
-            return
         script_dir = Path(__file__).resolve().parent
-        is_valid, error_message = check_preconditions_for_submit_question(script_dir)
-        if not is_valid:
-            QMessageBox.warning(self, "Error", error_message)
-            return
+        model_source = self.model_source_combo.currentText()
+        if model_source == "Local Model":
+            is_valid, error_message = check_preconditions_for_submit_question(script_dir)
+            if not is_valid:
+                QMessageBox.warning(self, "Error", error_message)
+                return
 
         self.response_widget.clear()
         self.token_count_label.clear()
-
-        self.response_widget.clear()
-        self.response_widget.setPlainText("")
-        self.response_widget.setHtml("")
-        self.response_widget.document().clear()
         cursor = self.response_widget.textCursor()
         cursor.clearSelection()
         self.response_widget.setTextCursor(cursor)
@@ -283,19 +297,27 @@ class DatabaseQueryTab(QWidget):
                 self.lm_studio_chat_thread.lm_studio_chat.signals.finished_signal.connect(self.on_submission_finished)
                 self.lm_studio_chat_thread.lm_studio_chat.signals.citation_signal.connect(self.display_citations_in_widget)
                 self.lm_studio_chat_thread.start()
-            elif model_source == "ChatGPT 4o mini":
-                self.chatgpt_thread = ChatGPTThread(user_question, selected_database)
-                self.chatgpt_thread.chatgpt_chat.signals.response_signal.connect(self.update_response_lm_studio)  # reuse same update method
-                self.chatgpt_thread.chatgpt_chat.signals.error_signal.connect(self.show_error_message)
-                self.chatgpt_thread.chatgpt_chat.signals.finished_signal.connect(self.on_submission_finished)
-                self.chatgpt_thread.chatgpt_chat.signals.citation_signal.connect(self.display_citations_in_widget)
+            elif model_source in [
+                    "gpt-4.1-nano",
+                    "gpt-4.1-mini",
+                    "gpt-4.1",
+                ]:
+                self.chatgpt_thread = ChatGPTThread(
+                    user_question,
+                    selected_database,
+                    model_name=model_source
+                )
+                self.chatgpt_thread.response_signal.connect(self.update_response_lm_studio)
+                self.chatgpt_thread.error_signal.connect(self.show_error_message)
+                self.chatgpt_thread.finished_signal.connect(self.on_submission_finished)
+                self.chatgpt_thread.citations_signal.connect(self.display_citations_in_widget)
                 self.chatgpt_thread.start()
             elif model_source == "Kobold":
                 self.kobold_thread = KoboldThread(user_question, selected_database)
-                self.kobold_thread.kobold_chat.signals.response_signal.connect(self.update_response_lm_studio)
-                self.kobold_thread.kobold_chat.signals.error_signal.connect(self.show_error_message)
-                self.kobold_thread.kobold_chat.signals.finished_signal.connect(self.on_submission_finished)
-                self.kobold_thread.kobold_chat.signals.citation_signal.connect(self.display_citations_in_widget)
+                self.kobold_thread.response_signal.connect(self.update_response_lm_studio)
+                self.kobold_thread.error_signal.connect(self.show_error_message)
+                self.kobold_thread.finished_signal.connect(self.on_submission_finished)
+                self.kobold_thread.citations_signal.connect(self.display_citations_in_widget)
                 self.kobold_thread.start()
             else:  # i.e. local models
                 selected_model = self.model_combo_box.currentText()
@@ -397,8 +419,6 @@ class DatabaseQueryTab(QWidget):
         self.response_widget.verticalScrollBar().setValue(
             self.response_widget.verticalScrollBar().maximum()
         )
-        if not self.chunks_only_checkbox.isChecked():
-            self.eject_button.setEnabled(True)
 
     def show_error_message(self, error_message):
         # error message if the contexts exceed the chat model's limit

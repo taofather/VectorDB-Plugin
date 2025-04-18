@@ -53,7 +53,7 @@ def create_vision_models_comparison_plot():
                 border_color = category["color"]
                 border_width = 3
                 break
-        
+
         bar = ax1.bar(i, row["memory"], color=gradient(i/len(df)), alpha=0.7, 
                       edgecolor=border_color, linewidth=border_width)
         bars.append(bar[0])
@@ -98,6 +98,5 @@ def create_vision_models_comparison_plot():
     return fig
 
 if __name__ == "__main__":
-
     fig = create_vision_models_comparison_plot()
     plt.show()

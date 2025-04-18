@@ -66,7 +66,7 @@ libs = [
     "av==14.2.0",
     "backoff==2.2.1",
     "beautifulsoup4==4.13.3",
-    "bitsandbytes==0.45.4",
+    "bitsandbytes==0.45.5",
     "braceexpand==0.1.7",
     "certifi==2025.1.31",
     "cffi==1.17.1",
@@ -79,7 +79,7 @@ libs = [
     "coloredlogs==15.0.1",
     "contourpy==1.3.1", # only required by matplotlib
     "cryptography==44.0.2", # only required by unstructured library
-    "ctranslate2==4.5.0",
+    "ctranslate2==4.6.0",
     "cycler==0.12.1",
     "dataclasses-json==0.6.7",
     "datasets==3.5.0",
@@ -108,10 +108,10 @@ libs = [
     "h11==0.14.0",
     "h5py==3.13.0",
     "html5lib==1.1", # only required by unstructured
-    "httpcore==1.0.7",
+    "httpcore==1.0.8",
     "httpx==0.28.1",
     "httpx-sse==0.4.0",
-    "huggingface-hub==0.30.1", # tokenizers 0.21.1 requires >=0.16.4,<1.0
+    "huggingface-hub==0.30.2", # tokenizers 0.21.1 requires >=0.16.4,<1.0
     "humanfriendly==10.0",
     "HyperPyYAML==1.2.2",
     "idna==3.10",
@@ -130,10 +130,10 @@ libs = [
     "langchain-huggingface==0.1.2",
     "langchain-text-splitters==0.3.8",
     "langdetect==1.0.9",
-    "langsmith==0.3.24",
+    "langsmith==0.3.31",
     "llvmlite==0.44.0", # only required by numba
     "lxml==5.3.2",
-    "Markdown==3.7",
+    "Markdown==3.8",
     "markdown-it-py==3.0.0",
     "MarkupSafe==3.0.2",
     "marshmallow==3.26.1",
@@ -142,14 +142,14 @@ libs = [
     "more-itertools==10.6.0",
     "mpmath==1.3.0", # sympy 1.13.1 requires less than 1.4
     "msg-parser==1.2.0",
-    "multidict==6.3.2",
+    "multidict==6.4.3",
     "multiprocess==0.70.16", # datasets 3.5.0 requires <0.70.17
     "mypy-extensions==1.0.0",
     "natsort==8.4.0",
     "nest-asyncio==1.6.0",
     "networkx==3.4.2",
     "nltk==3.9.1", # not higher; gives unexplained error
-    "numba==0.61.0", # only required by openai-whisper and chattts
+    "numba==0.61.2", # only required by openai-whisper and chattts
     # langchain 0.3.23 requires <3,>=1.26.4
     # langchain-community 0.3.21 requires >=1.26.2,<3
     # langchain-core 0.3.51 requires numpy >=1.24.0, <2.0.0 if python is less than 3.12 and <3,>=1.26.0 if 3.12+
@@ -159,18 +159,18 @@ libs = [
     "numpy==1.26.4",
     "ocrmypdf==16.10.0",
     "olefile==0.47",
-    "openai==1.70.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
+    "openai==1.74.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
     "optimum==1.24.0",
     "ordered-set==4.1.0",
-    "orderly-set==5.3.0", # deepdiff 8.2.0 requires orderly-set=5.3.0,<6
+    "orderly-set==5.4.0", # deepdiff 8.2.0 requires orderly-set=5.3.0,<6
     "orjson==3.10.16",
     "packaging==24.2",
     "pandas==2.2.3",
     "pdfminer.six==20250327", # only needed by ocrmypdf
-    "pikepdf==9.6.0", # only needed by ocrmypdf
-    "pillow==11.1.0",
+    "pikepdf==9.7.0", # only needed by ocrmypdf
+    "pillow==11.2.1",
     "pi-heif==0.22.0", # only needed by ocrmypdf, but not for my usage of ocrmypdf
     "pipdeptree",
     "platformdirs==4.3.7",
@@ -181,7 +181,7 @@ libs = [
     "pyarrow==19.0.1",
     "pybase16384==0.3.8", # only required by chattts
     "pycparser==2.22",
-    "pydantic==2.11.2",
+    "pydantic==2.11.3",
     "pydantic_core==2.33.1", # pydantic 2.11.2 requires pydantic_core==2.33.1
     "pydantic-settings==2.8.1",
     "Pygments==2.19.1",
@@ -234,13 +234,13 @@ libs = [
     "timm==1.0.15",
     "tokenizers==0.21.1",
     "tqdm==4.67.1",
-    "transformers==4.51.0",
+    "transformers==4.51.3",
     "typing-inspect==0.9.0",
-    "typing_extensions==4.13.1",
-    "unstructured-client==0.32.1",
+    "typing_extensions==4.13.2",
+    "unstructured-client==0.32.3",
     "tzdata==2025.2",
-    "urllib3==2.3.0", # requests 2.32.3 requires <3
-    "vector-quantize-pytorch==1.22.10",
+    "urllib3==2.4.0", # requests 2.32.3 requires <3
+    "vector-quantize-pytorch==1.22.15",
     "vocos==0.1.0",
     "watchdog==6.0.0",
     "webdataset==0.2.111", # required by all TTS libraries
@@ -248,7 +248,7 @@ libs = [
     "wrapt==1.17.2",
     "xlrd==2.0.1",
     "xxhash==3.5.0",
-    "yarl==1.18.3", # aiohttp requires <2
+    "yarl==1.19.0", # aiohttp requires <2
     "zipp==3.21.0",
     "zstandard==0.23.0" # only required by langsmith 3+
 ]
@@ -1965,6 +1965,11 @@ scrape_documentation = {
         "URL": "https://huggingface.co/docs/tokenizers/v0.20.3/en",
         "folder": "tokenizers_0203",
         "scraper_class": "HuggingfaceScraper"
+    },
+    "torchao .9": {
+        "URL": "https://pytorch.org/ao/stable/",
+        "folder": "torchao_09",
+        "scraper_class": "PyTorchScraper"
     },
     "torch 2.4": {
         "URL": "https://pytorch.org/docs/2.4/",

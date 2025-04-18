@@ -10,20 +10,17 @@ import tqdm
 import torch
 from typing import Union, List, Dict, Tuple
 from multiprocessing import Process, Queue, Value
+import time
+import queue
 
-############################
-# MONKEY PATCH BEGINNING
-############################
-# REMOVE MONKEY PATCH CODE IF THIS PR IS ACCEPTED: https://github.com/ocrmypdf/OCRmyPDF/pull/1493
 from ocrmypdf.hocrtransform import HocrTransform
 from pikepdf.canvas import TextDirection
 
 original_get_text_direction = HocrTransform._get_text_direction
 
 def fixed_get_text_direction(self, par):
-    """Get the text direction of the paragraph with None check."""
     if par is None:
-        return TextDirection.LTR  # Default to left-to-right
+        return TextDirection.LTR
     
     return (
         TextDirection.RTL
@@ -32,9 +29,6 @@ def fixed_get_text_direction(self, par):
     )
 
 HocrTransform._get_text_direction = fixed_get_text_direction
-############################
-# MONKEY PATCH ENDING
-############################
 
 class OCRProcessor(ABC):
     def __init__(self, zoom: int = 2, progress_queue: Queue = None):
@@ -48,7 +42,6 @@ class OCRProcessor(ABC):
             print(f"\033[92mUsing up to {thread_count} threads\033[0m")
 
     def convert_page_to_image(self, page) -> Image.Image:
-        """Convert PDF page to PIL Image with specified zoom"""
         mat = fitz.Matrix(self.zoom, self.zoom)
         pix = page.get_pixmap(matrix=mat)
         img_data = pix.tobytes("png")
@@ -56,10 +49,6 @@ class OCRProcessor(ABC):
 
     @abstractmethod
     def process_page(self, page_num: int, pdf_path: str) -> Tuple[int, str]:
-        """
-        Process a single page from a PDF file.
-        Each OCR backend should handle opening and closing the PDF.
-        """
         pass
 
     @abstractmethod
@@ -68,14 +57,9 @@ class OCRProcessor(ABC):
 
     @abstractmethod
     def clean_text(self, text: str) -> str:
-        """Each OCR backend implements its own text cleaning method, if needed."""
         pass
 
     def validate_pdf(self, pdf_path: Path) -> bool:
-        """
-        Validates that the PDF is readable and contains pages.
-        Returns True if valid, False otherwise.
-        """
         try:
             with fitz.open(str(pdf_path)) as doc:
                 if doc.page_count == 0:
@@ -138,7 +122,6 @@ class TesseractOCR(OCRProcessor):
 
         script_dir = Path(__file__).resolve().parent
 
-        # specify temp dir since sometimes default locations don't have write permission
         self.temp_dir = script_dir / "temp_ocr"
         self.temp_dir.mkdir(exist_ok=True)
 
@@ -151,6 +134,13 @@ class TesseractOCR(OCRProcessor):
 
     def clean_text(self, text: str) -> str:
         return text
+        
+    def cleanup(self):
+        self.cleanup_temp_pdfs()
+        
+        if hasattr(self, 'tessdata_path') and self.tessdata_path:
+            if 'TESSDATA_PREFIX' in os.environ:
+                del os.environ['TESSDATA_PREFIX']
 
     def process_document(self, pdf_path: Path, output_path: Path = None):
         if not self.validate_pdf(pdf_path):
@@ -164,7 +154,6 @@ class TesseractOCR(OCRProcessor):
 
         self.cleanup_temp_pdfs()
 
-        # Get page count without keeping file open
         with fitz.open(str(pdf_path)) as pdf_document:
             num_pages = len(pdf_document)
 
@@ -215,10 +204,8 @@ class TesseractOCR(OCRProcessor):
         out_pdf = fitz.open()
 
         with tesserocr.PyTessBaseAPI(lang="eng", path=str(self.tessdata_path)) as api:
-            # remove rotation if present
             page.remove_rotation()
 
-            # 2x page zoom for better OCR
             pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
             pil_image = Image.open(BytesIO(pix.tobytes("png")))
 
@@ -226,20 +213,8 @@ class TesseractOCR(OCRProcessor):
 
             hocr_text = api.GetHOCRText(0)
 
-            # # DEBUG
-            # if not hocr_text.strip():
-                # print(f"Warning: No text detected on page {page_num}. Skipping HOCR file creation.")
-            # else:
-                # hocr_output = f"{self.temp_dir}/page_{page_num}.hocr"
-                # Path(hocr_output).write_text(hocr_text, encoding="utf-8")
-                # file_size = Path(hocr_output).stat().st_size
-                # print(f"HOCR file saved: {hocr_output} (Size: {file_size} bytes)")
-
-            # name the hocr file by page number of the pdf
             hocr_output = f"{self.temp_dir}/page_{page_num}.hocr"
             Path(hocr_output).write_text(hocr_text, encoding="utf-8")
-
-            # print(f"Processing page {page_num}, HOCR file saved: {hocr_output}") # DEBUG
 
             fd, text_pdf = tempfile.mkstemp(suffix=".pdf", dir=self.temp_dir)
             os.close(fd)
@@ -265,7 +240,7 @@ class TesseractOCR(OCRProcessor):
                     overlay=True
                 )
 
-            Path(hocr_output).unlink(missing_ok=True) # DEBUG comment out to keep the hocr files
+            Path(hocr_output).unlink(missing_ok=True)
 
             for _ in range(10):
                 try:
@@ -282,9 +257,6 @@ class TesseractOCR(OCRProcessor):
             return page_num, temp_pdf_path
 
     def optimize_final_pdf(self, original_pdf_path: Path, ocr_pdf_path: Path) -> None:
-        """Post-process the PDF to match original dimensions and apply optimization."""
-        # print(f"Optimizing OCR'd PDF: {ocr_pdf_path}")
-
         with fitz.open(original_pdf_path) as original_doc:
             orig_pages = []
             for page in original_doc:
@@ -302,8 +274,17 @@ class TesseractOCR(OCRProcessor):
                 if i < len(orig_pages):
                     orig = orig_pages[i]
                     page.set_mediabox(orig['mediabox'])
+
                     if orig['cropbox']:
-                        page.set_cropbox(orig['cropbox'])
+                        try:
+                            cropbox = orig['cropbox']
+                            mediabox = orig['mediabox']
+
+                            if (cropbox[0] >= mediabox[0] and cropbox[1] >= mediabox[1] and 
+                                cropbox[2] <= mediabox[2] and cropbox[3] <= mediabox[3]):
+                                page.set_cropbox(cropbox)
+                        except ValueError:
+                            pass
 
             ocr_doc.save(
                 temp_path,
@@ -314,7 +295,6 @@ class TesseractOCR(OCRProcessor):
             )
 
         os.replace(temp_path, ocr_pdf_path)
-        # print(f"PDF optimization complete. Check final file size.")
 
     def cleanup_temp_pdfs(self):
         if self.temp_dir is None:
@@ -326,70 +306,6 @@ class TesseractOCR(OCRProcessor):
             except PermissionError:
                 print(f"Could not remove {temp_file} - file may be in use")
 
-
-class GotOCR(OCRProcessor):
-    def __init__(self, model_path: str, zoom: int = 2, progress_queue: Queue = None):
-        super().__init__(zoom, progress_queue)
-        self.model_path = model_path
-        self.model = None
-        self.tokenizer = None
-        self.show_progress = False
-
-    def initialize(self):
-        import sys
-        import logging
-        from transformers import AutoModel, AutoTokenizer
-        from transformers import logging as transformers_logging
-        from utilities import set_cuda_paths
-
-        set_cuda_paths()
-        transformers_logging.set_verbosity_error()
-
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, trust_remote_code=True)
-        self.model = AutoModel.from_pretrained(
-            self.model_path,
-            trust_remote_code=True,
-            low_cpu_mem_usage=True,
-            device_map='cuda',
-            use_safetensors=True,
-            pad_token_id=self.tokenizer.convert_tokens_to_ids("<|endoftext|>")
-        )
-        self.model = self.model.eval().cuda()
-
-    def clean_text(self, text: str) -> str:
-        """GOT-OCR specific text cleaning"""
-        lines = text.split('\n')
-        cleaned_lines = []
-        i = 0
-        while i < len(lines):
-            cleaned_lines.append(lines[i])
-            repeat_count = 1
-            j = i + 1
-            while j < len(lines) and lines[j] == lines[i]:
-                repeat_count += 1
-                j += 1
-            if repeat_count > 2:
-                if i + 1 < len(lines):
-                    cleaned_lines.append(lines[i + 1])
-                i = j
-            else:
-                i += 1
-        return '\n'.join(cleaned_lines)
-
-    def process_page(self, page_num: int, pdf_path: str) -> Tuple[int, str]:
-        pdf_document = fitz.open(pdf_path)
-        page = pdf_document[page_num]
-
-        image = self.convert_page_to_image(page)
-
-        with torch.inference_mode():
-            text = self.model.chat_crop(self.tokenizer, image, ocr_type='ocr', gradio_input=True)
-        text = self.clean_text(text)
-
-        pdf_document.close()
-
-        return page_num, text
-
 def _process_documents_worker(
     pdf_paths: List[Path],
     backend: str,
@@ -397,23 +313,22 @@ def _process_documents_worker(
     output_dir: Path,
     progress_queue: Queue
 ):
-
     if backend.lower() == 'tesseract':
         processor = TesseractOCR(progress_queue=progress_queue)
-    elif backend.lower() == 'got':
-        if not model_path:
-            raise ValueError("model_path is required for GOT-OCR backend")
-        processor = GotOCR(model_path, progress_queue=progress_queue)
     else:
         raise ValueError(f"Unsupported backend: {backend}")
 
     processor.initialize()
 
-    for pdf_path in pdf_paths:
-        output_path = None
-        if output_dir:
-            output_path = output_dir / f"{pdf_path.stem}_ocr.txt"
-        processor.process_document(pdf_path, output_path)
+    try:
+        for pdf_path in pdf_paths:
+            output_path = None
+            if output_dir:
+                output_path = output_dir / f"{pdf_path.stem}_ocr.txt"
+            processor.process_document(pdf_path, output_path)
+    finally:
+        if backend.lower() == 'tesseract' and hasattr(processor, 'cleanup'):
+            processor.cleanup()
 
 def process_documents(
     pdf_paths: Union[Path, List[Path]], 
@@ -421,15 +336,6 @@ def process_documents(
     model_path: str = None,
     output_dir: Path = None
 ):
-    """
-    Process one or multiple PDF documents using specified OCR backend
-
-    Args:
-        pdf_paths: Single Path or list of Paths to PDF files
-        backend: 'tesseract' or 'got'
-        model_path: Required for GOT-OCR backend
-        output_dir: Optional output directory for results
-    """
     if isinstance(pdf_paths, Path):
         pdf_paths = [pdf_paths]
 
@@ -442,19 +348,31 @@ def process_documents(
     total_pages = None
     pbar = None
 
-    while True:
-        msg = progress_queue.get()
-        cmd, data = msg
+    try:
+        while True:
+            try:
+                msg = progress_queue.get(timeout=1.0)
+                cmd, data = msg
+                
+                if cmd == 'total':
+                    total_pages = data
+                    pbar = tqdm.tqdm(total=total_pages, desc="Processing pages")
+                elif cmd == 'update':
+                    if pbar:
+                        pbar.update(data)
+                elif cmd == 'done':
+                    break
+            except queue.Empty:
+                if not process.is_alive():
+                    break
+    finally:
+        if pbar:
+            pbar.close()
+            
+        if process.is_alive():
+            process.terminate()
+            process.join(timeout=3.0)
+            if process.is_alive():
+                process.kill()
 
-        if cmd == 'total':
-            total_pages = data
-            pbar = tqdm.tqdm(total=total_pages, desc="Processing pages")
-        elif cmd == 'update':
-            pbar.update(data)
-        elif cmd == 'done':
-            break
-
-    if pbar:
-        pbar.close()
-
-    process.join()
+        time.sleep(0.5)

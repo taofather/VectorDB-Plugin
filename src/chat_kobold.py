@@ -29,9 +29,11 @@ class KoboldChat:
         self.config = self.load_configuration()
         self.query_vector_db = None
         self.api_url = "http://localhost:5001/api/extra/generate/stream"
+        self.stop_request = False
 
     def load_configuration(self):
-        with open('config.yaml', 'r') as config_file:
+        config_path = ROOT_DIRECTORY / 'config.yaml'
+        with open(config_path, 'r') as config_file:
             return yaml.safe_load(config_file)
 
     def connect_to_kobold(self, augmented_query):
@@ -43,12 +45,15 @@ class KoboldChat:
             "top_p": 0.9,
         }
 
+        response = None
         try:
             response = requests.post(self.api_url, json=payload, stream=True)
             response.raise_for_status()
             client = sseclient.SSEClient(response)
 
             for event in client.events():
+                if self.stop_request:
+                    break
                 if event.event == "message":
                     try:
                         data = json.loads(event.data)
@@ -60,15 +65,17 @@ class KoboldChat:
         except Exception as e:
             logging.error(f"Error in Kobold API request: {str(e)}")
             raise
+        finally:
+            if response:
+                response.close()
 
     def handle_response_and_cleanup(self, full_response, metadata_list):
         citations = format_citations(metadata_list)
-        
+
         if self.query_vector_db:
             self.query_vector_db.cleanup()
-            # print("Embedding model removed from memory.")
 
-        if torch.cuda.empty_cache():
+        if torch.cuda.is_available():
             torch.cuda.empty_cache()
         gc.collect()
 
@@ -95,31 +102,51 @@ class KoboldChat:
         augmented_query = f"{rag_string}\n\n---\n\n" + "\n\n---\n\n".join(contexts) + f"\n\n-----\n\n{query}"
 
         full_response = ""
-        response_generator = self.connect_to_kobold(augmented_query)
-        for response_chunk in response_generator:
-            self.signals.response_signal.emit(response_chunk)
-            full_response += response_chunk
+        try:
+            response_generator = self.connect_to_kobold(augmented_query)
+            for response_chunk in response_generator:
+                if self.stop_request:
+                    break
+                self.signals.response_signal.emit(response_chunk)
+                full_response += response_chunk
 
-        with open('chat_history.txt', 'w', encoding='utf-8') as f:
-            normalized_response = normalize_chat_text(full_response)
-            f.write(normalized_response)
+            chat_history_path = ROOT_DIRECTORY / 'chat_history.txt'
+            with open(chat_history_path, 'w', encoding='utf-8') as f:
+                normalized_response = normalize_chat_text(full_response)
+                f.write(normalized_response)
 
-        self.signals.response_signal.emit("\n")
+            self.signals.response_signal.emit("\n")
 
-        citations = self.handle_response_and_cleanup(full_response, metadata_list)
-        self.signals.citation_signal.emit(citations)
-        self.signals.finished_signal.emit()
+            citations = self.handle_response_and_cleanup(full_response, metadata_list)
+            self.signals.citation_signal.emit(citations)
+        except Exception as e:
+            self.signals.error_signal.emit(str(e))
+            raise
 
 class KoboldThread(QThread):
+    response_signal = Signal(str)
+    error_signal = Signal(str)
+    finished_signal = Signal()
+    citations_signal = Signal(str)
+    
     def __init__(self, query, selected_database):
         super().__init__()
         self.query = query
         self.selected_database = selected_database
         self.kobold_chat = KoboldChat()
+        self.kobold_chat.signals.response_signal.connect(self.response_signal.emit)
+        self.kobold_chat.signals.error_signal.connect(self.error_signal.emit)
+        self.kobold_chat.signals.citation_signal.connect(self.citations_signal.emit)
 
     def run(self):
         try:
             self.kobold_chat.ask_kobold(self.query, self.selected_database)
         except Exception as e:
             logging.error(f"Error in KoboldThread: {str(e)}")
-            self.kobold_chat.signals.error_signal.emit(str(e))
+            self.error_signal.emit(str(e))
+        finally:
+            self.finished_signal.emit()
+            
+    def stop(self):
+        self.kobold_chat.stop_request = True
+        self.wait(5000)
