@@ -94,21 +94,27 @@ class BaseModel(ABC):
         self.model_name = model_info['model']
         self.generation_settings = generation_settings
         self.max_length = generation_settings['max_length']
-        
+
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         script_dir = Path(__file__).resolve().parent
         cache_dir = script_dir / "Models" / "chat" / self.model_info['cache_dir']
 
-        # rewrite bfloat dictionary to float16 if bfloat16 not supported
-        if self.device == "cuda" and not has_bfloat16_support():
-            if 'bnb_bfloat16_settings' in settings:
-                settings['bnb_float16_settings'] = settings.pop('bnb_bfloat16_settings')
-                settings['bnb_float16_settings']['tokenizer_settings']['torch_dtype'] = torch.float16
-                settings['bnb_float16_settings']['model_settings']['torch_dtype'] = torch.float16
-                settings['bnb_float16_settings']['model_settings']['quantization_config'].bnb_4bit_compute_dtype = torch.float16
+        native = model_info.get("precision")    # "float32", "bfloat16", or "float16"
+        if self.device == "cuda":
+            if native in ("float32", "bfloat16"):
+                dtype = torch.bfloat16 if has_bfloat16_support() else torch.float16
+            else:  # native == "float16" or anything else
+                dtype = torch.float16
+
+            settings['tokenizer_settings']['torch_dtype'] = dtype
+            settings['model_settings']['torch_dtype']     = dtype
+            qc = settings['model_settings'].get("quantization_config")
+            if qc is not None:
+                qc.bnb_4bit_compute_dtype = dtype
 
         hf_token = get_hf_token()
+
 
         tokenizer_settings = {
             **settings.get('tokenizer_settings', {}), 
@@ -161,9 +167,6 @@ class BaseModel(ABC):
         return inputs
 
     def generate_response(self, inputs, remove_token_type_ids=False):
-        """
-        Creates a TextIteratorStreamer to stream partial responses.
-        """
         if remove_token_type_ids:
             inputs.pop('token_type_ids', None)
             
@@ -173,7 +176,6 @@ class BaseModel(ABC):
         
         all_settings = {**inputs, **self.generation_settings, 'streamer': streamer, 'eos_token_id': eos_token_id}
 
-        # generation + streamer require two threads to work
         generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
         generation_thread.start()
 
@@ -199,26 +201,6 @@ class BaseModel(ABC):
         del tokenizer
         torch.cuda.empty_cache()
         gc.collect()
-
-
-class Zephyr(BaseModel):
-    def __init__(self, generation_settings, model_name=None):
-        model_info = CHAT_MODELS[model_name]
-
-        if '1.6b' in model_name.lower():
-            settings = bnb_float16_settings if torch.cuda.is_available() else {}
-        else:
-            settings = bnb_bfloat16_settings
-
-        super().__init__(model_info, settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|system|>
-{system_message}<|endoftext|>
-<|user|>
-{augmented_query}<|endoftext|>
-<|assistant|>
-"""
 
 
 class Granite(BaseModel):
@@ -687,6 +669,79 @@ class RekaFlash(BaseModel):
                 if not thinking_complete and '</reasoning>' in buffer:
                     thinking_complete = True
                     start_idx = buffer.rfind('</reasoning>') + len('</reasoning>')
+                    yield buffer[start_idx:].strip()
+                    buffer = ""
+                elif thinking_complete:
+                    yield partial_response
+
+        generation_thread.join()
+
+
+class GLM4Z1(BaseModel):
+    def __init__(self, generation_settings, model_name):
+        model_info = CHAT_MODELS[model_name]
+        _real_open = builtins.open
+        def _utf8_open(path, *args, **kwargs):
+            if 'encoding' not in kwargs:
+                kwargs['encoding'] = 'utf-8'
+            return _real_open(path, *args, **kwargs)
+
+        builtins.open = _utf8_open
+
+        try:
+            tokenizer_settings = {
+                'trust_remote_code': True,
+                **bnb_bfloat16_settings.get('tokenizer_settings', {})
+            }
+            super().__init__(
+                model_info,
+                bnb_bfloat16_settings,
+                generation_settings,
+                attn_implementation="sdpa",
+                tokenizer_kwargs=tokenizer_settings
+            )
+        finally:
+            builtins.open = _real_open
+
+    def create_prompt(self, augmented_query):
+        return (
+            "[gMASK]<sop><|system|>\n"
+            f"{system_message}<|user|>\n"
+            f"{augmented_query}<|assistant|>\n"
+            "<think>"
+        )
+
+    def generate_response(self, inputs):
+        SHOW_THINKING = False
+        streamer = TextIteratorStreamer(
+            self.tokenizer, 
+            skip_prompt=True, 
+            skip_special_tokens=True
+        )
+
+        all_settings = {
+            **inputs, 
+            **self.generation_settings,
+            'streamer': streamer, 
+        }
+
+        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
+        generation_thread.start()
+
+        if SHOW_THINKING:
+            # stream everything
+            for partial_response in streamer:
+                yield partial_response
+        else:
+            # only stream after </think> tag
+            buffer = ""
+            thinking_complete = False
+
+            for partial_response in streamer:
+                buffer += partial_response
+                if not thinking_complete and '</think>' in buffer:
+                    thinking_complete = True
+                    start_idx = buffer.rfind('</think>') + len('</think>')
                     yield buffer[start_idx:].strip()
                     buffer = ""
                 elif thinking_complete:
