@@ -7,12 +7,30 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer, BitsAndBytesConfig
 import threading
 from abc import ABC, abstractmethod
+import builtins
+from contextlib import contextmanager
 
 from constants import CHAT_MODELS, system_message
 from utilities import my_cprint, has_bfloat16_support
 
 # logging.getLogger("transformers").setLevel(logging.WARNING) # adjust to see deprecation and other non-fatal errors
 logging.getLogger("transformers").setLevel(logging.ERROR)
+
+@contextmanager
+def utf8_file_operations():
+    """Context manager that ensures all file operations use UTF-8 encoding by default."""
+    original_open = builtins.open
+    
+    def utf8_open(path, *args, **kwargs):
+        if 'encoding' not in kwargs:
+            kwargs['encoding'] = 'utf-8'
+        return original_open(path, *args, **kwargs)
+
+    builtins.open = utf8_open
+    try:
+        yield
+    finally:
+        builtins.open = original_open
 
 def get_model_settings(base_settings, attn_implementation):
     settings = copy.deepcopy(base_settings)
@@ -115,7 +133,6 @@ class BaseModel(ABC):
 
         hf_token = get_hf_token()
 
-
         tokenizer_settings = {
             **settings.get('tokenizer_settings', {}), 
             'cache_dir': str(cache_dir)
@@ -125,7 +142,8 @@ class BaseModel(ABC):
         if hf_token:
             tokenizer_settings['token'] = hf_token
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_info['repo_id'], **tokenizer_settings)
+        with utf8_file_operations():
+            self.tokenizer = AutoTokenizer.from_pretrained(model_info['repo_id'], **tokenizer_settings)
 
         if tokenizer_kwargs and 'eos_token' in tokenizer_kwargs:
             self.tokenizer.eos_token = tokenizer_kwargs['eos_token']
@@ -246,6 +264,7 @@ class ExaoneDeep(BaseModel):
             'do_sample': True,
             'temperature': 0.6,
             'top_p': 0.95,
+            'top_k': 40,
             'use_cache': True,
             # 'repetition_penalty': 1.15, # infrequently works with 2.4b model
             'num_beams': 1
@@ -274,7 +293,6 @@ class ExaoneDeep(BaseModel):
             **self.generation_settings,
             'streamer': streamer, 
             'pad_token_id': self.tokenizer.pad_token_id,
-            'eos_token_id': self.tokenizer.eos_token_id
         }
 
         generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
@@ -291,9 +309,9 @@ class ExaoneDeep(BaseModel):
 
             for partial_response in streamer:
                 buffer += partial_response
-                if not thinking_complete and '</thought>\n' in buffer:
+                if not thinking_complete and '</thought>' in buffer:
                     thinking_complete = True
-                    start_idx = buffer.rfind('</thought>\n') + len('</thought>\n')
+                    start_idx = buffer.rfind('</thought>') + len('</thought>')
                     yield buffer[start_idx:].strip()
                     buffer = ""
                 elif thinking_complete:
@@ -680,28 +698,17 @@ class RekaFlash(BaseModel):
 class GLM4Z1(BaseModel):
     def __init__(self, generation_settings, model_name):
         model_info = CHAT_MODELS[model_name]
-        _real_open = builtins.open
-        def _utf8_open(path, *args, **kwargs):
-            if 'encoding' not in kwargs:
-                kwargs['encoding'] = 'utf-8'
-            return _real_open(path, *args, **kwargs)
+        settings = bnb_bfloat16_settings
 
-        builtins.open = _utf8_open
-
-        try:
-            tokenizer_settings = {
-                'trust_remote_code': True,
-                **bnb_bfloat16_settings.get('tokenizer_settings', {})
+        super().__init__(
+            model_info,
+            settings,
+            generation_settings,
+            attn_implementation="sdpa",
+            tokenizer_kwargs={
+                'trust_remote_code': True
             }
-            super().__init__(
-                model_info,
-                bnb_bfloat16_settings,
-                generation_settings,
-                attn_implementation="sdpa",
-                tokenizer_kwargs=tokenizer_settings
-            )
-        finally:
-            builtins.open = _real_open
+        )
 
     def create_prompt(self, augmented_query):
         return (
