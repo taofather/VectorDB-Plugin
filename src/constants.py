@@ -726,15 +726,15 @@ VECTOR_MODELS = {
 }
 
 VISION_MODELS = {
-    'InternVL2.5 - 1b': {
+    'InternVL3 - 1b': {
         'precision': 'bfloat16',
-        'quant': 'n/a',
+        'quant': '4-bit',
         'size': '1b',
-        'repo_id': 'ctranslate2-4you/InternVL2_5-1B',
-        'cache_dir': 'ctranslate2-4you--InternVL2_5-1B',
+        'repo_id': 'OpenGVLab/InternVL3-1B',
+        'cache_dir': 'OpenGVLab--InternVL3-1B',
         'requires_cuda': True,
         'vram': '2.4 GB',
-        'loader': 'loader_internvl2_5'
+        'loader': 'loader_internvl'
     },
     'Ovis2 - 1b': {
         'precision': 'bfloat16',
@@ -745,6 +745,16 @@ VISION_MODELS = {
         'requires_cuda': True,
         'vram': '2.4 GB',
         'loader': 'loader_ovis'
+    },
+    'InternVL3 - 2b': {
+        'precision': 'bfloat16',
+        'quant': '4-bit',
+        'size': '2b',
+        'repo_id': 'OpenGVLab/InternVL3-2B',
+        'cache_dir': 'OpenGVLab--InternVL3-2B',
+        'requires_cuda': True,
+        'vram': '3.2 GB',
+        'loader': 'loader_internvl'
     },
     'Florence-2-base': {
         'precision': 'autoselect',
@@ -764,7 +774,7 @@ VISION_MODELS = {
         'cache_dir': 'ctranslate2-4you--InternVL2_5-4B',
         'requires_cuda': True,
         'vram': '3.2 GB',
-        'loader': 'loader_internvl2_5'
+        'loader': 'loader_internvl'
     },
     'Granite Vision - 2b': {
         'precision': 'bfloat16',
@@ -806,6 +816,16 @@ VISION_MODELS = {
         'vram': '6.3 GB',
         'loader': 'loader_qwenvl'
     },
+    'InternVL3 - 8b': {
+        'precision': 'bfloat16',
+        'quant': '4-bit',
+        'size': '1b',
+        'repo_id': 'OpenGVLab/InternVL3-8B',
+        'cache_dir': 'OpenGVLab--InternVL3-8B',
+        'requires_cuda': True,
+        'vram': '8.2 GB',
+        'loader': 'loader_internvl'
+    },
     'Qwen VL - 7b': {
         'precision': 'bfloat16',
         'quant': '4-bit',
@@ -835,6 +855,16 @@ VISION_MODELS = {
         'requires_cuda': True,
         'vram': '10.5 GB',
         'loader': 'loader_molmo'
+    },
+    'InternVL3 - 14b': {
+        'precision': 'bfloat16',
+        'quant': '4-bit',
+        'size': '1b',
+        'repo_id': 'OpenGVLab/InternVL3-14B',
+        'cache_dir': 'OpenGVLab--InternVL3-14B',
+        'requires_cuda': True,
+        'vram': '12.6 GB',
+        'loader': 'loader_internvl'
     },
 }
 
