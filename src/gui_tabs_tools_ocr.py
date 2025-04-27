@@ -1,19 +1,12 @@
-import multiprocessing
+import time
 from pathlib import Path
 import fitz
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, 
     QComboBox, QFileDialog, QMessageBox
 )
-from PySide6.QtCore import QThread, Signal, QTimer
+from PySide6.QtCore import QThread, Signal
 from module_ocr import process_documents
-
-def check_cuda_availability():
-    try:
-        import torch
-        return torch.cuda.is_available()
-    except ImportError:
-        return False
 
 def get_pdf_page_count(pdf_path):
     try:
@@ -23,42 +16,39 @@ def get_pdf_page_count(pdf_path):
         print(f"Error reading PDF: {e}")
         return 0
 
-def run_ocr_process(pdf_path, backend, model_path):
+def run_ocr_process(pdf_path, backend):
     try:
-        if backend == "tesseract":
-            model_path = None
         process_documents(
             pdf_paths=Path(pdf_path),
             backend=backend,
-            model_path=model_path,
         )
         return True, None
     except Exception as e:
         return False, str(e)
 
 class OcrWorkerThread(QThread):
-    finished_signal = Signal(bool, str)
+    finished_signal = Signal(bool, str, float)
 
-    def __init__(self, pdf_path, backend, model_path, parent=None):
+    def __init__(self, pdf_path, backend, parent=None):
         super().__init__(parent)
         self.pdf_path = pdf_path
         self.backend = backend
-        self.model_path = "ctranslate2-4you/GOT-OCR2_0-Customized"
 
     def run(self):
-        result = run_ocr_process(self.pdf_path, self.backend, self.model_path)
-        self.finished_signal.emit(*result)
+        start_time = time.time()
+        result = run_ocr_process(self.pdf_path, self.backend)
+        elapsed_time = time.time() - start_time
+        self.finished_signal.emit(*result, elapsed_time)
 
 class OCRToolSettingsTab(QWidget):
+    # Simplified to only include Tesseract
     ENGINE_MAPPING = {
-        "Tesseract": "tesseract",
-        "GOT_OCR": "got"
+        "Tesseract": "tesseract"
     }
 
     def __init__(self):
         super().__init__()
         self.selected_pdf_file = None
-        self.model_path = None
         self.create_layout()
         self.setButtons(True)
         self.worker_thread = None
@@ -72,7 +62,6 @@ class OCRToolSettingsTab(QWidget):
         engine_selection_hbox.addWidget(engine_label)
 
         self.engine_combo = QComboBox()
-        # self.engine_combo.addItems(["Tesseract", "GOT_OCR"]) # temporarily disable GOT due to vram concerns
         self.engine_combo.addItems(["Tesseract"])
         self.engine_combo.setCurrentText("Tesseract")
         engine_selection_hbox.addWidget(self.engine_combo)
@@ -131,20 +120,18 @@ class OCRToolSettingsTab(QWidget):
 
     def show_success_message(self):
         self.status_label.setStyleSheet("color: #4CAF50;")
-        self.status_label.setText("Success!")
+
+        minutes, seconds = divmod(self.elapsed_time, 60)
+        time_str = f"{int(minutes)}m {seconds:.1f}s" if minutes > 0 else f"{seconds:.1f}s"
+        self.status_label.setText(f"Success! Completed in {time_str}")
 
         if not self.selected_pdf_file:
             return
 
         original_file = Path(self.selected_pdf_file)
-        processed_file = None
+        processed_file = original_file.with_stem(f"{original_file.stem}_OCR").with_suffix(".pdf")
 
-        if self.engine_combo.currentText() == "Tesseract":
-            processed_file = original_file.with_stem(f"{original_file.stem}_OCR").with_suffix(".pdf")
-        elif self.engine_combo.currentText() == "GOT_OCR":
-            processed_file = original_file.with_suffix(".txt")
-
-        if processed_file and processed_file.exists():
+        if processed_file.exists():
             file_link = f'<a href="file:///{processed_file}" style="color: #4CAF50; text-decoration: none;">Open New File</a>'
         else:
             file_link = "The processed file could not be found."
@@ -152,7 +139,8 @@ class OCRToolSettingsTab(QWidget):
         QMessageBox.information(
             self,
             "Success!",
-            f"""If using <b>Tesseract</b>, a new <b>.pdf</b> ending in <b>'_OCR'</b> has been saved
+            f"""Processing completed in {time_str}!<br><br>
+            A new <b>.pdf</b> ending in <b>'_OCR'</b> has been saved
             in the same directory as the original file.<br><br>
 
             {file_link}
@@ -167,36 +155,6 @@ class OCRToolSettingsTab(QWidget):
         selected_engine = self.engine_combo.currentText()
         backend = self.ENGINE_MAPPING[selected_engine]
 
-        if backend == "got":
-            QMessageBox.information(
-                self,
-                "GOT_OCR Temporarily Disabled",
-                "The GOT_OCR backend is temporarily disabled due to memory usage concerns."
-            )
-            return
-
-        # if backend == "got":
-            # if not check_cuda_availability():
-                # QMessageBox.warning(
-                    # self,
-                    # "CUDA Not Available",
-                    # "GOT_OCR requires PyTorch with CUDA support. Please use Tesseract instead."
-                # )
-                # return
-
-            page_count = get_pdf_page_count(self.selected_pdf_file)
-            if page_count > 100:
-                reply = QMessageBox.question(
-                    self,
-                    "Large PDF Warning",
-                    f"The selected PDF has {page_count} pages. "
-                    "Are you sure that you want to proceed with the GOT_OCR backend? "
-                    "This backend processes a single page in approximately 10-15 seconds.",
-                    QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel
-                )
-                if reply == QMessageBox.StandardButton.Cancel:
-                    return
-
         self.status_label.setStyleSheet("color: #0074D9;")
         self.status_label.setText(f"Processing with {selected_engine}...")
         print(f"Starting OCR process for {self.selected_pdf_file}")
@@ -206,12 +164,14 @@ class OCRToolSettingsTab(QWidget):
         if self.worker_thread and self.worker_thread.isRunning():
             self.worker_thread.wait()
 
-        self.worker_thread = OcrWorkerThread(self.selected_pdf_file, backend, self.model_path)
+        self.worker_thread = OcrWorkerThread(self.selected_pdf_file, backend)
         self.worker_thread.finished_signal.connect(self.ocr_finished)
         self.worker_thread.start()
 
-    def ocr_finished(self, success, message):
+    def ocr_finished(self, success, message, elapsed_time):
         self.setButtons(True)
+
+        self.elapsed_time = elapsed_time
 
         if self.worker_thread:
             self.worker_thread.quit()
