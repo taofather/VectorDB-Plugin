@@ -33,6 +33,32 @@ def utf8_file_operations():
     finally:
         builtins.open = original_open
 
+def _configure_device_settings(settings, model_info):
+    """
+    Configure device, dtype, and quantization based on model_info precision.
+    Returns 'cuda' or 'cpu'.
+    """
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    settings.setdefault('tokenizer_settings', {})
+    settings.setdefault('model_settings', {})
+
+    if device == "cuda":
+        native = model_info.get("precision")
+        if native in ("float32", "bfloat16"):
+            dtype = torch.bfloat16 if has_bfloat16_support() else torch.float16
+        else:
+            dtype = torch.float16
+        settings['tokenizer_settings']['torch_dtype'] = dtype
+        settings['model_settings']['torch_dtype'] = dtype
+        qc = settings['model_settings'].get("quantization_config")
+        if qc is not None:
+            qc.bnb_4bit_compute_dtype = dtype
+    else:
+        settings['model_settings'].pop('quantization_config', None)
+        settings['model_settings']['device_map'] = "cpu"
+
+    return device
+
 def get_model_settings(base_settings, attn_implementation):
     settings = copy.deepcopy(base_settings)
     # settings['model_settings']['attn_implementation'] = attn_implementation
@@ -115,28 +141,15 @@ class BaseModel(ABC):
         self.generation_settings = generation_settings
         self.max_length = generation_settings['max_length']
 
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = _configure_device_settings(self.settings, self.model_info)
 
         script_dir = Path(__file__).resolve().parent
         cache_dir = script_dir / "Models" / "chat" / self.model_info['cache_dir']
 
-        native = model_info.get("precision")    # "float32", "bfloat16", or "float16"
-        if self.device == "cuda":
-            if native in ("float32", "bfloat16"):
-                dtype = torch.bfloat16 if has_bfloat16_support() else torch.float16
-            else:  # native == "float16" or anything else
-                dtype = torch.float16
-
-            settings['tokenizer_settings']['torch_dtype'] = dtype
-            settings['model_settings']['torch_dtype']     = dtype
-            qc = settings['model_settings'].get("quantization_config")
-            if qc is not None:
-                qc.bnb_4bit_compute_dtype = dtype
-
         hf_token = get_hf_token()
 
         tokenizer_settings = {
-            **settings.get('tokenizer_settings', {}), 
+            **self.settings.get('tokenizer_settings', {}), 
             'cache_dir': str(cache_dir)
         }
         if tokenizer_kwargs:
@@ -151,17 +164,11 @@ class BaseModel(ABC):
             self.tokenizer.eos_token = tokenizer_kwargs['eos_token']
 
         model_settings = {
-            **settings.get('model_settings', {}), 
+            **self.settings.get('model_settings', {}), 
             'cache_dir': str(cache_dir)
         }
         if model_kwargs:
             model_settings.update(model_kwargs)
-
-        # if using CPU, remove CUDA-specific settings
-        if self.device == "cpu":
-            model_settings.pop('quantization_config', None)
-            # model_settings.pop('attn_implementation', None)
-            model_settings['device_map'] = "cpu"
 
         if hf_token:
             model_settings['token'] = hf_token
@@ -189,6 +196,7 @@ class BaseModel(ABC):
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         return inputs
 
+    @torch.inference_mode()
     def generate_response(self, inputs, remove_token_type_ids=False):
         if remove_token_type_ids:
             inputs.pop('token_type_ids', None)
@@ -330,7 +338,6 @@ class GLM4Z1(BaseModel):
         )
 
 
-@torch.inference_mode()
 def generate_response(model_instance, augmented_query):
     prompt = model_instance.create_prompt(augmented_query)
     inputs = model_instance.create_inputs(prompt)
