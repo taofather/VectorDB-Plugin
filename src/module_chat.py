@@ -156,7 +156,6 @@ class BaseModel(ABC):
             model_settings.update(model_kwargs)
 
         # if using CPU, remove CUDA-specific settings
-        # only applies to Zephyr 1.6b because all other models are not populated in combobox if cuda isn't available
         if self.device == "cpu":
             model_settings.pop('quantization_config', None)
             # model_settings.pop('attn_implementation', None)
@@ -246,6 +245,12 @@ class Exaone(BaseModel):
         settings['tokenizer_settings']['trust_remote_code'] = True
         settings['model_settings']['trust_remote_code'] = True
 
+        if '2.4b' in model_name.lower() and not torch.cuda.is_available():
+            settings = {
+                'tokenizer_settings': {'trust_remote_code': True},
+                'model_settings': {'trust_remote_code': True}
+            }
+
         super().__init__(model_info, settings, generation_settings)
 
     def create_prompt(self, augmented_query):
@@ -254,101 +259,22 @@ class Exaone(BaseModel):
 [|assistant|]"""
 
 
-class ExaoneDeep(BaseModel):
-    def __init__(self, generation_settings, model_name):
-        model_info = CHAT_MODELS[model_name]
-
-        custom_generation_settings = {
-            'max_length': generation_settings['max_length'],
-            'max_new_tokens': generation_settings['max_new_tokens'],
-            'do_sample': True,
-            'temperature': 0.6,
-            'top_p': 0.95,
-            'top_k': 40,
-            'use_cache': True,
-            # 'repetition_penalty': 1.15, # infrequently works with 2.4b model
-            'num_beams': 1
-        }
-
-        settings = copy.deepcopy(bnb_bfloat16_settings)
-        settings['tokenizer_settings']['trust_remote_code'] = True
-        settings['model_settings']['trust_remote_code'] = True
-
-        super().__init__(model_info, settings, custom_generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""[|user|]{system_message} {augmented_query}
-[|assistant|]"""
-
-    def generate_response(self, inputs):
-        SHOW_THINKING = True
-        streamer = TextIteratorStreamer(
-            self.tokenizer, 
-            skip_prompt=True, 
-            skip_special_tokens=True
-        )
-
-        all_settings = {
-            **inputs, 
-            **self.generation_settings,
-            'streamer': streamer, 
-            'pad_token_id': self.tokenizer.pad_token_id,
-        }
-
-        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
-        generation_thread.start()
-
-        if SHOW_THINKING:
-            # stream everything
-            for partial_response in streamer:
-                yield partial_response
-        else:
-            # only stream after </thought> tag
-            buffer = ""
-            thinking_complete = False
-
-            for partial_response in streamer:
-                buffer += partial_response
-                if not thinking_complete and '</thought>' in buffer:
-                    thinking_complete = True
-                    start_idx = buffer.rfind('</thought>') + len('</thought>')
-                    yield buffer[start_idx:].strip()
-                    buffer = ""
-                elif thinking_complete:
-                    yield partial_response
-
-        generation_thread.join()
-
-
 class Qwen(BaseModel):
     def __init__(self, generation_settings, model_name):
         model_info = CHAT_MODELS[model_name]
-
-        if '1.5b' in model_name.lower() and not torch.cuda.is_available():
+        
+        is_small_model = (
+            # '4b' in model_name.lower() or
+            '1.7b' in model_name.lower() or 
+            '0.6b' in model_name.lower()
+        )
+        no_cuda = not torch.cuda.is_available()
+        
+        if is_small_model and no_cuda:
             settings = {}
         else:
             settings = bnb_bfloat16_settings
-
-        super().__init__(model_info, settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|im_start|>system
-{system_message}<|im_end|>
-<|im_start|>user
-{augmented_query}<|im_end|>
-<|im_start|>assistant
-"""
-
-
-class QwenCoder(BaseModel):
-    def __init__(self, generation_settings, model_name):
-        model_info = CHAT_MODELS[model_name]
-        
-        if '1.5b' in model_name.lower() and not torch.cuda.is_available():
-            settings = {}
-        else:
-            settings = bnb_bfloat16_settings
-
+            
         super().__init__(model_info, settings, generation_settings)
 
     def create_prompt(self, augmented_query):
@@ -360,202 +286,40 @@ class QwenCoder(BaseModel):
 """
 
     def generate_response(self, inputs):
-        return super().generate_response(inputs, remove_token_type_ids=True)
-
-
-class DeepseekR1(BaseModel):
-    def __init__(self, generation_settings, model_name):
-        model_info = CHAT_MODELS[model_name]
-        
-        custom_generation_settings = {
-            'max_length': generation_settings['max_length'],
-            'max_new_tokens': generation_settings['max_new_tokens'],
-            'do_sample': True,
-            'temperature': 0.6,
-            'top_p': 0.95,
-            'use_cache': True,
-            'num_beams': 1
-        }
-
-        settings = bnb_bfloat16_settings
-
-        super().__init__(model_info, settings, custom_generation_settings)
-        
-    def create_prompt(self, augmented_query):
-        return f"""<|begin_of_sentence|>{system_message}<|User|>{augmented_query}<|Assistant|><｜end_of_sentence｜><｜Assistant｜>"""
-
-    def generate_response(self, inputs):
-        SHOW_THINKING = False
+        # only start yielding after the </think> tag
         streamer = TextIteratorStreamer(
-            self.tokenizer, 
-            skip_prompt=True, 
+            self.tokenizer,
+            skip_prompt=True,
             skip_special_tokens=True
         )
-
         all_settings = {
-            **inputs, 
+            **inputs,
             **self.generation_settings,
-            'streamer': streamer, 
-            'pad_token_id': self.tokenizer.pad_token_id,
+            'streamer': streamer,
             'eos_token_id': self.tokenizer.eos_token_id
         }
 
-        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
-        generation_thread.start()
-
-        if SHOW_THINKING:
-            # stream everything
-            for partial_response in streamer:
-                yield partial_response
-        else:
-            # only stream after </think> tag
-            buffer = ""
-            thinking_complete = False
-
-            for partial_response in streamer:
-                buffer += partial_response
-                if not thinking_complete and '</think>' in buffer:
-                    thinking_complete = True
-                    start_idx = buffer.rfind('</think>') + len('</think>')
-                    yield buffer[start_idx:].strip()
-                    buffer = ""
-                elif thinking_complete:
-                    yield partial_response
-
-        generation_thread.join()
-
-
-class OlympicCoder(BaseModel):
-    def __init__(self, generation_settings, model_name):
-        model_info = CHAT_MODELS[model_name]
-
-        custom_generation_settings = {
-            'max_length': generation_settings['max_length'],
-            'max_new_tokens': generation_settings['max_new_tokens'],
-            'do_sample': True,
-            'temperature': 0.7,
-            'top_p': 0.8,
-            'top_k': 20,
-            'repetition_penalty': 1.1,
-            'use_cache': True,
-            'num_beams': 1
-        }
-
-        settings = bnb_bfloat16_settings
-
-        super().__init__(model_info, settings, custom_generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|im_start|>system
-{system_message}<|im_end|>
-<|im_start|>user
-{augmented_query}<|im_end|>
-<|im_start|>assistant
-"""
-
-    def generate_response(self, inputs):
-        streamer = TextIteratorStreamer(
-            self.tokenizer, 
-            skip_prompt=True, 
-            skip_special_tokens=True
+        generation_thread = threading.Thread(
+            target=self.model.generate,
+            kwargs=all_settings
         )
-
-        all_settings = {
-            **inputs, 
-            **self.generation_settings,
-            'streamer': streamer, 
-        }
-
-        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
         generation_thread.start()
 
-        full_response = ""  # Accumulate the entire response here
+        buffer = ""
+        thinking_complete = False
 
-        # Always stream everything
-        for partial_response in streamer:
-            full_response += partial_response  # Accumulate the partial response
-            yield partial_response
-
-        generation_thread.join()
-
-
-class Internlm3(BaseModel):
-    def __init__(self, generation_settings, model_name=None):
-        model_info = CHAT_MODELS[model_name]
-        settings = copy.deepcopy(bnb_bfloat16_settings)
-        settings['tokenizer_settings']['trust_remote_code'] = True
-        settings['model_settings']['trust_remote_code'] = True
-        super().__init__(model_info, settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|begin_of_text|><|im_start|>system
-{system_message}<|im_end|>
-<|im_start|>user
-{augmented_query}<|im_end|>
-<|im_start|>assistant
-"""
-
-    def generate_response(self, inputs):
-       inputs.pop('token_type_ids', None)
-
-       streamer = TextIteratorStreamer(
-           self.tokenizer, 
-           skip_prompt=True, 
-           skip_special_tokens=True
-       )
-       
-       eos_token_id = self.tokenizer.convert_tokens_to_ids(['<|im_end|>'])[0]
-
-       all_settings = {
-           **inputs, 
-           **self.generation_settings, 
-           'streamer': streamer, 
-           'eos_token_id': eos_token_id,
-           'pad_token_id': self.tokenizer.pad_token_id
-       }
-
-       generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
-       generation_thread.start()
-
-       for partial_response in streamer:
-           yield partial_response
-
-       generation_thread.join()
-
-
-class OLMo2_13b(BaseModel):
-    def __init__(self, generation_settings, model_name=None):
-        model_info = CHAT_MODELS[model_name]
-        settings = bnb_bfloat16_settings if torch.cuda.is_available() else {}
-        super().__init__(model_info, settings, generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|endoftext|><|system|>
-{system_message}
-<|user|>
-{augmented_query}
-<|assistant|>
-"""
-
-    def generate_response(self, inputs):
-        streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
-
-        all_settings = {
-            **inputs, 
-            **self.generation_settings, 
-            'streamer': streamer, 
-            'pad_token_id': self.tokenizer.eos_token_id,
-            'eos_token_id': self.tokenizer.eos_token_id
-        }
-
-        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
-        generation_thread.start()
-
-        for partial_response in streamer:
-            yield partial_response
+        for partial in streamer:
+            buffer += partial
+            if not thinking_complete and "</think>" in buffer:
+                thinking_complete = True
+                # strip off everything through the closing think tag
+                start = buffer.rfind("</think>") + len("</think>")
+                yield buffer[start:].strip()
+                buffer = ""
+            elif thinking_complete:
+                yield partial
 
         generation_thread.join()
-
 
 class Mistral_Small_24b(BaseModel):
     def __init__(self, generation_settings, model_name=None):
@@ -568,131 +332,6 @@ class Mistral_Small_24b(BaseModel):
 [SYSTEM_PROMPT]{system_message}[/SYSTEM_PROMPT]
 
 [INST]{augmented_query}[/INST]"""
-
-
-class QwQ_32b(BaseModel):
-    def __init__(self, generation_settings, model_name=None):
-        model_info = CHAT_MODELS[model_name]
-
-        custom_generation_settings = {
-            'max_length': generation_settings['max_length'],
-            'max_new_tokens': generation_settings['max_new_tokens'],
-            'do_sample': True,
-            'temperature': 0.6,
-            'top_p': 0.95,
-            'use_cache': True,
-            'num_beams': 1
-        }
-
-        super().__init__(model_info, bnb_bfloat16_settings, custom_generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|im_start|>system
-{system_message}<|im_end|>
-<|im_start|>user
-{augmented_query}<|im_end|>
-<|im_start|>assistant
-"""
-
-    def generate_response(self, inputs):
-        SHOW_THINKING = False
-        streamer = TextIteratorStreamer(
-            self.tokenizer, 
-            skip_prompt=True, 
-            skip_special_tokens=True
-        )
-
-        all_settings = {
-            **inputs, 
-            **self.generation_settings,
-            'streamer': streamer, 
-            'pad_token_id': self.tokenizer.pad_token_id,
-            'eos_token_id': self.tokenizer.eos_token_id
-        }
-
-        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
-        generation_thread.start()
-
-        if SHOW_THINKING:
-            # stream everything
-            for partial_response in streamer:
-                yield partial_response
-        else:
-            # only stream after </think> tag
-            buffer = ""
-            thinking_complete = False
-
-            for partial_response in streamer:
-                buffer += partial_response
-                if not thinking_complete and '</think>' in buffer:
-                    thinking_complete = True
-                    start_idx = buffer.rfind('</think>') + len('</think>')
-                    yield buffer[start_idx:].strip()
-                    buffer = ""
-                elif thinking_complete:
-                    yield partial_response
-
-        generation_thread.join()
-
-
-class RekaFlash(BaseModel):
-    def __init__(self, generation_settings, model_name):
-        model_info = CHAT_MODELS[model_name]
-
-        custom_generation_settings = {
-            'max_length': generation_settings['max_length'],
-            'max_new_tokens': generation_settings['max_new_tokens'],
-            'do_sample': True,
-            'temperature': 0.6,
-            'top_p': 0.95,
-            'use_cache': True,
-            'num_beams': 1
-        }
-
-        super().__init__(model_info, bnb_bfloat16_settings, custom_generation_settings)
-
-    def create_prompt(self, augmented_query):
-        return f"""<|endoftext|>human: {system_message} {augmented_query} <sep> assistant:"""
-
-    def generate_response(self, inputs):
-        SHOW_THINKING = False
-        streamer = TextIteratorStreamer(
-            self.tokenizer, 
-            skip_prompt=True, 
-            skip_special_tokens=True
-        )
-
-        all_settings = {
-            **inputs, 
-            **self.generation_settings,
-            'streamer': streamer, 
-            'pad_token_id': self.tokenizer.pad_token_id,
-            'eos_token_id': self.tokenizer.eos_token_id
-        }
-
-        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
-        generation_thread.start()
-
-        if SHOW_THINKING:
-            # stream everything
-            for partial_response in streamer:
-                yield partial_response
-        else:
-            # only stream after </reasoning> tag
-            buffer = ""
-            thinking_complete = False
-
-            for partial_response in streamer:
-                buffer += partial_response
-                if not thinking_complete and '</reasoning>' in buffer:
-                    thinking_complete = True
-                    start_idx = buffer.rfind('</reasoning>') + len('</reasoning>')
-                    yield buffer[start_idx:].strip()
-                    buffer = ""
-                elif thinking_complete:
-                    yield partial_response
-
-        generation_thread.join()
 
 
 class GLM4Z1(BaseModel):
