@@ -1,6 +1,7 @@
 import yaml
 import logging
 import gc
+import functools
 import copy
 from pathlib import Path
 import torch
@@ -95,6 +96,7 @@ bnb_float16_settings = {
     }
 }
 
+@functools.lru_cache(maxsize=1)
 def get_hf_token():
     config_path = Path("config.yaml")
     if config_path.exists():
@@ -180,6 +182,10 @@ class BaseModel(ABC):
 
     def create_inputs(self, prompt):
         inputs = self.tokenizer(prompt, return_tensors="pt", return_attention_mask=True)
+
+        if inputs['input_ids'].size(1) > self.max_length:
+            raise ValueError(f"Input prompt is too long ({inputs['input_ids'].size(1)} tokens). Maximum length is {self.max_length} tokens.")
+
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         return inputs
 
@@ -213,7 +219,8 @@ class BaseModel(ABC):
         self.cleanup()
         return new_model_class()
 
-    def cleanup_resources(model, tokenizer):
+    @staticmethod
+    def free_torch_memory(model, tokenizer):
         del model
         del tokenizer
         torch.cuda.empty_cache()
