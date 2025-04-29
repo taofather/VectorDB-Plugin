@@ -12,6 +12,7 @@ from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTextEdit, QPushButton, QCheckBox, QHBoxLayout, QMessageBox,
                                QApplication, QComboBox, QLabel, QTextBrowser, QProgressBar, QSizePolicy)
 
+from abc import ABC, abstractmethod
 from chat_lm_studio import LMStudioChatThread
 from chat_local_model import LocalModelChat
 from chat_openai import ChatGPTThread
@@ -20,15 +21,69 @@ from constants import CHAT_MODELS
 from module_voice_recorder import VoiceRecorder
 from utilities import check_preconditions_for_submit_question, my_cprint
 from constants import TOOLTIPS
-from database_interactions import QueryVectorDB, process_chunks_only_query
+from database_interactions import process_chunks_only_query
 
 current_dir = Path(__file__).resolve().parent
 input_text_file = str(current_dir / 'chat_history.txt')
 
+class SubmitStrategy(ABC):
+    """Interface every model-backend strategy must implement."""
+    def __init__(self, tab):
+        self.tab = tab
+
+    @abstractmethod
+    def submit(self, question: str, db_name: str) -> None: ...
+
+class LocalModelStrategy(SubmitStrategy):
+    def submit(self, question, db_name):
+        selected_model = self.tab.model_combo_box.currentText()
+        lm = self.tab.local_model_chat
+        if selected_model != lm.current_model:
+            if lm.is_model_loaded():
+                lm.terminate_current_process()
+            lm.start_model_process(selected_model)
+        lm.start_chat(question, selected_model, db_name)
+
+class LMStudioStrategy(SubmitStrategy):
+    def submit(self, question, db_name):
+        t = self.tab.lm_studio_chat_thread = LMStudioChatThread(question, db_name)
+        s = t.lm_studio_chat.signals
+        s.response_signal.connect(self.tab.update_response_lm_studio)
+        s.error_signal.connect(self.tab.show_error_message)
+        s.finished_signal.connect(self.tab.on_submission_finished)
+        s.citations_signal.connect(self.tab.display_citations_in_widget)
+        t.start()
+
+class ChatGPTStrategy(SubmitStrategy):
+    def submit(self, question, db_name):
+        model_name = self.tab.model_source_combo.currentText()
+        t = self.tab.chatgpt_thread = ChatGPTThread(question, db_name, model_name=model_name)
+        t.response_signal.connect(self.tab.update_response_lm_studio)
+        t.error_signal.connect(self.tab.show_error_message)
+        t.finished_signal.connect(self.tab.on_submission_finished)
+        t.citations_signal.connect(self.tab.display_citations_in_widget)
+        t.start()
+
+class KoboldStrategy(SubmitStrategy):
+    def submit(self, question, db_name):
+        t = self.tab.kobold_thread = KoboldThread(question, db_name)
+        t.response_signal.connect(self.tab.update_response_lm_studio)
+        t.error_signal.connect(self.tab.show_error_message)
+        t.finished_signal.connect(self.tab.on_submission_finished)
+        t.citations_signal.connect(self.tab.display_citations_in_widget)
+        t.start()
+
+class ChunksOnlyStrategy(SubmitStrategy):
+    def submit(self, question, db_name):
+        t = self.tab.database_query_thread = ChunksOnlyThread(question, db_name)
+        t.chunks_ready.connect(self.tab.display_chunks)
+        t.finished.connect(self.tab.on_database_query_finished)
+        t.start()
+
 class ThinkingIndicator(QProgressBar):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setRange(0, 0)             # indeterminate
+        self.setRange(0, 0)
         self.setTextVisible(False)
         self.setFixedHeight(12)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -254,6 +309,19 @@ class DatabaseQueryTab(QWidget):
         self.is_recording = False
         self.voice_recorder = VoiceRecorder(self)
 
+    def _strategy_for_source(self, source: str) -> SubmitStrategy:
+        STRATEGIES = {
+            "Local Model": LocalModelStrategy(self),
+            "LM Studio":   LMStudioStrategy(self),
+            "Kobold":      KoboldStrategy(self),
+            "gpt-4.1-nano": ChatGPTStrategy(self),
+            "gpt-4.1-mini": ChatGPTStrategy(self),
+            "gpt-4.1":      ChatGPTStrategy(self),
+        }
+        try:
+            return STRATEGIES[source]
+        except KeyError:
+            raise ValueError(f"Unknown model source: {source}")
 
     def setup_signals(self):
         self.local_model_chat.signals.response_signal.connect(self.update_response_local_model)
@@ -265,35 +333,24 @@ class DatabaseQueryTab(QWidget):
         self.local_model_chat.signals.token_count_signal.connect(self.update_token_count_label)
 
     def _render_html(self):
-        # Decide what text should be visible
         if self.show_thinking_checkbox.isChecked():
             visible_text = self.raw_response
         else:
             txt = self.raw_response
             # 1) Remove any COMPLETE <think> … </think> blocks
             txt = re.sub(r"<think>.*?</think>", "", txt, flags=re.DOTALL | re.IGNORECASE)
-            # 2) Remove any OPEN <think> that hasn’t closed yet (and everything after it)
+            # 2) Remove any OPEN <think> that hasn't closed yet (and everything after it)
             txt = re.sub(r"<think>.*$", "", txt, flags=re.DOTALL | re.IGNORECASE)
             # 3) Collapse multiple blank lines and trim leading space
             txt = re.sub(r"\n\s*\n", "\n", txt).lstrip()
             visible_text = txt
 
-        # Escape & convert to simple HTML
         body = html.escape(visible_text).replace("\n", "<br>")
         body += self.citations_block
 
         self.response_widget.setHtml(body)
         self.response_widget.verticalScrollBar().setValue(
             self.response_widget.verticalScrollBar().maximum())
-
-            
-        body = html.escape(visible_text)
-        body = body.replace("\n", "<br>")
-        body += self.citations_block
-        self.response_widget.setHtml(body)
-        self.response_widget.verticalScrollBar().setValue(
-            self.response_widget.verticalScrollBar().maximum()
-        )
 
     def toggle_thinking_visibility(self):
         self._render_html()
@@ -335,57 +392,19 @@ class DatabaseQueryTab(QWidget):
         self.citations_block = ""
         self.submit_button.setDisabled(True)
         user_question = self.text_input.toPlainText()
-        chunks_only = self.chunks_only_checkbox.isChecked()
-
         selected_database = self.database_pulldown.currentText()
-        if chunks_only:
-            self.database_query_thread = ChunksOnlyThread(user_question, selected_database)
-            self.database_query_thread.chunks_ready.connect(self.display_chunks)
-            self.database_query_thread.finished.connect(self.on_database_query_finished)
-            self.database_query_thread.start()
+
+        if self.chunks_only_checkbox.isChecked():
+            strategy = ChunksOnlyStrategy(self)
         else:
-            model_source = self.model_source_combo.currentText()
-            if model_source == "LM Studio":
-                self.lm_studio_chat_thread = LMStudioChatThread(user_question, selected_database)
-                self.lm_studio_chat_thread.lm_studio_chat.signals.response_signal.connect(self.update_response_lm_studio)
-                self.lm_studio_chat_thread.lm_studio_chat.signals.error_signal.connect(self.show_error_message)
-                self.lm_studio_chat_thread.lm_studio_chat.signals.finished_signal.connect(self.on_submission_finished)
-                self.lm_studio_chat_thread.lm_studio_chat.signals.citation_signal.connect(self.display_citations_in_widget)
-                self.lm_studio_chat_thread.start()
-            elif model_source in [
-                    "gpt-4.1-nano",
-                    "gpt-4.1-mini",
-                    "gpt-4.1",
-                ]:
-                self.chatgpt_thread = ChatGPTThread(
-                    user_question,
-                    selected_database,
-                    model_name=model_source
-                )
-                self.chatgpt_thread.response_signal.connect(self.update_response_lm_studio)
-                self.chatgpt_thread.error_signal.connect(self.show_error_message)
-                self.chatgpt_thread.finished_signal.connect(self.on_submission_finished)
-                self.chatgpt_thread.citations_signal.connect(self.display_citations_in_widget)
-                self.chatgpt_thread.start()
-            elif model_source == "Kobold":
-                self.kobold_thread = KoboldThread(user_question, selected_database)
-                self.kobold_thread.response_signal.connect(self.update_response_lm_studio)
-                self.kobold_thread.error_signal.connect(self.show_error_message)
-                self.kobold_thread.finished_signal.connect(self.on_submission_finished)
-                self.kobold_thread.citations_signal.connect(self.display_citations_in_widget)
-                self.kobold_thread.start()
-            else:
-                selected_model = self.model_combo_box.currentText()
-                try:
-                    if selected_model != self.local_model_chat.current_model:
-                        if self.local_model_chat.is_model_loaded():
-                            self.local_model_chat.terminate_current_process()
-                        self.local_model_chat.start_model_process(selected_model)
-                    self.local_model_chat.start_chat(user_question, selected_model, selected_database)
-                except Exception as e:
-                    logging.exception(f"Error starting or using local model: {e}")
-                    self.show_error_message(f"Error with local model: {str(e)}")
-                    self.submit_button.setDisabled(False)
+            strategy = self._strategy_for_source(self.model_source_combo.currentText())
+
+        try:
+            strategy.submit(user_question, selected_database)
+        except Exception as e:
+            logging.exception("Submission failed: %s", e)
+            self.show_error_message(str(e))
+            self.submit_button.setDisabled(False)
 
     def display_chunks(self, chunks):
         self.response_widget.setPlainText(chunks)
@@ -483,7 +502,6 @@ class DatabaseQueryTab(QWidget):
         # 3) Append text and refresh display
         self.raw_response += chunk
         self._render_html()
-
 
     def show_error_message(self, error_message):
         if "exceed the chat model's context limit" in error_message:
