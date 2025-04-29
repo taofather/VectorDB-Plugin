@@ -1,5 +1,8 @@
 import time
 import logging
+from enum import Enum, auto
+from typing import Any, Optional
+from dataclasses import dataclass
 
 import torch
 from multiprocessing import Process, Pipe
@@ -11,15 +14,20 @@ from database_interactions import QueryVectorDB
 from utilities import format_citations, my_cprint, normalize_chat_text
 from constants import rag_string
 
-class MessageType:
-    QUESTION = "question"
-    RESPONSE = "response" 
-    PARTIAL_RESPONSE = "partial_response"
-    CITATIONS = "citations"
-    ERROR = "error"
-    FINISHED = "finished"
-    EXIT = "exit"
-    TOKEN_COUNTS = "token_counts"
+class MessageType(Enum):
+    QUESTION = auto()
+    RESPONSE = auto()
+    PARTIAL_RESPONSE = auto()
+    CITATIONS = auto()
+    ERROR = auto()
+    FINISHED = auto()
+    EXIT = auto()
+    TOKEN_COUNTS = auto()
+
+@dataclass
+class PipeMessage:
+    type: MessageType
+    payload: Any = None
 
 class LocalModelSignals(QObject):
     response_signal = Signal(str)  # 7.
@@ -58,7 +66,7 @@ class LocalModelChat:
             try:
                 if self.model_pipe:
                     try:
-                        self.model_pipe.send((MessageType.EXIT, None))
+                        self.model_pipe.send(PipeMessage(MessageType.EXIT))
                     except (BrokenPipeError, OSError):
                         logging.warning("Pipe already closed")
                     finally:
@@ -90,7 +98,10 @@ class LocalModelChat:
             self.signals.error_signal.emit("Model not loaded. Please start a model first.")
             return
 
-        self.model_pipe.send((MessageType.QUESTION, (user_question, selected_model, selected_database)))
+        self.model_pipe.send(PipeMessage(
+            MessageType.QUESTION, 
+            (user_question, selected_model, selected_database)
+        ))
 
     def is_model_loaded(self):
         return self.model_process is not None and self.model_process.is_alive()
@@ -115,24 +126,22 @@ class LocalModelChat:
             try:
                 # checks every second for messages from "_local_model_process" that's being run in the child process
                 if self.model_pipe.poll(timeout=1):
-                    message_type, message = self.model_pipe.recv()
-                    if message_type in [MessageType.RESPONSE, MessageType.PARTIAL_RESPONSE]:
-                        self.signals.response_signal.emit(message)
-                    elif message_type == MessageType.CITATIONS:
-                        self.signals.citations_signal.emit(message)
-                    elif message_type == MessageType.ERROR:
-                        self.signals.error_signal.emit(message)
-                    elif message_type == MessageType.FINISHED:
+                    message = self.model_pipe.recv()
+                    if message.type in [MessageType.RESPONSE, MessageType.PARTIAL_RESPONSE]:
+                        self.signals.response_signal.emit(message.payload)
+                    elif message.type == MessageType.CITATIONS:
+                        self.signals.citations_signal.emit(message.payload)
+                    elif message.type == MessageType.ERROR:
+                        self.signals.error_signal.emit(message.payload)
+                    elif message.type == MessageType.FINISHED:
                         self.signals.finished_signal.emit()
-                        if message == MessageType.EXIT:
+                        if message.payload == MessageType.EXIT:
                             break
-                    elif message_type == MessageType.TOKEN_COUNTS:
-                        self.signals.token_count_signal.emit(message)
+                    elif message.type == MessageType.TOKEN_COUNTS:
+                        self.signals.token_count_signal.emit(message.payload)
                 else:
                     time.sleep(0.1)
             except (BrokenPipeError, EOFError, OSError) as e:
-                # inconsequential but i'll address later
-                # logging.warning(f"Pipe communication error: {str(e)}")
                 break
             except Exception as e:
                 logging.warning(f"Unexpected error in _listen_for_response: {str(e)}")
@@ -155,16 +164,16 @@ class LocalModelChat:
         try:
             while True:
                 try:
-                    message_type, message = conn.recv()
-                    if message_type == MessageType.QUESTION:
-                        user_question, _, selected_database = message
+                    message = conn.recv()
+                    if message.type == MessageType.QUESTION:
+                        user_question, _, selected_database = message.payload
                         if query_vector_db is None or current_database != selected_database:
                             query_vector_db = QueryVectorDB(selected_database)
                             current_database = selected_database
                         contexts, metadata_list = query_vector_db.search(user_question)
                         if not contexts:
-                            conn.send((MessageType.ERROR, "No relevant contexts found."))
-                            conn.send((MessageType.FINISHED, None))
+                            conn.send(PipeMessage(MessageType.ERROR, "No relevant contexts found."))
+                            conn.send(PipeMessage(MessageType.FINISHED))
                             continue
                         # exit early with message if contexts length comes within 100 of model's max context limit
                         max_context_tokens = model_instance.max_length - 100
@@ -179,8 +188,8 @@ class LocalModelChat:
                                 "2) Adjust the search settings (e.g. relevancy, number of contexts to return, etc.);\n"
                                 "3) Choose a chat model with a larger context."
                             )
-                            conn.send((MessageType.ERROR, error_message))
-                            conn.send((MessageType.FINISHED, None))
+                            conn.send(PipeMessage(MessageType.ERROR, error_message))
+                            conn.send(PipeMessage(MessageType.FINISHED))
                             continue
 
                         augmented_query = f"{rag_string}\n\n---\n\n" + "\n\n---\n\n".join(contexts) + "\n\n-----\n\n" + user_question
@@ -195,7 +204,7 @@ class LocalModelChat:
                         full_response = ""
                         for partial_response in module_chat.generate_response(model_instance, augmented_query):
                             full_response += partial_response
-                            conn.send((MessageType.PARTIAL_RESPONSE, partial_response))
+                            conn.send(PipeMessage(MessageType.PARTIAL_RESPONSE, partial_response))
 
                         response_token_count = len(model_instance.tokenizer.encode(full_response))
                         remaining_tokens = model_instance.max_length - (prepend_token_count + user_question_token_count + context_token_count + response_token_count)
@@ -210,23 +219,23 @@ class LocalModelChat:
                             f"<span style='color:white;'> = {remaining_tokens} remaining tokens.</span>"
                         )
 
-                        conn.send((MessageType.TOKEN_COUNTS, token_count_string))
+                        conn.send(PipeMessage(MessageType.TOKEN_COUNTS, token_count_string))
 
                         with open('chat_history.txt', 'w', encoding='utf-8') as f:
                             normalized_response = normalize_chat_text(full_response)
                             f.write(normalized_response)
                         citations = format_citations(metadata_list)
-                        conn.send((MessageType.CITATIONS, citations))
-                        conn.send((MessageType.FINISHED, None))
-                    elif message_type == MessageType.EXIT:
+                        conn.send(PipeMessage(MessageType.CITATIONS, citations))
+                        conn.send(PipeMessage(MessageType.FINISHED))
+                    elif message.type == MessageType.EXIT:
                         break
                 except EOFError:
                     logging.warning("Connection closed by main process.")
                     break
                 except Exception as e:
                     logging.exception(f"Error in local_model_process: {e}")
-                    conn.send((MessageType.ERROR, str(e)))
-                    conn.send((MessageType.FINISHED, None))
+                    conn.send(PipeMessage(MessageType.ERROR, str(e)))
+                    conn.send(PipeMessage(MessageType.FINISHED))
         finally:
             try:
                 if hasattr(model_instance, 'cleanup'):
