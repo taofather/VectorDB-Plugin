@@ -9,11 +9,11 @@ def create_chat_models_comparison_plot():
     model_categories = {
         "coding": {
             "models": [
-                "Qwen Coder - 1.5b",
-                "Qwen Coder - 3b",
-                "Qwen Coder - 7b",
-                "Qwen Coder - 14b",
-                "Qwen Coder - 32b",
+                # "Qwen Coder - 1.5b",
+                # "Qwen Coder - 3b",
+                # "Qwen Coder - 7b",
+                # "Qwen Coder - 14b",
+                # "Qwen Coder - 32b",
             ],
             # "color": "#CC5500", # orange
             # "color": "#8B0000", # red
@@ -23,14 +23,14 @@ def create_chat_models_comparison_plot():
         },
         "thinking": {
             "models": [
-                "Deepseek R1 - 1.5b",
-                "Deepseek R1 - 7b",
-                "Exaone Deep - 7.8b",
-                "Deepseek R1 - 14b",
-                "QwQ - 32b",
-                "Exaone Deep - 32b",
-                "Deepseek R1 - 32b",
-                "Reka Flash - 21b",
+                "Qwen 3 - 0.6b",
+                "Qwen 3 - 1.7b",
+                "Qwen 3 - 4b",
+                "Qwen 3 - 8b",
+                "GLM4-Z1 - 9b",
+                "Qwen 3 - 14b",
+                "Qwen 3 - 32b",
+                "GLM4-Z1 - 32b",
             ],
             "color": "#CC5500", # orange
             # "color": "#2E8B57", # green
@@ -38,8 +38,8 @@ def create_chat_models_comparison_plot():
         },
         "coding_and_thinking": {
             "models": [
-                "Olympic Coder - 7b",
-                "Olympic Coder - 32b"
+                # "Olympic Coder - 7b",
+                # "Olympic Coder - 32b"
             ],
             "color": "#8B0000", # red
             # "color": "#6A0DAD", # purple
@@ -48,6 +48,7 @@ def create_chat_models_comparison_plot():
         }
     }
 
+    # Create DataFrame with all models from CHAT_MODELS
     df = pd.DataFrame([
         {"model": model, "cps": data["cps"], "vram": data["vram"] / 1024}
         for model, data in CHAT_MODELS.items()
@@ -106,6 +107,7 @@ def create_chat_models_comparison_plot():
     for i, cps in enumerate(df["cps"]):
         ax2.annotate(f'{cps:.2f}', (i, cps), textcoords="offset points", xytext=(0,10), ha='center', color='white', fontweight='bold')
 
+    # Keep all category patches for the legend, even if some categories are empty
     category_patches = [Patch(facecolor='none', edgecolor=cat["color"], label=cat["label"], linewidth=2) 
                         for cat in model_categories.values()]
 
