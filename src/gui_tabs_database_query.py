@@ -2,6 +2,8 @@
 import logging
 from pathlib import Path
 import multiprocessing
+import re
+import html
 
 import torch
 import yaml
@@ -68,7 +70,7 @@ class ChunksOnlyThread(QThread):
 
 
 def run_tts_in_process(config_path, input_text_file):
-    from module_tts import run_tts  # Import here to avoid potential circular imports
+    from module_tts import run_tts
     run_tts(config_path, input_text_file)
     my_cprint("TTS models removed from memory.", "red")
 
@@ -91,17 +93,6 @@ class GuiSignals(QObject):
 
 
 class CustomTextBrowser(QTextBrowser):
-    '''
-    Inherits from QTextBrowser but overrides the doSetSource method to ensure that "http," "https," and "file" schemes are opened
-    with the system's default program while other types are still opened like the QTextBrowswer normally does.
-    
-    The following examples allow for additional handling and/or make the opening internal or external based on the type of link.
-        
-    1. Handle mailto links within the application to provide a custom email interface
-    2. Blocking or handling all other schemes internally
-    3. Log every http and https link click to a file or database before opening it in the default browser.
-    4. Display a warning message or confirmation dialog for ftp links before proceeding
-    '''
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setOpenExternalLinks(False)
@@ -126,6 +117,8 @@ class DatabaseQueryTab(QWidget):
         self.gui_signals = GuiSignals()
         self.current_model_name = None
         self.database_query_thread = None
+        self.raw_response = ""
+        self.citations_block = ""
         self.initWidgets()
         self.setup_signals()
 
@@ -172,11 +165,11 @@ class DatabaseQueryTab(QWidget):
                 self.model_combo_box.setItemData(index, tooltip, Qt.ToolTipRole)
             self.model_combo_box.setEnabled(True)
         else:
-            self.model_combo_box.addItem(CHAT_MODELS['Qwen - 1.5b']['model'])
-            self.model_combo_box.addItem(CHAT_MODELS['Zephyr - 1.6b']['model'])
+            self.model_combo_box.addItem(CHAT_MODELS['Qwen 3 - 0.6b']['model'])
+            self.model_combo_box.addItem(CHAT_MODELS['Qwen 3 - 1.7b']['model'])
             self.model_combo_box.addItem(CHAT_MODELS['Granite - 2b']['model'])
-            self.model_combo_box.addItem(CHAT_MODELS['Qwen Coder - 1.5b']['model'])
-            self.model_combo_box.setToolTip("Choose the local model you want to use. It will be automatically downloaded.")
+            self.model_combo_box.addItem(CHAT_MODELS['Exaone - 2.4b']['model'])
+            self.model_combo_box.setToolTip("Choose a local model. It will be downloaded.")
 
         if self.model_combo_box.count() > 0:
             self.model_combo_box.setCurrentIndex(0)
@@ -206,6 +199,11 @@ class DatabaseQueryTab(QWidget):
 
         hbox2_layout = QHBoxLayout()
 
+        self.show_thinking_checkbox = QCheckBox("Show Thinking")
+        self.show_thinking_checkbox.setChecked(False)
+        self.show_thinking_checkbox.stateChanged.connect(self.toggle_thinking_visibility)
+        hbox2_layout.addWidget(self.show_thinking_checkbox)
+        
         self.copy_response_button = QPushButton("Copy Response")
         self.copy_response_button.setToolTip(TOOLTIPS["COPY_RESPONSE"])
         self.copy_response_button.clicked.connect(self.on_copy_response_clicked)
@@ -243,15 +241,48 @@ class DatabaseQueryTab(QWidget):
         self.local_model_chat.signals.model_unloaded_signal.connect(self.on_model_unloaded)
         self.local_model_chat.signals.token_count_signal.connect(self.update_token_count_label)
 
+    def _render_html(self):
+        # Decide what text should be visible
+        if self.show_thinking_checkbox.isChecked():
+            visible_text = self.raw_response
+        else:
+            txt = self.raw_response
+            # 1) Remove any COMPLETE <think> … </think> blocks
+            txt = re.sub(r"<think>.*?</think>", "", txt, flags=re.DOTALL | re.IGNORECASE)
+            # 2) Remove any OPEN <think> that hasn’t closed yet (and everything after it)
+            txt = re.sub(r"<think>.*$", "", txt, flags=re.DOTALL | re.IGNORECASE)
+            # 3) Collapse multiple blank lines and trim leading space
+            txt = re.sub(r"\n\s*\n", "\n", txt).lstrip()
+            visible_text = txt
+
+        # Escape & convert to simple HTML
+        body = html.escape(visible_text).replace("\n", "<br>")
+        body += self.citations_block
+
+        self.response_widget.setHtml(body)
+        self.response_widget.verticalScrollBar().setValue(
+            self.response_widget.verticalScrollBar().maximum())
+
+            
+        body = html.escape(visible_text)
+        body = body.replace("\n", "<br>")
+        body += self.citations_block
+        self.response_widget.setHtml(body)
+        self.response_widget.verticalScrollBar().setValue(
+            self.response_widget.verticalScrollBar().maximum()
+        )
+
+    def toggle_thinking_visibility(self):
+        self._render_html()
+
     def update_token_count_label(self, token_count_string):
         self.token_count_label.setText(token_count_string)
 
     def on_model_source_changed(self, text):
         if text == "Local Model":
             self.model_combo_box.setEnabled(torch.cuda.is_available())
-        else:  # "LM Studio", "ChatGPT", "Kobold"
+        else:
             self.model_combo_box.setEnabled(False)
-
         self.eject_button.setEnabled(self.local_model_chat.is_model_loaded())
 
     def load_created_databases(self):
@@ -277,18 +308,19 @@ class DatabaseQueryTab(QWidget):
         cursor.clearSelection()
         self.response_widget.setTextCursor(cursor)
 
-        self.cumulative_response = ""
+        self.raw_response = ""
+        self.citations_block = ""
         self.submit_button.setDisabled(True)
         user_question = self.text_input.toPlainText()
         chunks_only = self.chunks_only_checkbox.isChecked()
 
         selected_database = self.database_pulldown.currentText()
-        if chunks_only:  # only get chunks
+        if chunks_only:
             self.database_query_thread = ChunksOnlyThread(user_question, selected_database)
             self.database_query_thread.chunks_ready.connect(self.display_chunks)
             self.database_query_thread.finished.connect(self.on_database_query_finished)
             self.database_query_thread.start()
-        else:  # lm studio, local model, or chatgpt
+        else:
             model_source = self.model_source_combo.currentText()
             if model_source == "LM Studio":
                 self.lm_studio_chat_thread = LMStudioChatThread(user_question, selected_database)
@@ -319,7 +351,7 @@ class DatabaseQueryTab(QWidget):
                 self.kobold_thread.finished_signal.connect(self.on_submission_finished)
                 self.kobold_thread.citations_signal.connect(self.display_citations_in_widget)
                 self.kobold_thread.start()
-            else:  # i.e. local models
+            else:
                 selected_model = self.model_combo_box.currentText()
                 try:
                     if selected_model != self.local_model_chat.current_model:
@@ -360,9 +392,10 @@ class DatabaseQueryTab(QWidget):
 
     def display_citations_in_widget(self, citations):
         if citations:
-            self.response_widget.append(f"<br>Citation Links:{citations}")
+            self.citations_block = f"<br><br>Citation Links:{citations}"
         else:
-            self.response_widget.append("\n\nNo citations found.")
+            self.citations_block = "<br><br>No citations found."
+        self._render_html()
 
     def on_copy_response_clicked(self):
         clipboard = QApplication.clipboard()
@@ -407,21 +440,16 @@ class DatabaseQueryTab(QWidget):
         self.is_recording = not self.is_recording
 
     def update_response_lm_studio(self, response_chunk):
-        self.cumulative_response += response_chunk
-        self.response_widget.setPlainText(self.cumulative_response)
+        self.response_widget.setPlainText(self.response_widget.toPlainText() + response_chunk)
         self.response_widget.verticalScrollBar().setValue(
             self.response_widget.verticalScrollBar().maximum()
         )
 
-    def update_response_local_model(self, response):
-        current_text = self.response_widget.toPlainText()
-        self.response_widget.setPlainText(current_text + response)
-        self.response_widget.verticalScrollBar().setValue(
-            self.response_widget.verticalScrollBar().maximum()
-        )
+    def update_response_local_model(self, chunk: str):
+        self.raw_response += chunk
+        self._render_html()
 
     def show_error_message(self, error_message):
-        # error message if the contexts exceed the chat model's limit
         if "exceed the chat model's context limit" in error_message:
             msg_box = QMessageBox()
             msg_box.setIcon(QMessageBox.Warning)
@@ -429,7 +457,6 @@ class DatabaseQueryTab(QWidget):
             msg_box.setWindowTitle("Context Limit Exceeded")
             msg_box.setStandardButtons(QMessageBox.Ok)
             msg_box.exec()
-        # all other error messages
         else:
             QMessageBox.warning(self, "Error", error_message)
         self.submit_button.setDisabled(False)

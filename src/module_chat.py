@@ -285,41 +285,6 @@ class Qwen(BaseModel):
 <|im_start|>assistant
 """
 
-    def generate_response(self, inputs):
-        # only start yielding after the </think> tag
-        streamer = TextIteratorStreamer(
-            self.tokenizer,
-            skip_prompt=True,
-            skip_special_tokens=True
-        )
-        all_settings = {
-            **inputs,
-            **self.generation_settings,
-            'streamer': streamer,
-            'eos_token_id': self.tokenizer.eos_token_id
-        }
-
-        generation_thread = threading.Thread(
-            target=self.model.generate,
-            kwargs=all_settings
-        )
-        generation_thread.start()
-
-        buffer = ""
-        thinking_complete = False
-
-        for partial in streamer:
-            buffer += partial
-            if not thinking_complete and "</think>" in buffer:
-                thinking_complete = True
-                # strip off everything through the closing think tag
-                start = buffer.rfind("</think>") + len("</think>")
-                yield buffer[start:].strip()
-                buffer = ""
-            elif thinking_complete:
-                yield partial
-
-        generation_thread.join()
 
 class Mistral_Small_24b(BaseModel):
     def __init__(self, generation_settings, model_name=None):
@@ -356,44 +321,6 @@ class GLM4Z1(BaseModel):
             f"{augmented_query}<|assistant|>\n"
             "<think>"
         )
-
-    def generate_response(self, inputs):
-        SHOW_THINKING = False
-        streamer = TextIteratorStreamer(
-            self.tokenizer, 
-            skip_prompt=True, 
-            skip_special_tokens=True
-        )
-
-        all_settings = {
-            **inputs, 
-            **self.generation_settings,
-            'streamer': streamer, 
-        }
-
-        generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)
-        generation_thread.start()
-
-        if SHOW_THINKING:
-            # stream everything
-            for partial_response in streamer:
-                yield partial_response
-        else:
-            # only stream after </think> tag
-            buffer = ""
-            thinking_complete = False
-
-            for partial_response in streamer:
-                buffer += partial_response
-                if not thinking_complete and '</think>' in buffer:
-                    thinking_complete = True
-                    start_idx = buffer.rfind('</think>') + len('</think>')
-                    yield buffer[start_idx:].strip()
-                    buffer = ""
-                elif thinking_complete:
-                    yield partial_response
-
-        generation_thread.join()
 
 
 @torch.inference_mode()
