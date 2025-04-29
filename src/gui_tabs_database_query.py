@@ -10,7 +10,7 @@ import yaml
 from PySide6.QtCore import QThread, Signal, QObject, Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTextEdit, QPushButton, QCheckBox, QHBoxLayout, QMessageBox,
-                               QApplication, QComboBox, QLabel, QTextBrowser)
+                               QApplication, QComboBox, QLabel, QTextBrowser, QProgressBar, QSizePolicy)
 
 from chat_lm_studio import LMStudioChatThread
 from chat_local_model import LocalModelChat
@@ -24,6 +24,14 @@ from database_interactions import QueryVectorDB, process_chunks_only_query
 
 current_dir = Path(__file__).resolve().parent
 input_text_file = str(current_dir / 'chat_history.txt')
+
+class ThinkingIndicator(QProgressBar):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setRange(0, 0)             # indeterminate
+        self.setTextVisible(False)
+        self.setFixedHeight(12)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
 
 class ChunksOnlyThread(QThread):
@@ -119,12 +127,15 @@ class DatabaseQueryTab(QWidget):
         self.database_query_thread = None
         self.raw_response = ""
         self.citations_block = ""
+        self.in_think_block = False
         self.initWidgets()
         self.setup_signals()
 
     def initWidgets(self):
+        # 1) Main vertical layout
         layout = QVBoxLayout(self)
 
+        # 2) Response browser + token count
         self.response_widget = CustomTextBrowser()
         self.response_widget.setOpenExternalLinks(True)
         layout.addWidget(self.response_widget, 5)
@@ -132,6 +143,21 @@ class DatabaseQueryTab(QWidget):
         self.token_count_label = QLabel("")
         layout.addWidget(self.token_count_label)
 
+        # 3) Thinking… label + busy indicator
+        self.thinking_indicator = ThinkingIndicator()
+        self.thinking_label = QLabel("Thinking…")
+        self.thinking_label.setAlignment(Qt.AlignLeft)
+
+        indicator_layout = QHBoxLayout()
+        indicator_layout.setContentsMargins(0, 0, 0, 0)
+        indicator_layout.addWidget(self.thinking_label)
+        indicator_layout.addWidget(self.thinking_indicator)
+        # hide both by default
+        self.thinking_label.hide()
+        self.thinking_indicator.hide()
+        layout.addLayout(indicator_layout)
+
+        # 4) First row: database and model selection
         hbox1_layout = QHBoxLayout()
 
         self.database_pulldown = RefreshingComboBox(self)
@@ -155,25 +181,19 @@ class DatabaseQueryTab(QWidget):
 
         self.model_combo_box = QComboBox()
         self.model_combo_box.setToolTip(TOOLTIPS["LOCAL_MODEL_SELECT"])
-
         if torch.cuda.is_available():
             for model_info in CHAT_MODELS.values():
-                index = self.model_combo_box.count()
-                self.model_combo_box.addItem(model_info['model'])
-                gb_value = round(model_info['vram'] / 1024, 1)
-                tooltip = f"Uses ~{gb_value} GB memory"
-                self.model_combo_box.setItemData(index, tooltip, Qt.ToolTipRole)
+                idx = self.model_combo_box.count()
+                self.model_combo_box.addItem(model_info["model"])
+                gb = round(model_info["vram"] / 1024, 1)
+                self.model_combo_box.setItemData(idx, f"Uses ~{gb} GB memory", Qt.ToolTipRole)
             self.model_combo_box.setEnabled(True)
         else:
-            self.model_combo_box.addItem(CHAT_MODELS['Qwen 3 - 0.6b']['model'])
-            self.model_combo_box.addItem(CHAT_MODELS['Qwen 3 - 1.7b']['model'])
-            self.model_combo_box.addItem(CHAT_MODELS['Granite - 2b']['model'])
-            self.model_combo_box.addItem(CHAT_MODELS['Exaone - 2.4b']['model'])
+            for key in ["Qwen 3 - 0.6b", "Qwen 3 - 1.7b", "Granite - 2b", "Exaone - 2.4b"]:
+                self.model_combo_box.addItem(CHAT_MODELS[key]["model"])
             self.model_combo_box.setToolTip("Choose a local model. It will be downloaded.")
-
         if self.model_combo_box.count() > 0:
             self.model_combo_box.setCurrentIndex(0)
-
         hbox1_layout.addWidget(self.model_combo_box)
 
         self.eject_button = QPushButton("Eject Local Model")
@@ -184,26 +204,27 @@ class DatabaseQueryTab(QWidget):
 
         if not torch.cuda.is_available():
             self.model_source_combo.setItemData(0, 0, Qt.UserRole - 1)
-            tooltip_text = "The Local Model option requires GPU-acceleration."
-            self.model_source_combo.setItemData(0, tooltip_text, Qt.ToolTipRole)
+            tooltip = "The Local Model option requires GPU-acceleration."
+            self.model_source_combo.setItemData(0, tooltip, Qt.ToolTipRole)
             self.model_combo_box.setEnabled(False)
-            self.model_combo_box.setToolTip(tooltip_text)
-            disabled_style = "QComboBox:disabled { color: #707070; }"
-            self.model_combo_box.setStyleSheet(disabled_style)
+            self.model_combo_box.setToolTip(tooltip)
+            self.model_combo_box.setStyleSheet("QComboBox:disabled { color: #707070; }")
 
         layout.addLayout(hbox1_layout)
 
+        # 5) Question input
         self.text_input = QTextEdit()
         self.text_input.setToolTip(TOOLTIPS["QUESTION_INPUT"])
         layout.addWidget(self.text_input, 1)
 
+        # 6) Second row: action buttons
         hbox2_layout = QHBoxLayout()
 
         self.show_thinking_checkbox = QCheckBox("Show Thinking")
         self.show_thinking_checkbox.setChecked(False)
         self.show_thinking_checkbox.stateChanged.connect(self.toggle_thinking_visibility)
         hbox2_layout.addWidget(self.show_thinking_checkbox)
-        
+
         self.copy_response_button = QPushButton("Copy Response")
         self.copy_response_button.setToolTip(TOOLTIPS["COPY_RESPONSE"])
         self.copy_response_button.clicked.connect(self.on_copy_response_clicked)
@@ -229,8 +250,10 @@ class DatabaseQueryTab(QWidget):
 
         layout.addLayout(hbox2_layout)
 
+        # 7) Voice recorder setup
         self.is_recording = False
         self.voice_recorder = VoiceRecorder(self)
+
 
     def setup_signals(self):
         self.local_model_chat.signals.response_signal.connect(self.update_response_local_model)
@@ -446,8 +469,21 @@ class DatabaseQueryTab(QWidget):
         )
 
     def update_response_local_model(self, chunk: str):
+        # 1) Track entering/exiting <think> blocks
+        if "<think>" in chunk.lower():
+            self.in_think_block = True
+        if "</think>" in chunk.lower():
+            self.in_think_block = False
+
+        # 2) Show or hide both label and busy bar
+        visible = self.in_think_block and not self.show_thinking_checkbox.isChecked()
+        self.thinking_indicator.setVisible(visible)
+        self.thinking_label.setVisible(visible)
+
+        # 3) Append text and refresh display
         self.raw_response += chunk
         self._render_html()
+
 
     def show_error_message(self, error_message):
         if "exceed the chat model's context limit" in error_message:
