@@ -57,7 +57,7 @@ def clean_triton_cache():
     import shutil
     from pathlib import Path
 
-    triton_cache_dir = Path.home() / '.triton' / 'cache'
+    triton_cache_dir = Path.home() / '.triton'
 
     if triton_cache_dir.exists():
         try:

@@ -377,27 +377,31 @@ class CreateVectorDB:
         ''')
 
         try:
-            for document in documents:
-                metadata = document.metadata
-                cursor.execute('''
-                    INSERT INTO document_metadata (file_name, hash, file_path, page_content)
-                    VALUES (?, ?, ?, ?)
-                ''', (
-                    metadata.get("file_name", ""),
-                    metadata.get("hash", ""),
-                    metadata.get("file_path", ""),
-                    document.page_content
-                ))
+            # Prepare batch data for documents
+            doc_rows = [
+                (
+                    doc.metadata.get("file_name", ""),
+                    doc.metadata.get("hash", ""),
+                    doc.metadata.get("file_path", ""),
+                    doc.page_content
+                )
+                for doc in documents
+            ]
+            cursor.executemany('''
+                INSERT INTO document_metadata (file_name, hash, file_path, page_content)
+                VALUES (?, ?, ?, ?)
+            ''', doc_rows)
 
-            for tiledb_id, file_hash in hash_id_mappings:
-                cursor.execute('''
-                    INSERT INTO hash_chunk_ids (tiledb_id, hash)
-                    VALUES (?, ?)
-                ''', (tiledb_id, file_hash))
+            # Batch insert hash–ID mappings
+            cursor.executemany('''
+                INSERT INTO hash_chunk_ids (tiledb_id, hash)
+                VALUES (?, ?)
+            ''', hash_id_mappings)
 
             conn.commit()
         finally:
             conn.close()
+
 
     def load_audio_documents(self, source_dir: Path = None) -> list:
         if source_dir is None:

@@ -1,7 +1,21 @@
+import os
+import subprocess
 import sys
+
+cache_dir = os.path.join(
+    os.environ.get("USERPROFILE", os.path.expanduser("~")),
+    ".triton"
+)
+
+if os.path.isdir(cache_dir):
+    print(f"\nRemoving Triton cache at {cache_dir} via OS command…")
+    subprocess.run(f'rmdir /S /Q "{cache_dir}"', shell=True, check=False)
+    print("Triton cache removed.\n")
+else:
+    print("\nNo Triton cache found to clean.\n")
+
 import subprocess
 import time
-import os
 import tkinter as tk
 from tkinter import messagebox
 from replace_sourcecode import (
@@ -19,8 +33,8 @@ start_time = time.time()
 def has_nvidia_gpu():
     try:
         result = subprocess.run(
-            ["nvidia-smi"], 
-            stdout=subprocess.PIPE, 
+            ["nvidia-smi"],
+            stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
         return result.returncode == 0
@@ -48,9 +62,17 @@ def tkinter_message_box(title, message, type="info", yes_no=False):
 def check_python_version_and_confirm():
     major, minor = map(int, sys.version.split()[0].split('.')[:2])
     if major == 3 and minor in [11, 12]:
-        return tkinter_message_box("Confirmation", f"Python version {sys.version.split()[0]} was detected, which is compatible.\n\nClick YES to proceed or NO to exit.", type="yesno", yes_no=True)
+        return tkinter_message_box(
+            "Confirmation",
+            f"Python version {sys.version.split()[0]} was detected, which is compatible.\n\nClick YES to proceed or NO to exit.",
+            yes_no=True
+        )
     else:
-        tkinter_message_box("Python Version Error", "This program requires Python 3.11 or 3.12\n\nPython versions prior to 3.11 or after 3.12 are not supported.\n\nExiting the installer...", type="error")
+        tkinter_message_box(
+            "Python Version Error",
+            "This program requires Python 3.11 or 3.12\n\nPython versions prior to 3.11 or after 3.12 are not supported.\n\nExiting the installer...",
+            type="error"
+        )
         return False
 
 def is_nvidia_gpu_installed():
@@ -61,13 +83,13 @@ def is_nvidia_gpu_installed():
         return False
 
 def manual_installation_confirmation():
-    if not tkinter_message_box("Confirmation", "Have you installed Git?\n\nClick YES to confirm or NO to cancel installation.", type="yesno", yes_no=True):
+    if not tkinter_message_box("Confirmation", "Have you installed Git?\n\nClick YES to confirm or NO to cancel installation.", yes_no=True):
         return False
-    if not tkinter_message_box("Confirmation", "Have you installed Git Large File Storage?\n\nClick YES to confirm or NO to cancel installation.", type="yesno", yes_no=True):
+    if not tkinter_message_box("Confirmation", "Have you installed Git Large File Storage?\n\nClick YES to confirm or NO to cancel installation.", yes_no=True):
         return False
-    if not tkinter_message_box("Confirmation", "Have you installed Pandoc?\n\nClick YES to confirm or NO to cancel installation.", type="yesno", yes_no=True):
+    if not tkinter_message_box("Confirmation", "Have you installed Pandoc?\n\nClick YES to confirm or NO to cancel installation.", yes_no=True):
         return False
-    if not tkinter_message_box("Confirmation", "Have you installed Microsoft Build Tools and/or Visual Studio with the necessary libraries to compile code?\n\nClick YES to confirm or NO to cancel installation.", type="yesno", yes_no=True):
+    if not tkinter_message_box("Confirmation", "Have you installed Microsoft Build Tools and/or Visual Studio with the necessary libraries to compile code?\n\nClick YES to confirm or NO to cancel installation.", yes_no=True):
         return False
     return True
 
@@ -80,7 +102,7 @@ if nvidia_gpu_detected:
 else:
     message = "No NVIDIA GPU has been detected. An NVIDIA GPU is required for this script to function properly.\n\nDo you still want to proceed with the installation?"
 
-if not tkinter_message_box("GPU Detection", message, type="yesno", yes_no=True):
+if not tkinter_message_box("GPU Detection", message, yes_no=True):
     sys.exit(1)
 
 if not manual_installation_confirmation():
@@ -92,13 +114,13 @@ def upgrade_pip_setuptools_wheel(max_retries=5, delay=3):
         [sys.executable, "-m", "pip", "install", "--upgrade", "setuptools", "--no-cache-dir"],
         [sys.executable, "-m", "pip", "install", "--upgrade", "wheel", "--no-cache-dir"]
     ]
-    
+
     for command in upgrade_commands:
         package = command[5]
         for attempt in range(max_retries):
             try:
                 print(f"\nAttempt {attempt + 1} of {max_retries}: Upgrading {package}...")
-                process = subprocess.run(command, check=True, capture_output=True, text=True, timeout=480)
+                subprocess.run(command, check=True, capture_output=True, text=True, timeout=480)
                 print(f"\033[92mSuccessfully upgraded {package}\033[0m")
                 break
             except subprocess.CalledProcessError as e:
@@ -116,51 +138,16 @@ def upgrade_pip_setuptools_wheel(max_retries=5, delay=3):
                 else:
                     print(f"Failed to upgrade {package} after {max_retries} attempts due to unexpected errors.")
 
-def pip_install_with_retry(library, max_retries=5, delay=3):
-    if "git+" in library:
-        pip_args_list = [["uv", "pip", "install", library, "--no-deps"]]
-    else:
-        pip_args_list = [["uv", "pip", "install", library, "--no-deps"]]
-    
-    for pip_args in pip_args_list:
-        for attempt in range(max_retries):
-            try:
-                print(f"\nAttempt {attempt + 1} of {max_retries}: Installing {pip_args[3]}")
-                subprocess.run(pip_args, check=True, capture_output=True, text=True, timeout=480)
-                print(f"\033[92mSuccessfully installed {pip_args[3]}\033[0m")
-                break
-            except subprocess.CalledProcessError as e:
-                print(f"Attempt {attempt + 1} failed. Error: {e.stderr.strip()}")
-                if attempt < max_retries - 1:
-                    print(f"Retrying in {delay} seconds...")
-                    time.sleep(delay)
-                else:
-                    print(f"Failed to install {pip_args[3]} after {max_retries} attempts.")
-                    return 0
-    return 1
-
-def install_libraries(libraries):
-    failed_installations = []
-    multiple_attempts = []
-
-    for library in libraries:
-        attempts = pip_install_with_retry(library)
-        if attempts == 0:
-            failed_installations.append(library)
-        elif attempts > 1:
-            multiple_attempts.append((library, attempts))
-        time.sleep(0.1)
-
-    return failed_installations, multiple_attempts
-
-def pip_install_with_deps(library, max_retries=5, delay=3):
+def pip_install(library, with_deps=False, max_retries=5, delay=3):
     pip_args = ["uv", "pip", "install", library]
+    if not with_deps:
+        pip_args.append("--no-deps")
 
     for attempt in range(max_retries):
         try:
-            print(f"\nAttempt {attempt + 1} of {max_retries}: Installing {library} with dependencies")
+            print(f"\nAttempt {attempt + 1} of {max_retries}: Installing {library}{' with dependencies' if with_deps else ''}")
             subprocess.run(pip_args, check=True, capture_output=True, text=True, timeout=600)
-            print(f"\033[92mSuccessfully installed {library} with dependencies\033[0m")
+            print(f"\033[92mSuccessfully installed {library}{' with dependencies' if with_deps else ''}\033[0m")
             return attempt + 1
         except subprocess.CalledProcessError as e:
             print(f"Attempt {attempt + 1} failed. Error: {e.stderr.strip()}")
@@ -171,12 +158,26 @@ def pip_install_with_deps(library, max_retries=5, delay=3):
                 print(f"Failed to install {library} after {max_retries} attempts.")
                 return 0
 
+def install_libraries(libraries):
+    failed_installations = []
+    multiple_attempts = []
+
+    for library in libraries:
+        attempts = pip_install(library)
+        if attempts == 0:
+            failed_installations.append(library)
+        elif attempts > 1:
+            multiple_attempts.append((library, attempts))
+        time.sleep(0.1)
+
+    return failed_installations, multiple_attempts
+
 def install_libraries_with_deps(libraries):
     failed_installations = []
     multiple_attempts = []
 
     for library in libraries:
-        attempts = pip_install_with_deps(library)
+        attempts = pip_install(library, with_deps=True)
         if attempts == 0:
             failed_installations.append(library)
         elif attempts > 1:
@@ -280,7 +281,7 @@ def update_config_yaml():
 
     3. If 'openai' parent key doesn't exist, creates it
     4. For each child key under 'openai', adds only if missing:
-       - api_key: empty string 
+       - api_key: empty string
        - model: 'gpt-4o-mini'
        - reasoning_effort: 'medium'
 
@@ -298,9 +299,9 @@ def update_config_yaml():
     import yaml
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, 'config.yaml')
-    
+
     with open(config_path, 'r', encoding='utf-8') as file:
-        config = yaml.safe_load(file)
+        config = yaml.safe_load(file) or {}
 
     vector_model_path = os.path.join(script_dir, 'Models', 'vector', 'BAAI--bge-small-en-v1.5')
 

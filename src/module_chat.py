@@ -200,11 +200,11 @@ class BaseModel(ABC):
     def generate_response(self, inputs, remove_token_type_ids=False):
         if remove_token_type_ids:
             inputs.pop('token_type_ids', None)
-            
+
         streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
-        
+
         eos_token_id = self.tokenizer.eos_token_id
-        
+
         all_settings = {**inputs, **self.generation_settings, 'streamer': streamer, 'eos_token_id': eos_token_id}
 
         generation_thread = threading.Thread(target=self.model.generate, kwargs=all_settings)

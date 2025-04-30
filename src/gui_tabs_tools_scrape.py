@@ -1,11 +1,11 @@
 import os
 import subprocess
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QPushButton, QMessageBox
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread
 from PySide6.QtGui import QStandardItem, QStandardItemModel, QColor
 import platform
 import shutil
-from module_scraper import ScraperWorker, WorkerThread, ScraperRegistry
+from module_scraper import ScraperWorker, ScraperRegistry
 from constants import scrape_documentation
 
 class ScrapeDocumentationTab(QWidget):
@@ -78,11 +78,9 @@ class ScrapeDocumentationTab(QWidget):
         url = scrape_documentation[selected_doc]["URL"]
         folder = scrape_documentation[selected_doc]["folder"]
         scraper_name = scrape_documentation[selected_doc].get("scraper_class", "BaseScraper")
-        
         scraper_class = ScraperRegistry.get_scraper(scraper_name)
-        
-        self.current_folder = os.path.join(os.path.dirname(__file__), "Scraped_Documentation", folder)
 
+        self.current_folder = os.path.join(os.path.dirname(__file__), "Scraped_Documentation", folder)
         self.current_doc_name = selected_doc
 
         if os.path.exists(self.current_folder):
@@ -106,6 +104,7 @@ class ScrapeDocumentationTab(QWidget):
                         shutil.rmtree(file_path)
                 except Exception as e:
                     print(f'Failed to delete {file_path}. Reason: {e}')
+
         self.status_label.setText(
             f'<span style="color: #FF9800;"><b>Scraping {self.current_doc_name}...</b></span> '
             f'<span style="color: #4CAF50;"><b>Pages scraped:</b></span> 0'
@@ -113,10 +112,14 @@ class ScrapeDocumentationTab(QWidget):
         self.scrape_button.setEnabled(False)
 
         self.worker = ScraperWorker(url, folder, scraper_class)
+        self.thread = QThread()
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.run)
         self.worker.status_updated.connect(self.update_status)
         self.worker.scraping_finished.connect(self.scraping_finished)
-
-        self.thread = WorkerThread(self.worker)
+        self.worker.scraping_finished.connect(self.thread.quit)
+        self.worker.error_occurred.connect(self.show_error)
+        self.thread.finished.connect(self.thread.deleteLater)
         self.thread.start()
 
     def update_status(self, status):
@@ -136,6 +139,9 @@ class ScrapeDocumentationTab(QWidget):
             f'<span style="color: #4CAF50;"><b>Pages scraped:</b></span> {final_count} '
             f'<span style="color: #2196F3;"><a href="open_folder" style="color: #2196F3;">Open Folder</a></span>'
         )
+
+    def show_error(self, message):
+        QMessageBox.critical(self, "Error", message)
 
     def open_folder(self, link):
         if link == "open_folder":

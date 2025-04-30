@@ -5,8 +5,7 @@ import aiohttp
 import aiofiles
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
-from PySide6.QtCore import Signal, QObject, QThread
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtCore import Signal, QObject
 from charset_normalizer import detect
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -149,6 +148,7 @@ class ScraperRegistry:
 class ScraperWorker(QObject):
     status_updated = Signal(str)
     scraping_finished = Signal()
+    error_occurred = Signal(str)
 
     def __init__(self, url, folder, scraper_class=BaseScraper):
         super().__init__()
@@ -166,7 +166,10 @@ class ScraperWorker(QObject):
         self.observer.start()
 
     def run(self):
-        asyncio.run(self.crawl_domain())
+        try:
+            asyncio.run(self.crawl_domain())
+        finally:
+            self.cleanup()
 
     def count_saved_files(self):
         if not os.path.exists(self.save_dir):
@@ -217,16 +220,13 @@ class ScraperWorker(QObject):
 
     async def fetch(self, session, url, base_domain, semaphore, save_dir, log_file, acceptable_domain_extension, retries=3):
         filename = os.path.join(save_dir, self.sanitize_filename(url) + ".html")
-
         if os.path.exists(filename):
             return set()
-
         fallback_encodings = ['latin-1', 'iso-8859-1', 'cp1252', 'windows-1252', 'ascii']
         headers = {
             'Accept-Charset': 'utf-8, iso-8859-1;q=0.8, *;q=0.7',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
         }
-
         async with semaphore:
             for attempt in range(1, retries + 1):
                 try:
@@ -240,12 +240,9 @@ class ScraperWorker(QObject):
                                     raw = await response.read()
                                     try:
                                         detected = detect(raw)
-                                        detected_encoding = detected.get('encoding')
-                                        if not detected_encoding or detected_encoding.lower() in ['unknown', 'utf-8']:
-                                            detected_encoding = 'latin-1'
-                                    except Exception as e:
+                                        detected_encoding = detected.get('encoding') or 'latin-1'
+                                    except Exception:
                                         detected_encoding = 'latin-1'
-
                                     try:
                                         html = raw.decode(detected_encoding)
                                     except UnicodeDecodeError:
@@ -257,26 +254,30 @@ class ScraperWorker(QObject):
                                                 continue
                                         else:
                                             html = raw.decode('utf-8', errors='ignore')
-
                                 await self.save_html(html, url, save_dir)
                                 self.stats['scraped'] = self.count_saved_files()
+                                self.status_updated.emit(str(self.stats['scraped']))
                                 return self.extract_links(html, url, base_domain, acceptable_domain_extension)
                             else:
                                 self.stats['scraped'] = self.count_saved_files()
+                                self.status_updated.emit(str(self.stats['scraped']))
                                 return set()
                         else:
                             self.stats['scraped'] = self.count_saved_files()
+                            self.status_updated.emit(str(self.stats['scraped']))
                             return set()
                 except UnicodeDecodeError:
                     if attempt == retries:
                         await self.log_failed_url(url, log_file)
                         self.stats['scraped'] = self.count_saved_files()
-                    await asyncio.sleep(2)  # Longer delay for encoding issues
+                        self.status_updated.emit(str(self.stats['scraped']))
+                    await asyncio.sleep(2)
                 except Exception as e:
                     if attempt == retries:
                         await self.log_failed_url(url, log_file)
                         self.stats['scraped'] = self.count_saved_files()
-                        QMessageBox.critical(None, "Error", f"Failed to fetch URL: {url}\nError: {str(e)}")
+                        self.status_updated.emit(str(self.stats['scraped']))
+                        self.error_occurred.emit(f"Failed to fetch URL: {url}\nError: {str(e)}")
                     await asyncio.sleep(1)
             return set()
 
@@ -384,11 +385,3 @@ class FileHandler(FileSystemEventHandler):
     def execute_handler(self):
         count = len([f for f in os.listdir(self.worker.save_dir) if f.endswith('.html')])
         self.worker.status_updated.emit(str(count))
-
-class WorkerThread(QThread):
-    def __init__(self, worker):
-        super().__init__()
-        self.worker = worker
-
-    def run(self):
-        self.worker.run()

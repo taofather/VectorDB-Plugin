@@ -122,7 +122,7 @@ class LocalModelChat:
         while True:
             if not self.model_pipe or not isinstance(self.model_pipe, PipeConnection):
                 break
-            
+
             try:
                 # checks every second for messages from "_local_model_process" that's being run in the child process
                 if self.model_pipe.poll(timeout=1):
@@ -150,11 +150,9 @@ class LocalModelChat:
         self.cleanup_listener_resources()
 
     def cleanup_listener_resources(self):
-        # Just clean up the resources without trying to join the thread
         self.model_pipe = None
         self.model_process = None
         self.current_model = None
-        # Remove the self.listener_thread.join(timeout=1) line
 
     @staticmethod
     def _local_model_process(conn, model_name): # child process for local model's generation
@@ -193,10 +191,7 @@ class LocalModelChat:
                             continue
 
                         augmented_query = f"{rag_string}\n\n---\n\n" + "\n\n---\n\n".join(contexts) + "\n\n-----\n\n" + user_question
-                        # DEBUG
-                        # print(augmented_query)
 
-                        # counts tokens using the chosen model's tokenizer
                         prepend_token_count = len(model_instance.tokenizer.encode(rag_string))
                         context_token_count = len(model_instance.tokenizer.encode("\n\n---\n\n".join(contexts)))
                         user_question_token_count = len(model_instance.tokenizer.encode(user_question))
