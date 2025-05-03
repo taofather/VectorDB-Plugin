@@ -1,17 +1,18 @@
 import yaml
 import logging
 import gc
+from copy import deepcopy
 import functools
 import copy
 from pathlib import Path
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer, BitsAndBytesConfig
+from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer, BitsAndBytesConfig, StoppingCriteria, StoppingCriteriaList
 import threading
 from abc import ABC, abstractmethod
 import builtins
 from contextlib import contextmanager
 
-from constants import CHAT_MODELS, system_message
+from constants import CHAT_MODELS, system_message, GLM4Z1_CHAT_TEMPLATE
 from utilities import my_cprint, has_bfloat16_support
 
 # logging.getLogger("transformers").setLevel(logging.WARNING) # adjust to see deprecation and other non-fatal errors
@@ -130,6 +131,17 @@ def get_hf_token():
             config = yaml.safe_load(config_file)
             return config.get('hf_access_token')
     return None
+
+
+class StopAfterThink(StoppingCriteria):
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+        self.buffer = ""
+
+    def __call__(self, input_ids, scores, **kwargs):
+        self.buffer += self.tokenizer.decode(input_ids[0, -1], skip_special_tokens=True)
+        return "</think>" in self.buffer
+
 
 class BaseModel(ABC):
     def __init__(self, model_info, settings, generation_settings, attn_implementation=None, tokenizer_kwargs=None, model_kwargs=None):
@@ -292,11 +304,19 @@ class Qwen(BaseModel):
             
         super().__init__(model_info, settings, generation_settings)
 
+    # def create_prompt(self, augmented_query):
+        # return f"""<|im_start|>system
+# {system_message}<|im_end|>
+# <|im_start|>user
+# {augmented_query}<|im_end|>
+# <|im_start|>assistant
+# """
+
     def create_prompt(self, augmented_query):
         return f"""<|im_start|>system
 {system_message}<|im_end|>
 <|im_start|>user
-{augmented_query}<|im_end|>
+{augmented_query} /no_think<|im_end|>
 <|im_start|>assistant
 """
 
@@ -315,27 +335,69 @@ class Mistral_Small_24b(BaseModel):
 
 
 class GLM4Z1(BaseModel):
-    def __init__(self, generation_settings, model_name):
+    def __init__(self, generation_settings: dict, model_name: str):
         model_info = CHAT_MODELS[model_name]
-        settings = bnb_bfloat16_settings
+
+        settings = deepcopy(bnb_bfloat16_settings)
+        settings["tokenizer_settings"]["trust_remote_code"] = True
+        settings["model_settings"]["trust_remote_code"] = True
+        settings["model_settings"]["attn_implementation"] = "sdpa"
+
+        custom_generation_settings = {
+            "max_length": generation_settings["max_length"],
+            "max_new_tokens": generation_settings["max_new_tokens"],
+            "do_sample": True,
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "top_k": 40,
+            "num_beams": 1,
+            "use_cache": True
+        }
+
+        tokenizer_kwargs = {
+            "trust_remote_code": True,
+            "chat_template": GLM4Z1_CHAT_TEMPLATE
+        }
 
         super().__init__(
             model_info,
             settings,
-            generation_settings,
-            attn_implementation="sdpa",
-            tokenizer_kwargs={
-                'trust_remote_code': True
-            }
+            custom_generation_settings,
+            attn_implementation=None,
+            tokenizer_kwargs=tokenizer_kwargs
         )
 
-    def create_prompt(self, augmented_query):
-        return (
-            "[gMASK]<sop><|system|>\n"
-            f"{system_message}<|user|>\n"
-            f"{augmented_query}<|assistant|>\n"
-            "<think>"
-        )
+        self.generation_settings["pad_token_id"] = self.tokenizer.eos_token_id
+
+    @torch.inference_mode()
+    def generate_response(self, inputs, remove_token_type_ids=False):
+        if remove_token_type_ids:
+            inputs.pop("token_type_ids", None)
+
+        settings = {**inputs, **self.generation_settings,
+                    "pad_token_id": self.tokenizer.eos_token_id}
+        generated = self.model.generate(**settings)
+        txt = self.tokenizer.decode(generated[0], skip_special_tokens=True)
+        txt = txt[txt.rfind("</think>") + len("</think>"):].lstrip()
+        yield txt
+
+    def create_prompt(self, augmented_query: str) -> str:
+        return f"""[gMASK]<sop><|system|>
+{system_message}<|user|>
+{augmented_query}<|assistant|>
+<think>"""
+
+    @torch.inference_mode()
+    def generate_response(self, inputs, remove_token_type_ids: bool = False):
+        if remove_token_type_ids:
+            inputs.pop("token_type_ids", None)
+
+        settings = {**inputs, **self.generation_settings}
+        generated = self.model.generate(**settings)
+        text = self.tokenizer.decode(generated[0], skip_special_tokens=True)
+        idx = text.rfind("</think>") + len("</think>")
+        yield text[idx:].strip()
+
 
 
 def generate_response(model_instance, augmented_query):
