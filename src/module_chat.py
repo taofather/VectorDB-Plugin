@@ -304,21 +304,22 @@ class Qwen(BaseModel):
             
         super().__init__(model_info, settings, generation_settings)
 
-    # def create_prompt(self, augmented_query):
-        # return f"""<|im_start|>system
-# {system_message}<|im_end|>
-# <|im_start|>user
-# {augmented_query}<|im_end|>
-# <|im_start|>assistant
-# """
-
     def create_prompt(self, augmented_query):
         return f"""<|im_start|>system
 {system_message}<|im_end|>
 <|im_start|>user
-{augmented_query} /no_think<|im_end|>
+{augmented_query}<|im_end|>
 <|im_start|>assistant
 """
+
+    # SHOWS HOW TO TURN THINKING OFF TEMPORARILY
+    # def create_prompt(self, augmented_query):
+        # return f"""<|im_start|>system
+# {system_message}<|im_end|>
+# <|im_start|>user
+# {augmented_query} /no_think<|im_end|>
+# <|im_start|>assistant
+# """
 
 
 class Mistral_Small_24b(BaseModel):
