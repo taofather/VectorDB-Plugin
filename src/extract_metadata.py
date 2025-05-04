@@ -1,4 +1,4 @@
-# works with langchain 0.3+
+# extract_metadata.py
 
 import os
 import datetime

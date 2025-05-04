@@ -53,7 +53,7 @@ class BaseEmbeddingModel:
         prepared_encode_kwargs = self.prepare_encode_kwargs()
         return HuggingFaceEmbeddings(
             model_name=self.model_name,
-            show_progress=not self.is_query,  # only show progress for database creation
+            show_progress=not self.is_query,
             model_kwargs=prepared_kwargs,
             encode_kwargs=prepared_encode_kwargs
         )
@@ -129,13 +129,6 @@ class Stella400MEmbedding(BaseEmbeddingModel):
         logging.debug(f"is_cuda: {is_cuda}")
         logging.debug(f"use_xformers: {use_xformers}")
 
-        # Add this tokenizer configuration to fix the error
-        stella_kwargs["tokenizer_kwargs"] = {
-            "max_length": 8192,
-            "padding": True,
-            "truncation": True
-        }
-
         stella_kwargs["config_kwargs"] = {
             "use_memory_efficient_attention": use_xformers,
             "unpad_inputs": use_xformers,
@@ -152,32 +145,30 @@ class Stella400MEmbedding(BaseEmbeddingModel):
 
 class AlibabaEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
-        logging.debug("Starting AlibabaEmbedding prepare_kwargs.")
         ali_kwargs = deepcopy(self.model_kwargs)
-        logging.debug(f"Original model_kwargs: {self.model_kwargs}")
-
-        compute_device = self.model_kwargs.get("device", "").lower()
+        compute_device = ali_kwargs.get("device", "").lower()
         is_cuda = compute_device == "cuda"
         use_xformers = is_cuda and supports_flash_attention()
-        logging.debug(f"Device: {compute_device}")
-        logging.debug(f"is_cuda: {is_cuda}")
-        logging.debug(f"use_xformers: {use_xformers}")
-
         ali_kwargs["tokenizer_kwargs"] = {
-            "max_length": 8192,
-            "padding": True,
-            "truncation": True
+            "padding": "longest",
+            "truncation": True,
+            "max_length": 8192
         }
-
         ali_kwargs["config_kwargs"] = {
             "use_memory_efficient_attention": use_xformers,
             "unpad_inputs": use_xformers,
             "attn_implementation": "eager" if use_xformers else "sdpa"
         }
-        logging.debug(f"Set 'config_kwargs': {ali_kwargs['config_kwargs']}")
-
-        logging.debug(f"Final ali_kwargs: {ali_kwargs}")
         return ali_kwargs
+
+    def prepare_encode_kwargs(self):
+        encode_kwargs = super().prepare_encode_kwargs()
+        encode_kwargs.update({
+            "padding": True,
+            "truncation": True,
+            "max_length": 8192
+        })
+        return encode_kwargs
 
 
 def create_vector_db_in_process(database_name):
@@ -306,7 +297,6 @@ class CreateVectorDB:
             all_ids = []
             chunk_counters = defaultdict(int)
 
-            # Process all texts and generate IDs
             for doc in texts:
                 file_hash = doc.metadata.get('hash')
                 chunk_counters[file_hash] += 1
