@@ -29,7 +29,7 @@ from module_process_images import choose_image_loader
 from utilities import my_cprint, get_model_native_precision, get_appropriate_dtype, supports_flash_attention
 from constants import VECTOR_MODELS
 
-logging.basicConfig(level=logging.CRITICAL, force=True)
+logging.basicConfig(level=logging.INFO, force=True)
 # logging.basicConfig(level=logging.DEBUG, force=True)
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,7 @@ class BaseEmbeddingModel:
     def create(self):
         prepared_kwargs = self.prepare_kwargs()
         prepared_encode_kwargs = self.prepare_encode_kwargs()
+
         return HuggingFaceEmbeddings(
             model_name=self.model_name,
             show_progress=not self.is_query,
@@ -143,12 +144,42 @@ class Stella400MEmbedding(BaseEmbeddingModel):
         return stella_kwargs
 
 
+# class AlibabaEmbedding(BaseEmbeddingModel):
+    # def prepare_kwargs(self):
+        # ali_kwargs = deepcopy(self.model_kwargs)
+        # compute_device = ali_kwargs.get("device", "").lower()
+        # is_cuda = compute_device == "cuda"
+        # use_xformers = is_cuda and supports_flash_attention()
+        # ali_kwargs["tokenizer_kwargs"] = {
+            # "padding": "longest",
+            # "truncation": True,
+            # "max_length": 8192
+        # }
+        # ali_kwargs["config_kwargs"] = {
+            # "use_memory_efficient_attention": use_xformers,
+            # "unpad_inputs": use_xformers,
+            # "attn_implementation": "eager" if use_xformers else "sdpa"
+        # }
+        # return ali_kwargs
+
+    # def prepare_encode_kwargs(self):
+        # encode_kwargs = super().prepare_encode_kwargs()
+        # encode_kwargs.update({
+            # "padding": True,
+            # "truncation": True,
+            # "max_length": 8192
+        # })
+        # return encode_kwargs
+
+
 class AlibabaEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
         ali_kwargs = deepcopy(self.model_kwargs)
+
         compute_device = ali_kwargs.get("device", "").lower()
         is_cuda = compute_device == "cuda"
         use_xformers = is_cuda and supports_flash_attention()
+
         ali_kwargs["tokenizer_kwargs"] = {
             "padding": "longest",
             "truncation": True,
@@ -169,6 +200,7 @@ class AlibabaEmbedding(BaseEmbeddingModel):
             "max_length": 8192
         })
         return encode_kwargs
+
 
 
 def create_vector_db_in_process(database_name):
