@@ -29,6 +29,7 @@ from module_process_images import choose_image_loader
 from utilities import my_cprint, get_model_native_precision, get_appropriate_dtype, supports_flash_attention
 from constants import VECTOR_MODELS
 
+# logging.basicConfig(level=logging.CRITICAL, force=True)
 logging.basicConfig(level=logging.INFO, force=True)
 # logging.basicConfig(level=logging.DEBUG, force=True)
 logger = logging.getLogger(__name__)
@@ -46,11 +47,17 @@ class BaseEmbeddingModel:
     def prepare_encode_kwargs(self):
         if self.is_query:
             self.encode_kwargs['batch_size'] = 1
+        self.encode_kwargs.setdefault('padding', True)
+        self.encode_kwargs.setdefault('truncation', True)
         return self.encode_kwargs
 
     def create(self):
         prepared_kwargs = self.prepare_kwargs()
         prepared_encode_kwargs = self.prepare_encode_kwargs()
+
+        # — Add these two lines to see exactly what the tokenizer will get
+        print(">>> [BaseEmbeddingModel.create] model_kwargs:      ", prepared_kwargs)
+        print(">>> [BaseEmbeddingModel.create] encode_kwargs:     ", prepared_encode_kwargs)
 
         return HuggingFaceEmbeddings(
             model_name=self.model_name,
@@ -119,57 +126,72 @@ class StellaEmbedding(BaseEmbeddingModel):
         return encode_kwargs
 
 
+# class Stella400MEmbedding(BaseEmbeddingModel):
+    # def prepare_kwargs(self):
+        # stella_kwargs = deepcopy(self.model_kwargs)
+        # compute_device = self.model_kwargs.get("device", "").lower()
+        # is_cuda = compute_device == "cuda"
+        # use_xformers = is_cuda and supports_flash_attention()
+
+        # logging.debug(f"Device: {compute_device}")
+        # logging.debug(f"is_cuda: {is_cuda}")
+        # logging.debug(f"use_xformers: {use_xformers}")
+
+        # stella_kwargs["config_kwargs"] = {
+            # "use_memory_efficient_attention": use_xformers,
+            # "unpad_inputs": use_xformers,
+            # "attn_implementation": "eager"  # sdpa is not implemented yet like it is for Stella and Snowflake
+        # }
+
+        # logging.debug("\nFinal config settings:")
+        # logging.debug(f"use_memory_efficient_attention: {stella_kwargs['config_kwargs']['use_memory_efficient_attention']}")
+        # logging.debug(f"unpad_inputs: {stella_kwargs['config_kwargs']['unpad_inputs']}")
+        # logging.debug(f"attn_implementation: {stella_kwargs['config_kwargs']['attn_implementation']}")
+
+        # return stella_kwargs
+
+
 class Stella400MEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
         stella_kwargs = deepcopy(self.model_kwargs)
-        compute_device = self.model_kwargs.get("device", "").lower()
+
+        # ---------- flash-attention toggle ----------
+        compute_device = stella_kwargs.get("device", "").lower()
         is_cuda = compute_device == "cuda"
         use_xformers = is_cuda and supports_flash_attention()
 
-        logging.debug(f"Device: {compute_device}")
-        logging.debug(f"is_cuda: {is_cuda}")
-        logging.debug(f"use_xformers: {use_xformers}")
-
-        stella_kwargs["config_kwargs"] = {
-            "use_memory_efficient_attention": use_xformers,
-            "unpad_inputs": use_xformers,
-            "attn_implementation": "eager"  # sdpa is not implemented yet like it is for Stella and Snowflake
+        stella_kwargs["tokenizer_kwargs"] = {
+            "padding": "longest",
+            "truncation": True,
+            "max_length": 8192
         }
 
-        logging.debug("\nFinal config settings:")
-        logging.debug(f"use_memory_efficient_attention: {stella_kwargs['config_kwargs']['use_memory_efficient_attention']}")
-        logging.debug(f"unpad_inputs: {stella_kwargs['config_kwargs']['unpad_inputs']}")
-        logging.debug(f"attn_implementation: {stella_kwargs['config_kwargs']['attn_implementation']}")
+        # # uncomment to use xformers
+        # stella_kwargs["config_kwargs"] = {
+            # "use_memory_efficient_attention": use_xformers,
+            # "unpad_inputs": use_xformers,
+            # "attn_implementation": "eager"
+        # }
+
+        stella_kwargs["config_kwargs"] = {
+            "use_memory_efficient_attention": False,
+            "unpad_inputs": False,
+            "attn_implementation": "eager",
+            # "attn_implementation": "sdpa"
+        }
 
         return stella_kwargs
 
-
-# class AlibabaEmbedding(BaseEmbeddingModel):
-    # def prepare_kwargs(self):
-        # ali_kwargs = deepcopy(self.model_kwargs)
-        # compute_device = ali_kwargs.get("device", "").lower()
-        # is_cuda = compute_device == "cuda"
-        # use_xformers = is_cuda and supports_flash_attention()
-        # ali_kwargs["tokenizer_kwargs"] = {
-            # "padding": "longest",
-            # "truncation": True,
-            # "max_length": 8192
-        # }
-        # ali_kwargs["config_kwargs"] = {
-            # "use_memory_efficient_attention": use_xformers,
-            # "unpad_inputs": use_xformers,
-            # "attn_implementation": "eager" if use_xformers else "sdpa"
-        # }
-        # return ali_kwargs
-
-    # def prepare_encode_kwargs(self):
-        # encode_kwargs = super().prepare_encode_kwargs()
+    def prepare_encode_kwargs(self):
+        encode_kwargs = super().prepare_encode_kwargs()
         # encode_kwargs.update({
             # "padding": True,
             # "truncation": True,
             # "max_length": 8192
         # })
-        # return encode_kwargs
+        if self.is_query:
+            encode_kwargs["prompt_name"] = "s2p_query"
+        return encode_kwargs
 
 
 class AlibabaEmbedding(BaseEmbeddingModel):
@@ -194,13 +216,12 @@ class AlibabaEmbedding(BaseEmbeddingModel):
 
     def prepare_encode_kwargs(self):
         encode_kwargs = super().prepare_encode_kwargs()
-        encode_kwargs.update({
-            "padding": True,
-            "truncation": True,
-            "max_length": 8192
-        })
+        # encode_kwargs.update({
+            # "padding": True,
+            # "truncation": True,
+            # "max_length": 8192
+        # })
         return encode_kwargs
-
 
 
 def create_vector_db_in_process(database_name):
@@ -342,6 +363,30 @@ class CreateVectorDB:
             with open(self.ROOT_DIRECTORY / "config.yaml", 'r', encoding='utf-8') as config_file:
                 config_data = yaml.safe_load(config_file)
 
+            # --- memory-hygiene block ---------------------------------
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+            try:
+                # reserve the exact block size early
+                dummy = np.empty(
+                    (len(all_texts), config_data["EMBEDDING_MODEL_DIMENSIONS"]),
+                    dtype=np.float32,
+                )
+                del dummy
+            except MemoryError:
+                raise MemoryError(
+                    "Unable to reserve contiguous RAM for the embedding matrix. "
+                    "Try a smaller batch, float16 storage, or run on a machine with "
+                    "more free RAM."
+                )
+
+            # ─── ADD HERE ───
+            print(">>> [create_database] sample texts (first 5):", texts[:5])
+            print(">>> [create_database] type(texts):", type(texts))
+            # ─────────────────
+
             db = TileDB.from_texts(
                 texts=all_texts,
                 embedding=embeddings,
@@ -352,7 +397,6 @@ class CreateVectorDB:
                 index_type="FLAT",
                 dimensions=config_data.get("EMBEDDING_MODEL_DIMENSIONS"),
                 allow_dangerous_deserialization=True,
-                # vector_type=np.float32
             )
 
             my_cprint(f"Processed {len(all_texts)} chunks", "yellow")
