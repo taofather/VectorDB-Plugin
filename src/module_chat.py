@@ -6,7 +6,14 @@ import functools
 import copy
 from pathlib import Path
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer, BitsAndBytesConfig, StoppingCriteria, StoppingCriteriaList
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    TextIteratorStreamer,
+    BitsAndBytesConfig,
+    StoppingCriteria,
+    StoppingCriteriaList
+)
 import threading
 from abc import ABC, abstractmethod
 import builtins

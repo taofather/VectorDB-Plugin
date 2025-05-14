@@ -13,6 +13,7 @@ import module_chat
 from database_interactions import QueryVectorDB
 from utilities import format_citations, my_cprint, normalize_chat_text
 from constants import rag_string
+from pathlib import Path
 
 class MessageType(Enum):
     QUESTION = auto()
@@ -111,20 +112,25 @@ class LocalModelChat:
 
     def _start_listening_thread(self):
         import threading
-        self.listener_thread = threading.Thread(target=self._listen_for_response, daemon=True)
+
+        if hasattr(self, "_stop_listener_event"):
+            self._stop_listener_event.set()
+            if getattr(self, "listener_thread", None) and self.listener_thread.is_alive():
+                self.listener_thread.join()
+
+        self._stop_listener_event = threading.Event()
+        self.listener_thread = threading.Thread(
+            target=self._listen_for_response,
+            args=(self._stop_listener_event,),
+            daemon=True,
+        )
         self.listener_thread.start()
 
-    def _listen_for_response(self):
-        """
-        Listens every second for messages coming through the pipe from the child process. When a message is received, the
-        message type determines which signal is emitted.
-        """
-        while True:
+    def _listen_for_response(self, stop_event):
+        while not stop_event.is_set():
             if not self.model_pipe or not isinstance(self.model_pipe, PipeConnection):
                 break
-
             try:
-                # checks every second for messages from "_local_model_process" that's being run in the child process
                 if self.model_pipe.poll(timeout=1):
                     message = self.model_pipe.recv()
                     if message.type in [MessageType.RESPONSE, MessageType.PARTIAL_RESPONSE]:
@@ -141,12 +147,11 @@ class LocalModelChat:
                         self.signals.token_count_signal.emit(message.payload)
                 else:
                     time.sleep(0.1)
-            except (BrokenPipeError, EOFError, OSError) as e:
+            except (BrokenPipeError, EOFError, OSError):
                 break
             except Exception as e:
                 logging.warning(f"Unexpected error in _listen_for_response: {str(e)}")
                 break
-
         self.cleanup_listener_resources()
 
     def cleanup_listener_resources(self):
@@ -197,9 +202,17 @@ class LocalModelChat:
                         user_question_token_count = len(model_instance.tokenizer.encode(user_question))
 
                         full_response = ""
+                        buffer = ""
                         for partial_response in module_chat.generate_response(model_instance, augmented_query):
                             full_response += partial_response
-                            conn.send(PipeMessage(MessageType.PARTIAL_RESPONSE, partial_response))
+                            buffer += partial_response
+
+                            if len(buffer) >= 50 or '\n' in buffer:
+                                conn.send(PipeMessage(MessageType.PARTIAL_RESPONSE, buffer))
+                                buffer = ""
+
+                        if buffer:
+                            conn.send(PipeMessage(MessageType.PARTIAL_RESPONSE, buffer))
 
                         response_token_count = len(model_instance.tokenizer.encode(full_response))
                         remaining_tokens = model_instance.max_length - (prepend_token_count + user_question_token_count + context_token_count + response_token_count)
@@ -216,7 +229,9 @@ class LocalModelChat:
 
                         conn.send(PipeMessage(MessageType.TOKEN_COUNTS, token_count_string))
 
-                        with open('chat_history.txt', 'w', encoding='utf-8') as f:
+                        script_dir = Path(__file__).resolve().parent
+                        with open(script_dir / 'chat_history.txt', 'w', encoding='utf-8') as f:
+
                             normalized_response = normalize_chat_text(full_response)
                             f.write(normalized_response)
                         citations = format_citations(metadata_list)
