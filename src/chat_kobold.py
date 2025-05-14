@@ -21,7 +21,7 @@ class KoboldSignals(QObject):
     response_signal = Signal(str)
     error_signal = Signal(str)
     finished_signal = Signal()
-    citation_signal = Signal(str)
+    citations_signal = Signal(str)
 
 class KoboldChat:
     def __init__(self):
@@ -118,7 +118,7 @@ class KoboldChat:
             self.signals.response_signal.emit("\n")
 
             citations = self.handle_response_and_cleanup(full_response, metadata_list)
-            self.signals.citation_signal.emit(citations)
+            self.signals.citations_signal.emit(citations)
         except Exception as e:
             self.signals.error_signal.emit(str(e))
             raise
@@ -136,7 +136,7 @@ class KoboldThread(QThread):
         self.kobold_chat = KoboldChat()
         self.kobold_chat.signals.response_signal.connect(self.response_signal.emit)
         self.kobold_chat.signals.error_signal.connect(self.error_signal.emit)
-        self.kobold_chat.signals.citation_signal.connect(self.citations_signal.emit)
+        self.kobold_chat.signals.citations_signal.connect(self.citations_signal.emit)
 
     def run(self):
         try:
