@@ -29,8 +29,7 @@ from module_process_images import choose_image_loader
 from utilities import my_cprint, get_model_native_precision, get_appropriate_dtype, supports_flash_attention
 from constants import VECTOR_MODELS
 
-# logging.basicConfig(level=logging.CRITICAL, force=True)
-logging.basicConfig(level=logging.INFO, force=True)
+logging.basicConfig(level=logging.CRITICAL, force=True)
 # logging.basicConfig(level=logging.DEBUG, force=True)
 logger = logging.getLogger(__name__)
 
@@ -47,21 +46,14 @@ class BaseEmbeddingModel:
     def prepare_encode_kwargs(self):
         if self.is_query:
             self.encode_kwargs['batch_size'] = 1
-        self.encode_kwargs.setdefault('padding', True)
-        self.encode_kwargs.setdefault('truncation', True)
         return self.encode_kwargs
 
     def create(self):
         prepared_kwargs = self.prepare_kwargs()
         prepared_encode_kwargs = self.prepare_encode_kwargs()
-
-        # — Add these two lines to see exactly what the tokenizer will get
-        print(">>> [BaseEmbeddingModel.create] model_kwargs:      ", prepared_kwargs)
-        print(">>> [BaseEmbeddingModel.create] encode_kwargs:     ", prepared_encode_kwargs)
-
         return HuggingFaceEmbeddings(
             model_name=self.model_name,
-            show_progress=not self.is_query,
+            show_progress=not self.is_query,  # only show progress for database creation
             model_kwargs=prepared_kwargs,
             encode_kwargs=prepared_encode_kwargs
         )
@@ -126,102 +118,74 @@ class StellaEmbedding(BaseEmbeddingModel):
         return encode_kwargs
 
 
-# class Stella400MEmbedding(BaseEmbeddingModel):
-    # def prepare_kwargs(self):
-        # stella_kwargs = deepcopy(self.model_kwargs)
-        # compute_device = self.model_kwargs.get("device", "").lower()
-        # is_cuda = compute_device == "cuda"
-        # use_xformers = is_cuda and supports_flash_attention()
-
-        # logging.debug(f"Device: {compute_device}")
-        # logging.debug(f"is_cuda: {is_cuda}")
-        # logging.debug(f"use_xformers: {use_xformers}")
-
-        # stella_kwargs["config_kwargs"] = {
-            # "use_memory_efficient_attention": use_xformers,
-            # "unpad_inputs": use_xformers,
-            # "attn_implementation": "eager"  # sdpa is not implemented yet like it is for Stella and Snowflake
-        # }
-
-        # logging.debug("\nFinal config settings:")
-        # logging.debug(f"use_memory_efficient_attention: {stella_kwargs['config_kwargs']['use_memory_efficient_attention']}")
-        # logging.debug(f"unpad_inputs: {stella_kwargs['config_kwargs']['unpad_inputs']}")
-        # logging.debug(f"attn_implementation: {stella_kwargs['config_kwargs']['attn_implementation']}")
-
-        # return stella_kwargs
-
-
 class Stella400MEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
         stella_kwargs = deepcopy(self.model_kwargs)
-
-        # ---------- flash-attention toggle ----------
-        compute_device = stella_kwargs.get("device", "").lower()
+        compute_device = self.model_kwargs.get("device", "").lower()
         is_cuda = compute_device == "cuda"
         use_xformers = is_cuda and supports_flash_attention()
-
+        
+        # Set trust_remote_code at the top level
+        stella_kwargs["trust_remote_code"] = True
+        
+        # Preserve torch_dtype if present
+        if "torch_dtype" in self.model_kwargs.get("model_kwargs", {}):
+            if "model_kwargs" not in stella_kwargs:
+                stella_kwargs["model_kwargs"] = {}
+            stella_kwargs["model_kwargs"]["torch_dtype"] = self.model_kwargs["model_kwargs"]["torch_dtype"]
+        
+        # Set tokenizer kwargs at top level - not inside model_kwargs
         stella_kwargs["tokenizer_kwargs"] = {
-            "padding": "longest",
-            "truncation": True,
-            "max_length": 8192
+            "max_length": 8192,
+            "padding": True,
+            "truncation": True
         }
-
-        # # uncomment to use xformers
-        # stella_kwargs["config_kwargs"] = {
-            # "use_memory_efficient_attention": use_xformers,
-            # "unpad_inputs": use_xformers,
-            # "attn_implementation": "eager"
-        # }
-
+        
+        # Set config kwargs at top level - not inside model_kwargs
         stella_kwargs["config_kwargs"] = {
-            "use_memory_efficient_attention": False,
-            "unpad_inputs": False,
-            "attn_implementation": "eager",
-            # "attn_implementation": "sdpa"
+            "use_memory_efficient_attention": use_xformers,
+            "unpad_inputs": use_xformers,
+            "attn_implementation": "eager"
         }
-
+        
         return stella_kwargs
-
+    
     def prepare_encode_kwargs(self):
         encode_kwargs = super().prepare_encode_kwargs()
-        # encode_kwargs.update({
-            # "padding": True,
-            # "truncation": True,
-            # "max_length": 8192
-        # })
+        
         if self.is_query:
             encode_kwargs["prompt_name"] = "s2p_query"
+        
         return encode_kwargs
-
 
 class AlibabaEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
+        logging.debug("Starting AlibabaEmbedding prepare_kwargs.")
         ali_kwargs = deepcopy(self.model_kwargs)
+        logging.debug(f"Original model_kwargs: {self.model_kwargs}")
 
-        compute_device = ali_kwargs.get("device", "").lower()
+        compute_device = self.model_kwargs.get("device", "").lower()
         is_cuda = compute_device == "cuda"
         use_xformers = is_cuda and supports_flash_attention()
+        logging.debug(f"Device: {compute_device}")
+        logging.debug(f"is_cuda: {is_cuda}")
+        logging.debug(f"use_xformers: {use_xformers}")
 
         ali_kwargs["tokenizer_kwargs"] = {
-            "padding": "longest",
-            "truncation": True,
-            "max_length": 8192
+            "max_length": 8192,
+            "padding": True,
+            "truncation": True
         }
+
         ali_kwargs["config_kwargs"] = {
             "use_memory_efficient_attention": use_xformers,
             "unpad_inputs": use_xformers,
             "attn_implementation": "eager" if use_xformers else "sdpa"
         }
-        return ali_kwargs
+        logging.debug(f"Set 'config_kwargs': {ali_kwargs['config_kwargs']}")
 
-    def prepare_encode_kwargs(self):
-        encode_kwargs = super().prepare_encode_kwargs()
-        # encode_kwargs.update({
-            # "padding": True,
-            # "truncation": True,
-            # "max_length": 8192
-        # })
-        return encode_kwargs
+        logging.debug(f"Final ali_kwargs: {ali_kwargs}")
+        return ali_kwargs
 
 
 def create_vector_db_in_process(database_name):
@@ -350,6 +314,7 @@ class CreateVectorDB:
             all_ids = []
             chunk_counters = defaultdict(int)
 
+            # Process all texts and generate IDs
             for doc in texts:
                 file_hash = doc.metadata.get('hash')
                 chunk_counters[file_hash] += 1
@@ -363,30 +328,6 @@ class CreateVectorDB:
             with open(self.ROOT_DIRECTORY / "config.yaml", 'r', encoding='utf-8') as config_file:
                 config_data = yaml.safe_load(config_file)
 
-            # --- memory-hygiene block ---------------------------------
-            gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-
-            try:
-                # reserve the exact block size early
-                dummy = np.empty(
-                    (len(all_texts), config_data["EMBEDDING_MODEL_DIMENSIONS"]),
-                    dtype=np.float32,
-                )
-                del dummy
-            except MemoryError:
-                raise MemoryError(
-                    "Unable to reserve contiguous RAM for the embedding matrix. "
-                    "Try a smaller batch, float16 storage, or run on a machine with "
-                    "more free RAM."
-                )
-
-            # ─── ADD HERE ───
-            print(">>> [create_database] sample texts (first 5):", texts[:5])
-            print(">>> [create_database] type(texts):", type(texts))
-            # ─────────────────
-
             db = TileDB.from_texts(
                 texts=all_texts,
                 embedding=embeddings,
@@ -397,6 +338,7 @@ class CreateVectorDB:
                 index_type="FLAT",
                 dimensions=config_data.get("EMBEDDING_MODEL_DIMENSIONS"),
                 allow_dangerous_deserialization=True,
+                # vector_type=np.float32
             )
 
             my_cprint(f"Processed {len(all_texts)} chunks", "yellow")
@@ -699,7 +641,7 @@ class QueryVectorDB:
 
 
 """
-Snowflake, Alibaba, and Stella 400M embedding models can all use xformers's memory efficient attention; however, 400M is slightly different.
+Snowflake, Alibaba, and Stella 400M can all use xformers's memory efficient attention; however, 400M is slightly different.
 
 Snowflake and Alibaba:
 
@@ -727,6 +669,91 @@ Explicitly requires use_memory_efficient_attention to be True when using unpadde
 This differs from the previous scripts we looked at, which would allow unpadded inputs with or without xformers.
 The model will raise an assertion error if you try to use unpadded inputs without xformers.
 Also, unlike Alibaba or Snowflake, "eager" must be used even when NOT using xformers due to SDPA not being implemented yet.
+
+**Explaining the solution process**
+
+The core clarification I found in the source code was that `encode_kwargs` don't affect tokenization, but `tokenizer_kwargs` do. When working with `SentenceTransformer.encode`, it doesn't forward the `encode_kwargs` to the tokenizer. Instead, it uses the internal tokenizer built with settings from `tokenizer_kwargs` or defaults. Similarly, `huggingfaceembeddings` uses `tokenizer_kwargs` for configuration, but `encode_kwargs` are only relevant during the embedding stage. The key takeaway is to configure padding or truncation settings in `tokenizer_kwargs`, not in `encode_kwargs`.
+
+**Clarifying tokenization configuration**
+
+Reading the source code revealed that `SentenceTransformer.encode()` doesn't use `encode_kwargs` for tokenization, but instead passes them to the underlying model’s forward method. Tokenization (including padding/truncation) is configured via `tokenizer_kwargs` during the `SentenceTransformer` initialization. Meanwhile, `HuggingFaceEmbeddings` passes `model_kwargs`, including `tokenizer_kwargs`, to the `SentenceTransformer` constructor, so padding/truncation options must be set there. By focusing on `tokenizer_kwargs`, padding/truncation works correctly.
+
+
+**Clarifying the solution**
+
+Reading the SentenceTransformer source code helped clarify that the `encode_kwargs` don't affect tokenization. In the `encode` and `tokenize` functions, we saw that `encode_kwargs` aren’t passed to the tokenizer. Instead, the tokenizer uses settings defined by `tokenizer_kwargs` during initialization. This distinction resolved any confusion about where tokenization and encoding parameters should be configured. We can explain this without needing additional citations or external sources, unless the uploaded file would help confirm the details. Otherwise, it's all about the logic in the code.
+
+
+Thought for 14 seconds
+
+
+By diving into **SentenceTransformer**’s source, you see that:
+
+1. **`encode()` never forwards your `encode_kwargs` into the tokenizer**. Inside the batch loop it simply does
+
+   ```python
+   features = self.tokenize(sentences_batch)
+   …  
+   out_features = self.forward(features, **kwargs)
+   ```
+
+   so all of your padding/truncation flags in `encode_kwargs` are ignored at tokenization time .
+
+2. **`tokenize()` in turn never looks at `encode_kwargs`**—it just calls the first module’s own `tokenize` method, which was configured when the model (and its tokenizer) were first loaded .
+
+Meanwhile, **`HuggingFaceEmbeddings`** passes whatever you put in `model_kwargs["tokenizer_kwargs"]` directly into the `SentenceTransformer(…, tokenizer_kwargs=…)` constructor, which does drive the underlying `AutoTokenizer.from_pretrained(...)` call. That means **the only place your padding/truncation settings actually take effect is in `tokenizer_kwargs` at model‐init time**, not in `encode_kwargs`.
+
+**In short:** reading these two code paths makes it crystal clear why stuffing `"padding"`, `"truncation"`, and `"max_length"` into `encode_kwargs` didn’t work—and why the fix must be to set them in `tokenizer_kwargs` instead.
+
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│ 1) Your subclass: Stella400MEmbedding.prepare_kwargs()                           │
+│    • Deepcopy base model_kwargs                                                  │
+│    • Inject tokenizer_kwargs = {padding, truncation, max_length, trust_remote}   │
+│    • Inject config_kwargs = {use_memory_efficient_attention, unpad_inputs, …}    │
+└──────────────────────────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│ 2) BaseEmbeddingModel.create()                                                  │
+│    • Calls prepare_kwargs() → gets model_kwargs (with tokenizer_kwargs inside)  │
+│    • Calls prepare_encode_kwargs() → gets encode_kwargs (only for encode call)  │
+│    • Calls HuggingFaceEmbeddings(                                                │
+│         model_name=<...>,                                                        │
+│         model_kwargs=prepared_kwargs,   ←— includes tokenizer_kwargs           │
+│         encode_kwargs=prepared_encode_kwargs                                     │
+│      )                                                                           │
+└──────────────────────────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│ 3) In langchain_huggingface.HuggingFaceEmbeddings.__init__                      │
+│    • Splits out model_kwargs and encode_kwargs                                  │
+│    • Does: self._client = SentenceTransformer(                                  │
+│         model_name,                                                             │
+│         cache_folder=…,                                                         │
+│         **model_kwargs,            ←— here tokenizer_kwargs get applied      │
+│      )                                                                           │
+└──────────────────────────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│ 4) SentenceTransformer constructor                                              │
+│    • Calls AutoTokenizer.from_pretrained(                                        │
+│         model_name,                                                             │
+│         **tokenizer_kwargs         ←— receives padding, truncation, max_length  │
+│      )                                                                           │
+│    • Loads and configures Transformer modules (with do_pad/do_truncate set)      │
+└──────────────────────────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│ 5) Later, when you do hf.embed_documents(texts) →                                │
+│    • HuggingFaceEmbeddings.embed_documents()                                     │
+│       → self._client.encode(texts, **encode_kwargs)                              │
+│    • SentenceTransformer.encode()                                                │
+│       → features = self.tokenize(texts)  ←— uses the tokenizer configured at init│
+│       → forward(features, **kwargs)                                              │
+└──────────────────────────────────────────────────────────────────────────────────┘
 """
 
         # my_cprint(f"{self.model_name} removed from memory.", "red")
