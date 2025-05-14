@@ -354,6 +354,17 @@ CHAT_MODELS = {
         'gated': False,
         'max_tokens': 4096,
     },
+    'Phi 4 Mini - 4b': {
+        'model': 'Phi 4 Mini - 4b',
+        'repo_id': 'microsoft/Phi-4-mini-instruct',
+        'cache_dir': 'microsoft--Phi-4-mini-instruct',
+        'cps': 222.77,
+        'vram': 4761.80,
+        'function': 'Phi4',
+        'precision': 'bfloat16',
+        'gated': False,
+        'max_new_tokens': 4096,
+    },
     'Qwen 3 - 4b': {
         'model': 'Qwen 3 - 4b',
         'repo_id': 'Qwen/Qwen3-4B',
