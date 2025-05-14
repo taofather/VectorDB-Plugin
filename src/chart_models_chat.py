@@ -5,20 +5,21 @@ import pandas as pd
 
 from constants import CHAT_MODELS
 
+# "color": "#CC5500", # orange
+# "color": "#8B0000", # red
+# "color": "#4682B4", # light blue
+# "color": "#2E8B57", # green
+# "color": "#6A0DAD", # purple
+
 def create_chat_models_comparison_plot():
     model_categories = {
         "coding": {
             "models": [
                 # "Qwen Coder - 1.5b",
                 # "Qwen Coder - 3b",
-                # "Qwen Coder - 7b",
-                # "Qwen Coder - 14b",
-                # "Qwen Coder - 32b",
+                "Seed Coder - 8b"
             ],
-            # "color": "#CC5500", # orange
-            # "color": "#8B0000", # red
-            # "color": "#4682B4", # light blue
-            "color": "#DAA520", # gold
+            "color": "#DAA520",
             "label": "Coding Focused"
         },
         "thinking": {
@@ -32,8 +33,8 @@ def create_chat_models_comparison_plot():
                 "Qwen 3 - 32b",
                 "GLM4-Z1 - 32b",
             ],
-            "color": "#CC5500", # orange
-            # "color": "#2E8B57", # green
+            "color": "#CC5500",
+
             "label": "Thinking"
         },
         "coding_and_thinking": {
@@ -41,14 +42,12 @@ def create_chat_models_comparison_plot():
                 # "Olympic Coder - 7b",
                 # "Olympic Coder - 32b"
             ],
-            "color": "#8B0000", # red
-            # "color": "#6A0DAD", # purple
-            # "color": "#4682B4", # light blue
+            "color": "#8B0000",
+
             "label": "Coding Focused and Thinking"
         }
     }
 
-    # Create DataFrame with all models from CHAT_MODELS
     df = pd.DataFrame([
         {"model": model, "cps": data["cps"], "vram": data["vram"] / 1024}
         for model, data in CHAT_MODELS.items()
@@ -61,7 +60,7 @@ def create_chat_models_comparison_plot():
     fig.patch.set_facecolor('#2e2e2e')
     ax1.set_facecolor('#2e2e2e')
 
-    ax1.set_title("BitsAndBytes (4-bit) - RTX 4090 - 4096 context limit", fontsize=14, color='white', pad=5)
+    ax1.set_title("BitsAndBytes (4-bit) - RTX 4090", fontsize=14, color='white', pad=5)
 
     ax2 = ax1.twinx()
 

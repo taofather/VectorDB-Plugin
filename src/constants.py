@@ -1,5 +1,4 @@
 # ── constants.py ────────────────────────────────────────────────────────────────
-# … existing imports / data …
 
 GLM4Z1_CHAT_TEMPLATE = """[gMASK]<sop>
 {%- if tools -%}
@@ -373,6 +372,17 @@ CHAT_MODELS = {
         'cps': 152.61,
         'vram': 8390.24,
         'function': 'Qwen',
+        'precision': 'bfloat16',
+        'gated': False,
+        'max_new_tokens': 4096,
+    },
+    'Seed Coder - 8b': {
+        'model': 'Seed Coder - 8b',
+        'repo_id': 'ByteDance-Seed/Seed-Coder-8B-Instruct',
+        'cache_dir': 'ByteDance-Seed--Seed-Coder-8B-Instruct',
+        'cps': 183.82,
+        'vram': 8441.93,
+        'function': 'SeedCoder',
         'precision': 'bfloat16',
         'gated': False,
         'max_new_tokens': 4096,
