@@ -112,22 +112,22 @@ libs = [
     "array_api_compat==1.11.2", # only anndata requires
     "async-timeout==5.0.1",
     "attrs==25.3.0",
-    "av==14.2.0",
+    "av==14.3.0",
     "backoff==2.2.1",
     "beautifulsoup4==4.13.4",
     "bitsandbytes==0.45.5",
     "braceexpand==0.1.7",
-    "certifi==2025.1.31",
+    "certifi==2025.4.26",
     "cffi==1.17.1",
     "chardet==5.2.0",
-    "charset-normalizer==3.4.1", # requests requires <4
+    "charset-normalizer==3.4.2", # requests requires <4
     "chattts==0.2.3",
     "click==8.1.8",
     "cloudpickle==3.1.1", # only required by tiledb-cloud and 3+ is only supported by tiledb-cloud 0.13+
     "colorama==0.4.6",
     "coloredlogs==15.0.1",
     "contourpy==1.3.2", # only required by matplotlib
-    "cryptography==44.0.2", # only required by unstructured library
+    "cryptography==44.0.3", # only required by unstructured library
     "ctranslate2==4.6.0",
     "cycler==0.12.1",
     "dataclasses-json==0.6.7",
@@ -135,7 +135,7 @@ libs = [
     "deepdiff==8.4.2", # required by unstructured
     "Deprecated==1.2.18", # only needed by pikepdf
     "deprecation==2.1.0", # only needed by ocrmypdf
-    "dill==0.3.8", # datasets 3.5.0 requires <0.3.9; multiprocess 0.70.16 requires >=0.3.8
+    "dill==0.3.8", # datasets 3.5.1 requires <0.3.9; multiprocess 0.70.16 requires >=0.3.8
     "distro==1.9.0",
     "docx2txt==0.9",
     "einops==0.8.1",
@@ -151,7 +151,8 @@ libs = [
     "fonttools==4.57.0", # only required by matplotlib
     "frozendict==2.4.6",
     "frozenlist==1.5.0",
-    "fsspec==2024.12.0", # datasets 3.5.0 requires <=2024.12.0
+    "fsspec==2025.3.0", # datasets 3.5.1 requires <=2025.3.0
+    "fsspec[http]==2025.3.0", # datasets 3.5.1 requires <=2025.3.0
     "greenlet==3.2.1",
     "gTTS==2.5.4",
     "h11==0.16.0",
@@ -168,31 +169,31 @@ libs = [
     "importlib_metadata==8.7.0",
     "Jinja2==3.1.6",
     "jiter==0.9.0", # required by openai newer versions
-    "joblib==1.4.2",
+    "joblib==1.5.0",
     "jsonpatch==1.33",
     "jsonpath-python==1.0.6",
     "jsonpointer==3.0.0",
     "kiwisolver==1.4.8",
-    "langchain==0.3.24",
+    "langchain==0.3.25",
     "langchain-community==0.3.23",
-    "langchain-core==0.3.56",
+    "langchain-core==0.3.58",
     "langchain-huggingface==0.1.2",
     "langchain-text-splitters==0.3.8",
     "langdetect==1.0.9",
-    "langsmith==0.3.38",
+    "langsmith==0.3.42",
     "llvmlite==0.44.0", # only required by numba
     "lxml==5.4.0",
     "Markdown==3.8",
     "markdown-it-py==3.0.0",
     "MarkupSafe==3.0.2",
-    "marshmallow==3.26.1",
+    "marshmallow==3.26.1", # dataclasses-json==0.6.7 requires less than 4.0.0
     "matplotlib==3.10.1", # uniquely requires pyparsing==3.1.2 cycler==0.12.1 kiwisolver==1.4.5
     "mdurl==0.1.2",
     "more-itertools==10.7.0",
     "mpmath==1.3.0", # sympy 1.13.1 requires less than 1.4
     "msg-parser==1.2.0",
     "multidict==6.4.3",
-    "multiprocess==0.70.16", # datasets 3.5.0 requires <0.70.17
+    "multiprocess==0.70.16", # datasets 3.5.1 requires <0.70.17
     "mypy-extensions==1.1.0",
     "natsort==8.4.0",
     "nest-asyncio==1.6.0",
@@ -208,14 +209,14 @@ libs = [
     "numpy==1.26.4",
     "ocrmypdf==16.10.1",
     "olefile==0.47",
-    "openai==1.76.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
+    "openai==1.77.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
     "optimum==1.24.0",
     "ordered-set==4.1.0",
     "orderly-set==5.4.0", # deepdiff 8.2.0 requires orderly-set=5.3.0,<6
-    "orjson==3.10.17",
-    "packaging==24.2",
+    "orjson==3.10.18",
+    "packaging==24.2", # langchain-core==0.3.56 requires less than 25
     "pandas==2.2.3",
     "pdfminer.six==20250416", # only needed by ocrmypdf
     "pikepdf==9.7.0", # only needed by ocrmypdf
@@ -227,12 +228,12 @@ libs = [
     "propcache==0.3.1",
     "protobuf==6.30.2",
     "psutil==7.0.0",
-    "pyarrow==19.0.1",
+    "pyarrow==20.0.0",
     "pybase16384==0.3.8", # only required by chattts
     "pycparser==2.22",
-    "pydantic==2.11.3",
-    "pydantic_core==2.33.1", # pydantic 2.11.2 requires pydantic_core==2.33.1
-    "pydantic-settings==2.8.1",
+    "pydantic==2.11.3", # unstructured-client==0.34.0 requires pydantic>=2.11.2
+    "pydantic_core==2.33.1", # pydantic 2.11.4 requires pydantic_core==2.33.2
+    "pydantic-settings==2.8.1", # langchain-community==0.3.23 requires pydantic-settings>=2.4.0,<3.0.0
     "Pygments==2.19.1",
     "PyOpenGL==3.1.9",
     "PyOpenGL-accelerate==3.1.9",
@@ -258,7 +259,7 @@ libs = [
     "safetensors==0.5.3",
     "scikit-learn==1.6.1",
     "scipy==1.15.2",
-    "sentence-transformers==4.0.2",
+    "sentence-transformers==4.1.0",
     "sentencepiece==0.2.0",
     "six==1.17.0",
     "sniffio==1.3.1",
@@ -272,7 +273,7 @@ libs = [
     "tabulate==0.9.0",
     "tblib==3.1.0", # only tiledb-cloud requires
     "tenacity==9.1.2",
-    "termcolor==3.0.1",
+    "termcolor==3.1.0",
     "tessdata==1.0.0",
     "tessdata.eng==1.0.0",
     "threadpoolctl==3.6.0",
@@ -289,7 +290,7 @@ libs = [
     "unstructured-client==0.34.0",
     "tzdata==2025.2",
     "urllib3==2.4.0", # requests 2.32.3 requires <3
-    "vector-quantize-pytorch==1.22.15",
+    "vector-quantize-pytorch==1.22.16",
     "vocos==0.1.0",
     "watchdog==6.0.0",
     "webdataset==0.2.111", # required by all TTS libraries
@@ -416,7 +417,7 @@ CHAT_MODELS = {
         'function': 'Qwen',
         'precision': 'bfloat16',
         'gated': False,
-        'max_new_tokens': 4096,
+        'max_new_tokens': 8192,
     },
     'Mistral Small 3 - 24b': {
         'model': 'Mistral Small 3 - 24b',
@@ -449,7 +450,7 @@ CHAT_MODELS = {
         'function': 'Qwen',
         'precision': 'bfloat16',
         'gated': False,
-        'max_new_tokens': 4096,
+        'max_new_tokens': 8192,
     },
     'GLM4-Z1 - 32b': {
         'model': 'GLM4-Z1 - 32b',
@@ -1885,9 +1886,10 @@ scrape_documentation = {
         "folder": "tenacity"
     },
     "Tile DB": {
-        "URL": "https://docs.tiledb.com/main",
+        "URL": "https://tiledb-inc-tiledb.readthedocs-hosted.com/projects/tiledb-py/en/stable/python-api.html",
         "folder": "tiledb",
-        "scraper_class": "TileDBScraper"
+        # "scraper_class": "TileDBScraper"
+        "scraper_class": "ReadthedocsScraper"
     },
     "tiledb-vector-search": {
         "URL": "https://tiledb-inc.github.io/TileDB-Vector-Search/documentation/",
