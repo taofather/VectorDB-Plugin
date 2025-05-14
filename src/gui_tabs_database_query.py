@@ -482,7 +482,8 @@ class DatabaseQueryTab(QWidget):
         self.is_recording = not self.is_recording
 
     def update_response_lm_studio(self, response_chunk):
-        self.response_widget.setPlainText(self.response_widget.toPlainText() + response_chunk)
+        self.raw_response += response_chunk
+        self._render_html()
         self.response_widget.verticalScrollBar().setValue(
             self.response_widget.verticalScrollBar().maximum()
         )

@@ -124,7 +124,7 @@ class LMStudioChat:
         self.signals.response_signal.emit("\n")
         
         citations = self.handle_response_and_cleanup(full_response, metadata_list)
-        self.signals.citation_signal.emit(citations)
+        self.signals.citations_signal.emit(citations)
         self.signals.finished_signal.emit()
 
 class LMStudioChatThread(QThread):
@@ -175,7 +175,7 @@ def is_lm_studio_available():
     |    - response_signal                     - chunk.choices[0].delta.content
     |    - error_signal                                |
     |    - finished_signal                             |
-    |    - citation_signal                             |
+    |    - citations_signal                             |
     |         |                                        |
     |    GUI Updates:                          Cleanup Operations:
     |    - update_response_lm_studio()         - handle_response_and_cleanup()
@@ -184,6 +184,6 @@ def is_lm_studio_available():
     |    - display_citations_in_widget()       - gc.collect()
     |                                                  |
     |                                          Emit Final Signals:
-    |                                          - citation_signal
+    |                                          - citations_signal
     |                                          - finished_signal
 """
