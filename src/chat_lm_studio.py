@@ -21,7 +21,7 @@ class LMStudioSignals(QObject):
     response_signal = Signal(str)
     error_signal = Signal(str)
     finished_signal = Signal()
-    citation_signal = Signal(str)
+    citations_signal = Signal(str)
 
 class LMStudioChat:
     def __init__(self):
