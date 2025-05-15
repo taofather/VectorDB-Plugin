@@ -64,9 +64,15 @@ def add_pymupdf_page_metadata(doc: Document, chunk_size: int = 1200, chunk_overl
         5. The method returns a list of tuples where each tuple contains a chunk of text and the page number associated with that chunk.
         """
     def split_text(text: str, chunk_size: int, chunk_overlap: int) -> List[Tuple[str, int]]:
-        page_markers = [(m.start(), int(m.group(1))) for m in re.finditer(r'\[\[page(\d+)\]\]', text)]
+        page_markers = []
+        offset = 0
+        for m in re.finditer(r'\[\[page(\d+)\]\]', text):
+            marker_len = len(m.group(0))
+            page_markers.append((m.start() - offset, int(m.group(1))))
+            offset += marker_len
+
         clean_text = re.sub(r'\[\[page\d+\]\]', '', text)
-        
+
         chunks = []
         start = 0
         while start < len(clean_text):

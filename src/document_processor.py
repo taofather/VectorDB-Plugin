@@ -29,7 +29,7 @@ from typing import Optional, Any, Iterator, Union
 from langchain_community.document_loaders.blob_loaders import Blob
 
 from langchain_community.document_loaders.parsers import PyMuPDFParser
-import pymupdf # throws error if imported before langchain stuff
+import fitz
 
 from constants import DOCUMENT_LOADERS
 from extract_metadata import extract_document_metadata, add_pymupdf_page_metadata
@@ -53,7 +53,7 @@ class CustomPyMuPDFParser(PyMuPDFParser):
     def _lazy_parse(self, blob: Blob, text_kwargs: Optional[dict[str, Any]] = None) -> Iterator[Document]:
         with PyMuPDFParser._lock:
             with blob.as_bytes_io() as file_path:
-                doc = pymupdf.open(stream=file_path, filetype="pdf") if blob.data else pymupdf.open(file_path)
+                doc = fitz.open(stream=file_path, filetype="pdf") if blob.data else fitz.open(file_path)
 
                 full_content = []
                 for page in doc:
@@ -75,8 +75,14 @@ class CustomPyMuPDFLoader(PyMuPDFLoader):
             extract_images=kwargs.get('extract_images', False)
         )
 
+resolved = {}
 for ext, loader_name in DOCUMENT_LOADERS.items():
-    DOCUMENT_LOADERS[ext] = globals()[loader_name]
+    try:
+        resolved[ext] = globals()[loader_name]
+    except KeyError:
+        logging.error(f"Loader '{loader_name}' not found; skipping “{ext}”")
+DOCUMENT_LOADERS.clear()
+DOCUMENT_LOADERS.update(resolved)
 
 def load_single_document(file_path: Path) -> Document:
     file_extension = file_path.suffix.lower()
@@ -165,10 +171,8 @@ def load_single_document(file_path: Path) -> Document:
         logging.error(f"Unexpected error processing file: {file_path.name} - Error: {str(e)}")
         return None
 
-def load_document_batch(filepaths, threads_per_process):
-    with ThreadPoolExecutor(threads_per_process) as exe:
-        futures = [exe.submit(load_single_document, name) for name in filepaths]
-        data_list = [future.result() for future in futures]
+def load_document_batch(filepaths):
+    data_list = [load_single_document(name) for name in filepaths]
     return (data_list, filepaths)
 
 def load_documents(source_dir: Path) -> list:
@@ -181,20 +185,21 @@ def load_documents(source_dir: Path) -> list:
         n_workers = min(INGEST_THREADS, max(len(doc_paths), 1))
 
         total_cores = os.cpu_count()
-        threads_per_process = 1
+        # threads_per_process = 1
 
         with ProcessPoolExecutor(n_workers) as executor:
             chunksize = math.ceil(len(doc_paths) / n_workers)
             futures = []
             for i in range(0, len(doc_paths), chunksize):
                 chunk_paths = doc_paths[i:i + chunksize]
-                futures.append(executor.submit(load_document_batch, chunk_paths, threads_per_process))
+                futures.append(executor.submit(load_document_batch, chunk_paths))
 
             for future in as_completed(futures):
                 contents, _ = future.result()
                 docs.extend(contents)
 
-    return docs
+    return [d for d in docs if d is not None]
+
 
 def split_documents(documents=None, text_documents_pdf=None):
     try:
@@ -252,51 +257,3 @@ def split_documents(documents=None, text_documents_pdf=None):
             logging.exception("Error during document splitting")
             logging.error(f"Error type: {type(e)}")
             raise
-
-"""
-The PyMUPDF parser was modified in langchain-community 0.3.15+
-
-- Adds "producer" and "creator" metadata fields
-- Adds thread safety features
-- Adds support for encrypted PDFs, tables, and enhanced image extraction
-- Added configurable page handling modes
-
-+----------------------+---------------------------+---------------+-----------+
-| Parameter            | Available Options         | Default Value | Required? |
-+----------------------+---------------------------+---------------+-----------+
-| mode                 | "single", "page"          | "page"        | No        |
-+----------------------+---------------------------+---------------+-----------+
-| password            | Any string                 | None          | No        |
-+----------------------+---------------------------+---------------+-----------+
-| pages_delimiter     | Any string                 | "\n\f"        | No        |
-+----------------------+---------------------------+---------------+-----------+
-| extract_images      | True, False                | False         | No        |
-+----------------------+---------------------------+---------------+-----------+
-| images_parser       | BaseImageBlobParser obj    | None          | No        |
-+----------------------+---------------------------+---------------+-----------+
-| images_inner_format | "text"                     | "text"        | No        |
-|                     | "markdown-img"             |               |           |
-|                     | "html-img"                 |               |           |
-+----------------------+---------------------------+---------------+-----------+
-| extract_tables      | "csv"                      | None          | No        |
-|                     | "markdown"                 |               |           |
-|                     | "html"                     |               |           |
-|                     | None                       |               |           |
-+----------------------+---------------------------+---------------+-----------+
-| extract_tables      | Dictionary with settings   | None          | No        |
-| _settings           | for table extraction       |               |           |
-+----------------------+---------------------------+---------------+-----------+
-| text_kwargs         | Dictionary with text       | None          | No        |
-| (Parser only)       | extraction settings        |               |           |
-+----------------------+---------------------------+---------------+-----------+
-
-This table is ONLY RELEVANT if I do not use custom sub-classes.  Keep for possible future reference
-
-Regarding the additional metadata fields, this won't interfere with extract_metadata.py because it:
-
-1) Applies after the document is loaded; and
-2) Uses document.metadata.update(metadata), which means that it will either:
-
-* Add your metadata fields alongside the Langchain metadata; or
-* Override any duplicate fields with your values
-"""

@@ -41,7 +41,14 @@ class BaseEmbeddingModel:
         self.is_query = is_query
 
     def prepare_kwargs(self):
-        return self.model_kwargs
+        ready = deepcopy(self.model_kwargs)
+
+        tok_kw = ready.setdefault("tokenizer_kwargs", {})
+        tok_kw.setdefault("padding", True)
+        tok_kw.setdefault("truncation", True)
+        tok_kw.setdefault("return_token_type_ids", False)
+
+        return ready
 
     def prepare_encode_kwargs(self):
         if self.is_query:
@@ -51,12 +58,21 @@ class BaseEmbeddingModel:
     def create(self):
         prepared_kwargs = self.prepare_kwargs()
         prepared_encode_kwargs = self.prepare_encode_kwargs()
-        return HuggingFaceEmbeddings(
+        logger.debug("HF init kwargs=%s", prepared_kwargs)
+        logger.debug("encode_kwargs=%s", prepared_encode_kwargs)
+
+        hf = HuggingFaceEmbeddings(
             model_name=self.model_name,
-            show_progress=not self.is_query,  # only show progress for database creation
+            show_progress=not self.is_query,
             model_kwargs=prepared_kwargs,
             encode_kwargs=prepared_encode_kwargs
         )
+
+        tok = hf._client.tokenizer
+        if "token_type_ids" in tok.model_input_names:
+            tok.model_input_names.remove("token_type_ids")
+
+        return hf
 
 
 class SnowflakeEmbedding(BaseEmbeddingModel):
@@ -91,72 +107,72 @@ class SnowflakeEmbedding(BaseEmbeddingModel):
 
 class StellaEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
-        stella_kwargs = deepcopy(self.model_kwargs)
-        logging.debug(f"Original model_kwargs: {self.model_kwargs}")
+        """
+        Merge the BaseEmbeddingModel defaults, then inject the single extra flag
+        Stella models need.  Nothing gets overwritten or lost.
+        """
+        # Start with the padded/truncated tokenizer-kwargs that the base class
+        # already adds (return_token_type_ids=False, etc.).
+        stella_kwargs = super().prepare_kwargs()
 
-        stella_kwargs["model_kwargs"].update({
-            "trust_remote_code": True
-        })
-        logging.debug("Set 'trust_remote_code' to True in model_kwargs")
+        # Ensure the HF loader is allowed to execute remote code for Stella.
+        stella_kwargs.setdefault("model_kwargs", {})
+        stella_kwargs["model_kwargs"]["trust_remote_code"] = True
 
-        if "torch_dtype" in self.model_kwargs.get("model_kwargs", {}):
-            stella_kwargs["model_kwargs"]["torch_dtype"] = self.model_kwargs["model_kwargs"]["torch_dtype"]
-            logging.debug(f"Preserved 'torch_dtype': {self.model_kwargs['model_kwargs']['torch_dtype']}")
-
-        logging.debug(f"Final stella_kwargs: {stella_kwargs}")
         return stella_kwargs
 
     def prepare_encode_kwargs(self):
         encode_kwargs = super().prepare_encode_kwargs()
-        logging.debug(f"Initial encode_kwargs from super: {encode_kwargs}")
-
         if self.is_query:
             encode_kwargs["prompt_name"] = "s2p_query"
-            logging.debug("is_query is True, set 'prompt_name' to 's2p_query'")
-
-        logging.debug(f"Final encode_kwargs: {encode_kwargs}")
         return encode_kwargs
 
 
 class Stella400MEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
-        stella_kwargs = deepcopy(self.model_kwargs)
-        compute_device = self.model_kwargs.get("device", "").lower()
+        """
+        Keep every default from the base class **and** satisfy the strict 400 M
+        requirements:
+          • tokenizer_kwargs keeps return_token_type_ids=False *and* raises
+            max_length to 8192
+          • attn_implementation must always be 'eager'
+          • xFormers is optional, but if we do unpad_inputs we must have it
+        """
+        stella_kwargs = super().prepare_kwargs()
+
+        compute_device = stella_kwargs.get("device", "").lower()
         is_cuda = compute_device == "cuda"
         use_xformers = is_cuda and supports_flash_attention()
-        
-        # Set trust_remote_code at the top level
-        stella_kwargs["trust_remote_code"] = True
-        
-        # Preserve torch_dtype if present
-        if "torch_dtype" in self.model_kwargs.get("model_kwargs", {}):
-            if "model_kwargs" not in stella_kwargs:
-                stella_kwargs["model_kwargs"] = {}
-            stella_kwargs["model_kwargs"]["torch_dtype"] = self.model_kwargs["model_kwargs"]["torch_dtype"]
-        
-        # Set tokenizer kwargs at top level - not inside model_kwargs
-        stella_kwargs["tokenizer_kwargs"] = {
+
+        # trust_remote_code for the actual HF call
+        stella_kwargs.setdefault("model_kwargs", {})
+        stella_kwargs["model_kwargs"]["trust_remote_code"] = True
+
+        # merge-update the tokenizer settings (do NOT overwrite the whole dict)
+        tok_kw = stella_kwargs.setdefault("tokenizer_kwargs", {})
+        tok_kw.update({
             "max_length": 8192,
             "padding": True,
-            "truncation": True
-        }
-        
-        # Set config kwargs at top level - not inside model_kwargs
+            "truncation": True,
+        })
+
         stella_kwargs["config_kwargs"] = {
             "use_memory_efficient_attention": use_xformers,
             "unpad_inputs": use_xformers,
-            "attn_implementation": "eager"
+            "attn_implementation": "eager",   # always eager for 400 M
         }
-        
+
+        logger.debug("Stella400M kwargs → %s", stella_kwargs)
         return stella_kwargs
-    
+
+        return stella_kwargs
+
     def prepare_encode_kwargs(self):
         encode_kwargs = super().prepare_encode_kwargs()
-        
         if self.is_query:
             encode_kwargs["prompt_name"] = "s2p_query"
-        
         return encode_kwargs
+
 
 class AlibabaEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
@@ -259,7 +275,7 @@ class CreateVectorDB:
                 'bge-small': 12,
                 'gte-base': 14,
                 'arctic-embed-m': 14,
-                'stella_en_400M_v5': 20,
+                'stella_en_400M_v5': 12,
             }
 
             for key, value in batch_size_mapping.items():
@@ -287,6 +303,10 @@ class CreateVectorDB:
         else:
             logger.debug("No conditions matched - using base model")
             model = BaseEmbeddingModel(embedding_model_name, model_kwargs, encode_kwargs).create()
+
+        logger.debug("🛈 %s tokenizer_kwargs=%s",
+                     embedding_model_name,
+                     model_kwargs.get("tokenizer_kwargs"))
 
         model_name = os.path.basename(embedding_model_name)
         precision = "float32" if torch_dtype is None else str(torch_dtype).split('.')[-1]
@@ -319,8 +339,12 @@ class CreateVectorDB:
                 file_hash = doc.metadata.get('hash')
                 chunk_counters[file_hash] += 1
                 tiledb_id = str(random.randint(0, MAX_UINT64 - 1))
-                
-                all_texts.append(doc.page_content)
+
+                text_str = str(doc.page_content or "").strip()
+                if not text_str:            # silently drop zero-length chunks
+                    continue
+                all_texts.append(text_str)
+
                 all_metadatas.append(doc.metadata)
                 all_ids.append(tiledb_id)
                 hash_id_mappings.append((tiledb_id, file_hash))
@@ -608,7 +632,13 @@ class QueryVectorDB:
         )
 
         search_term = self.config['database'].get('search_term', '').lower()
-        filtered_contexts = [(doc, score) for doc, score in relevant_contexts if search_term in doc.page_content.lower()]
+        if search_term:
+            filtered_contexts = [
+                (doc, score) for doc, score in relevant_contexts
+                if search_term in doc.page_content.lower()
+            ]
+        else:
+            filtered_contexts = relevant_contexts
 
         contexts = [document.page_content for document, _ in filtered_contexts]
         metadata_list = [document.metadata for document, _ in filtered_contexts]
@@ -672,19 +702,28 @@ Also, unlike Alibaba or Snowflake, "eager" must be used even when NOT using xfor
 
 **Explaining the solution process**
 
-The core clarification I found in the source code was that `encode_kwargs` don't affect tokenization, but `tokenizer_kwargs` do. When working with `SentenceTransformer.encode`, it doesn't forward the `encode_kwargs` to the tokenizer. Instead, it uses the internal tokenizer built with settings from `tokenizer_kwargs` or defaults. Similarly, `huggingfaceembeddings` uses `tokenizer_kwargs` for configuration, but `encode_kwargs` are only relevant during the embedding stage. The key takeaway is to configure padding or truncation settings in `tokenizer_kwargs`, not in `encode_kwargs`.
+The core clarification I found in the source code was that `encode_kwargs` don't affect tokenization, but `tokenizer_kwargs` do. When
+working with `SentenceTransformer.encode`, it doesn't forward the `encode_kwargs` to the tokenizer. Instead, it uses the internal
+tokenizer built with settings from `tokenizer_kwargs` or defaults. Similarly, `huggingfaceembeddings` uses `tokenizer_kwargs` for
+configuration, but `encode_kwargs` are only relevant during the embedding stage. The key takeaway is to configure padding or
+truncation settings in `tokenizer_kwargs`, not in `encode_kwargs`.
 
 **Clarifying tokenization configuration**
 
-Reading the source code revealed that `SentenceTransformer.encode()` doesn't use `encode_kwargs` for tokenization, but instead passes them to the underlying model’s forward method. Tokenization (including padding/truncation) is configured via `tokenizer_kwargs` during the `SentenceTransformer` initialization. Meanwhile, `HuggingFaceEmbeddings` passes `model_kwargs`, including `tokenizer_kwargs`, to the `SentenceTransformer` constructor, so padding/truncation options must be set there. By focusing on `tokenizer_kwargs`, padding/truncation works correctly.
+Reading the source code revealed that `SentenceTransformer.encode()` doesn't use `encode_kwargs` for tokenization, but instead passes
+them to the underlying model’s forward method. Tokenization (including padding/truncation) is configured via `tokenizer_kwargs` during
+the `SentenceTransformer` initialization. Meanwhile, `HuggingFaceEmbeddings` passes `model_kwargs`, including `tokenizer_kwargs`, to
+the `SentenceTransformer` constructor, so padding/truncation options must be set there. By focusing on `tokenizer_kwargs`,
+padding/truncation works correctly.
 
 
 **Clarifying the solution**
 
-Reading the SentenceTransformer source code helped clarify that the `encode_kwargs` don't affect tokenization. In the `encode` and `tokenize` functions, we saw that `encode_kwargs` aren’t passed to the tokenizer. Instead, the tokenizer uses settings defined by `tokenizer_kwargs` during initialization. This distinction resolved any confusion about where tokenization and encoding parameters should be configured. We can explain this without needing additional citations or external sources, unless the uploaded file would help confirm the details. Otherwise, it's all about the logic in the code.
-
-
-Thought for 14 seconds
+Reading the SentenceTransformer source code helped clarify that the `encode_kwargs` don't affect tokenization. In the `encode` and
+`tokenize` functions, we saw that `encode_kwargs` aren’t passed to the tokenizer. Instead, the tokenizer uses settings defined by
+`tokenizer_kwargs` during initialization. This distinction resolved any confusion about where tokenization and encoding parameters
+should be configured. We can explain this without needing additional citations or external sources, unless the uploaded file would
+help confirm the details. Otherwise, it's all about the logic in the code.
 
 
 By diving into **SentenceTransformer**’s source, you see that:
@@ -699,11 +738,16 @@ By diving into **SentenceTransformer**’s source, you see that:
 
    so all of your padding/truncation flags in `encode_kwargs` are ignored at tokenization time .
 
-2. **`tokenize()` in turn never looks at `encode_kwargs`**—it just calls the first module’s own `tokenize` method, which was configured when the model (and its tokenizer) were first loaded .
+2. **`tokenize()` in turn never looks at `encode_kwargs`**—it just calls the first module’s own `tokenize` method, which was
+configured when the model (and its tokenizer) were first loaded .
 
-Meanwhile, **`HuggingFaceEmbeddings`** passes whatever you put in `model_kwargs["tokenizer_kwargs"]` directly into the `SentenceTransformer(…, tokenizer_kwargs=…)` constructor, which does drive the underlying `AutoTokenizer.from_pretrained(...)` call. That means **the only place your padding/truncation settings actually take effect is in `tokenizer_kwargs` at model‐init time**, not in `encode_kwargs`.
+Meanwhile, **`HuggingFaceEmbeddings`** passes whatever you put in `model_kwargs["tokenizer_kwargs"]` directly into the
+`SentenceTransformer(…, tokenizer_kwargs=…)` constructor, which does drive the underlying `AutoTokenizer.from_pretrained(...)` call.
+That means **the only place your padding/truncation settings actually take effect is in `tokenizer_kwargs` at model‐init time**, not
+in `encode_kwargs`.
 
-**In short:** reading these two code paths makes it crystal clear why stuffing `"padding"`, `"truncation"`, and `"max_length"` into `encode_kwargs` didn’t work—and why the fix must be to set them in `tokenizer_kwargs` instead.
+**In short:** reading these two code paths makes it crystal clear why stuffing `"padding"`, `"truncation"`, and `"max_length"`
+into `encode_kwargs` didn’t work—and why the fix must be to set them in `tokenizer_kwargs` instead.
 
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │ 1) Your subclass: Stella400MEmbedding.prepare_kwargs()                           │

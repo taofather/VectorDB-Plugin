@@ -100,7 +100,7 @@ priority_libs = {
 }
 
 libs = [
-    "accelerate==1.6.0",
+    "accelerate==1.7.0",
     "aiofiles==24.1.0",
     "aiohappyeyeballs==2.6.1",
     "aiohttp==3.11.18", # langchain libraries require <4
@@ -121,7 +121,7 @@ libs = [
     "chardet==5.2.0",
     "charset-normalizer==3.4.2", # requests requires <4
     "chattts==0.2.3",
-    "click==8.1.8",
+    "click==8.2.0",
     "cloudpickle==3.1.1", # only required by tiledb-cloud and 3+ is only supported by tiledb-cloud 0.13+
     "colorama==0.4.6",
     "coloredlogs==15.0.1",
@@ -131,7 +131,7 @@ libs = [
     "cycler==0.12.1",
     "dataclasses-json==0.6.7",
     "datasets==3.5.0",
-    "deepdiff==8.4.2", # required by unstructured
+    "deepdiff==8.5.0", # required by unstructured
     "Deprecated==1.2.18", # only needed by pikepdf
     "deprecation==2.1.0", # only needed by ocrmypdf
     "dill==0.3.8", # datasets 3.5.1 requires <0.3.9; multiprocess 0.70.16 requires >=0.3.8
@@ -143,16 +143,16 @@ libs = [
     "encodec==0.1.1",
     "et-xmlfile==2.0.0", # openpyxl requires; caution...openpyxl 3.1.5 (6/28/2024) predates et-xmlfile 2.0.0 (10/25/2024)
     "eval-type-backport==0.2.2", # only required by unstructured
-    "fastcore==1.8.1", # only required by whisperspeech
+    "fastcore==1.8.2", # only required by whisperspeech
     "fastprogress==1.0.3", # only required by whisperspeech
     "filetype==1.2.0",
     "filelock==3.18.0",
-    "fonttools==4.57.0", # only required by matplotlib
+    "fonttools==4.58.0", # only required by matplotlib
     "frozendict==2.4.6",
     "frozenlist==1.5.0",
-    "fsspec==2025.3.0", # datasets 3.5.1 requires <=2025.3.0
-    "fsspec[http]==2025.3.0", # datasets 3.5.1 requires <=2025.3.0
-    "greenlet==3.2.1",
+    "fsspec==2024.12.0", # datasets 3.5.1 requires <=2024.12.0
+    "fsspec[http]==2024.12.0", # datasets 3.5.1 requires <=2024.12.0
+    "greenlet==3.2.2",
     "gTTS==2.5.4",
     "h11==0.16.0",
     "h5py==3.13.0",
@@ -160,7 +160,7 @@ libs = [
     "httpcore==1.0.9",
     "httpx==0.28.1",
     "httpx-sse==0.4.0",
-    "huggingface-hub==0.30.2", # tokenizers 0.21.1 requires >=0.16.4,<1.0
+    "huggingface-hub==0.31.2", # tokenizers 0.21.1 requires >=0.16.4,<1.0
     "humanfriendly==10.0",
     "HyperPyYAML==1.2.2",
     "idna==3.10",
@@ -174,9 +174,9 @@ libs = [
     "jsonpointer==3.0.0",
     "kiwisolver==1.4.8",
     "langchain==0.3.25",
-    "langchain-community==0.3.23",
-    "langchain-core==0.3.58",
-    "langchain-huggingface==0.1.2",
+    "langchain-community==0.3.24",
+    "langchain-core==0.3.59",
+    "langchain-huggingface==0.2.0",
     "langchain-text-splitters==0.3.8",
     "langdetect==1.0.9",
     "langsmith==0.3.42",
@@ -186,13 +186,13 @@ libs = [
     "markdown-it-py==3.0.0",
     "MarkupSafe==3.0.2",
     "marshmallow==3.26.1", # dataclasses-json==0.6.7 requires less than 4.0.0
-    "matplotlib==3.10.1", # uniquely requires pyparsing==3.1.2 cycler==0.12.1 kiwisolver==1.4.5
+    "matplotlib==3.10.3", # uniquely requires pyparsing==3.1.2 cycler==0.12.1 kiwisolver==1.4.5
     "mdurl==0.1.2",
     "more-itertools==10.7.0",
     "mpmath==1.3.0", # sympy 1.13.1 requires less than 1.4
     "msg-parser==1.2.0",
     "multidict==6.4.3",
-    "multiprocess==0.70.16", # datasets 3.5.1 requires <0.70.17
+    "multiprocess==0.70.16", # datasets 3.6.0 requires <0.70.17
     "mypy-extensions==1.1.0",
     "natsort==8.4.0",
     "nest-asyncio==1.6.0",
@@ -208,37 +208,37 @@ libs = [
     "numpy==1.26.4",
     "ocrmypdf==16.10.1",
     "olefile==0.47",
-    "openai==1.77.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
+    "openai==1.78.1", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
-    "optimum==1.24.0",
+    "optimum==1.25.0",
     "ordered-set==4.1.0",
-    "orderly-set==5.4.0", # deepdiff 8.2.0 requires orderly-set=5.3.0,<6
+    "orderly-set==5.4.1", # deepdiff 8.2.0 requires orderly-set>=5.3.0,<6
     "orjson==3.10.18",
-    "packaging==24.2", # langchain-core==0.3.56 requires less than 25
+    "packaging==24.2", # langchain-core==0.3.59 requires less than 25
     "pandas==2.2.3",
-    "pdfminer.six==20250416", # only needed by ocrmypdf
+    "pdfminer.six==20250506", # ocrmypdf 16.10.1 requires >=20220319
     "pikepdf==9.7.0", # only needed by ocrmypdf
     "pillow==11.2.1",
     "pi-heif==0.22.0", # only needed by ocrmypdf, but not for my usage of ocrmypdf
     "pipdeptree",
-    "platformdirs==4.3.7",
+    "platformdirs==4.3.8",
     "pluggy==1.5.0", # only needed by ocrmypdf
     "propcache==0.3.1",
-    "protobuf==6.30.2",
+    "protobuf==6.31.0",
     "psutil==7.0.0",
     "pyarrow==20.0.0",
     "pybase16384==0.3.8", # only required by chattts
     "pycparser==2.22",
-    "pydantic==2.11.3", # unstructured-client==0.34.0 requires pydantic>=2.11.2
-    "pydantic_core==2.33.1", # pydantic 2.11.4 requires pydantic_core==2.33.2
-    "pydantic-settings==2.8.1", # langchain-community==0.3.23 requires pydantic-settings>=2.4.0,<3.0.0
+    "pydantic==2.11.4", # unstructured-client==0.34.0 requires pydantic>=2.11.2
+    "pydantic_core==2.33.2", # pydantic 2.11.4 requires pydantic_core==2.33.2
+    "pydantic-settings==2.9.1", # langchain-community==0.3.23 requires pydantic-settings>=2.4.0,<3.0.0
     "Pygments==2.19.1",
     "PyOpenGL==3.1.9",
     "PyOpenGL-accelerate==3.1.9",
     "pypandoc==1.15",
     "pyparsing==3.2.3",
-    "pypdf==5.4.0",
+    "pypdf==5.5.0",
     "pyreadline3==3.5.4",
     "python-dateutil==2.9.0.post0",
     "python-docx==1.1.2",
@@ -257,7 +257,7 @@ libs = [
     "ruamel.yaml.clib==0.2.12",
     "safetensors==0.5.3",
     "scikit-learn==1.6.1",
-    "scipy==1.15.2",
+    "scipy==1.15.3",
     "sentence-transformers==4.1.0",
     "sentencepiece==0.2.0",
     "six==1.17.0",
@@ -266,7 +266,7 @@ libs = [
     "soundfile==0.13.1",
     "soupsieve==2.7",
     "speechbrain==0.5.16",
-    "SQLAlchemy==2.0.40", # langchain and langchain-community require less than 3.0.0
+    "SQLAlchemy==2.0.41", # langchain and langchain-community require less than 3.0.0
     "sseclient-py==1.8.0", # only required by Kobold
     "sympy==1.13.1", # torch 2.6.0 requires sympy==1.13.1
     "tabulate==0.9.0",
@@ -277,16 +277,16 @@ libs = [
     "tessdata.eng==1.0.0",
     "threadpoolctl==3.6.0",
     "tiktoken==0.9.0",
-    "tiledb==0.33.6",
+    "tiledb==0.34.0",
     "tiledb-cloud==0.13.0",
-    "tiledb-vector-search==0.12.0",
+    "tiledb-vector-search==0.13.0",
     "timm==1.0.15",
     "tokenizers==0.21.1",
     "tqdm==4.67.1",
     "transformers==4.51.3",
     "typing-inspect==0.9.0",
     "typing_extensions==4.13.2",
-    "unstructured-client==0.34.0",
+    "unstructured-client==0.35.0",
     "tzdata==2025.2",
     "urllib3==2.4.0", # requests 2.32.3 requires <3
     "vector-quantize-pytorch==1.22.16",

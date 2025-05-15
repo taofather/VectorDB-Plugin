@@ -156,9 +156,11 @@ class loader_florence2(BaseLoader):
         inputs["pixel_values"] = inputs["pixel_values"].to(dtype=self.model_dtype)
         generated_ids = self.model.generate(input_ids=inputs["input_ids"], pixel_values=inputs["pixel_values"], max_new_tokens=1024, num_beams=1, do_sample=False, early_stopping=False)
         generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
-        parsed = self.processor.post_process_generation(generated_text, task=prompt, image_size=(raw_image.width, raw_image.height))
-        return parsed['<MORE_DETAILED_CAPTION>']
-
+        parsed = self.processor.post_process_generation(
+            generated_text, task=prompt,
+            image_size=(raw_image.width, raw_image.height)
+        )
+        return parsed.get('<MORE_DETAILED_CAPTION>', generated_text)
 
 class loader_glmv4(BaseLoader):
     def initialize_model_and_tokenizer(self):
