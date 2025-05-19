@@ -10,14 +10,14 @@ from pathlib import Path, PurePath
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from langchain_community.docstore.document import Document
 from langchain_text_splitters.character import RecursiveCharacterTextSplitter
-from langchain_text_splitters.base import TextSplitter     # ← added
-# ─ monkey-patch block starts
-_old_merge = TextSplitter._merge_splits
-def _debug_merge(self, splits, separator):
-    print(">>> _length_function TYPE *inside* _merge_splits:", type(self._length_function))
-    return _old_merge(self, splits, separator)
-TextSplitter._merge_splits = _debug_merge
-# ─ monkey-patch block ends
+from langchain_text_splitters.base import TextSplitter
+# # ─ monkey-patch block starts
+# _old_merge = TextSplitter._merge_splits
+# def _debug_merge(self, splits, separator):
+    # print(">>> _length_function TYPE *inside* _merge_splits:", type(self._length_function))
+    # return _old_merge(self, splits, separator)
+# TextSplitter._merge_splits = _debug_merge
+# # ─ monkey-patch block ends
 from langchain_community.document_loaders import (
     PyMuPDFLoader,
     Docx2txtLoader,
@@ -223,8 +223,9 @@ def split_documents(documents=None, text_documents_pdf=None):
             keep_separator  = False,
         )
 
-        print("TYPE OF _length_function:", type(text_splitter._length_function))
-        import time; time.sleep(20)
+        # DEBUG WITH MONKEY PATCCH
+        # print("TYPE OF _length_function:", type(text_splitter._length_function))
+        # import time; time.sleep(20)
         """
         Run the script once; if it prints <class 'function'>, the attribute is still correct at creation time and gets corrupted
         later, so you’ll know to trace subsequent mutations. If it already shows <class 'list'> (or anything other than function),

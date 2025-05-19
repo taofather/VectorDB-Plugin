@@ -1,7 +1,15 @@
+import logging, sys
+
+# logging.basicConfig(
+    # level=logging.DEBUG,                       # or INFO/ERROR as you prefer
+    # format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    # handlers=[logging.StreamHandler(sys.stdout)],
+    # force=True                                 # clobber any accidental configs
+# )
+
 import multiprocessing
 if __name__ == '__main__':
     multiprocessing.set_start_method('spawn', force=True)
-import sys
 import os
 from pathlib import Path
 
