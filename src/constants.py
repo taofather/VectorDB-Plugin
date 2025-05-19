@@ -121,7 +121,7 @@ libs = [
     "chardet==5.2.0",
     "charset-normalizer==3.4.2", # requests requires <4
     "chattts==0.2.3",
-    "click==8.2.0",
+    "click==8.1.8",
     "cloudpickle==3.1.1", # only required by tiledb-cloud and 3+ is only supported by tiledb-cloud 0.13+
     "colorama==0.4.6",
     "coloredlogs==15.0.1",
@@ -230,8 +230,8 @@ libs = [
     "pyarrow==20.0.0",
     "pybase16384==0.3.8", # only required by chattts
     "pycparser==2.22",
-    "pydantic==2.11.4", # unstructured-client==0.34.0 requires pydantic>=2.11.2
-    "pydantic_core==2.33.2", # pydantic 2.11.4 requires pydantic_core==2.33.2
+    "pydantic==2.11.3", # unstructured-client==0.35.0 requires pydantic>=2.11.2
+    "pydantic_core==2.33.1", # pydantic 2.11.3 requires pydantic_core==2.33.1
     "pydantic-settings==2.9.1", # langchain-community==0.3.23 requires pydantic-settings>=2.4.0,<3.0.0
     "Pygments==2.19.1",
     "PyOpenGL==3.1.9",
@@ -489,37 +489,14 @@ CHAT_MODELS = {
 VECTOR_MODELS = {
     'Alibaba-NLP': [
         {
-            'name': 'Alibaba-gte-base',
-            'dimensions': 768,
+            'name': 'gte-Qwen2-1.5B-instruct',
+            'dimensions': 1536,
             'max_sequence': 8192,
-            'size_mb': 547,
-            'repo_id': 'Alibaba-NLP/gte-base-en-v1.5',
-            'cache_dir': 'Alibaba-NLP--gte-base-en-v1.5',
+            'size_mb': 7100,
+            'repo_id': 'Alibaba-NLP/gte-Qwen2-1.5B-instruct',
+            'cache_dir': 'Alibaba-NLP--gte-Qwen2-1.5B-instruct',
             'type': 'vector',
-            'parameters': '137m',
-            'precision': 'float32'
-        },
-        # compiles with triton and search requires cuda
-        {
-            'name': 'Alibaba-gte-modernbert-base',
-            'dimensions': 768,
-            'max_sequence': 8192,
-            'size_mb': 298,
-            'repo_id': 'Alibaba-NLP/gte-modernbert-base',
-            'cache_dir': 'Alibaba-NLP--gte-modernbert-base',
-            'type': 'vector',
-            'parameters': '149m',
-            'precision': 'float16'
-        },
-        {
-            'name': 'Alibaba-gte-large',
-            'dimensions': 1024,
-            'max_sequence': 8192,
-            'size_mb': 1740,
-            'repo_id': 'Alibaba-NLP/gte-large-en-v1.5',
-            'cache_dir': 'Alibaba-NLP--gte-large-en-v1.5',
-            'type': 'vector',
-            'parameters': '434m',
+            'parameters': '1780m',
             'precision': 'float32'
         },
     ],
@@ -557,6 +534,17 @@ VECTOR_MODELS = {
             'parameters': '335m',
             'precision': 'float32'
         },
+        # {
+            # 'name': 'bge-code-v1',
+            # 'dimensions': 1536,
+            # 'max_sequence': 4096,
+            # 'size_mb': 1340,
+            # 'repo_id': 'BAAI/bge-code-v1',
+            # 'cache_dir': 'BAAI--bge-code-v1',
+            # 'type': 'vector',
+            # 'parameters': '1540m',
+            # 'precision': 'float32'
+        # },
     ],
     'IBM': [
         {
@@ -579,6 +567,30 @@ VECTOR_MODELS = {
             'cache_dir': 'ibm-granite--granite-embedding-125m-english',
             'type': 'vector',
             'parameters': '125m',
+            'precision': 'bfloat16'
+        },
+    ],
+    'infly': [
+        {
+            'name': 'infly-retriever-v1-1.5b',
+            'dimensions': 1536,
+            'max_sequence': 8192,
+            'size_mb': 3090,
+            'repo_id': 'infly/inf-retriever-v1-1.5b',
+            'cache_dir': 'infly--inf-retriever-v1-1.5b',
+            'type': 'vector',
+            'parameters': '1540m',
+            'precision': 'bfloat16'
+        },
+        {
+            'name': 'infly-retriever-v1-7b',
+            'dimensions': 3584,
+            'max_sequence': 8192,
+            'size_mb': 14130,
+            'repo_id': 'infly/inf-retriever-v1',
+            'cache_dir': 'infly--inf-retriever-v1',
+            'type': 'vector',
+            'parameters': '7070m',
             'precision': 'bfloat16'
         },
     ],
@@ -617,35 +629,35 @@ VECTOR_MODELS = {
             'precision': 'float32'
         },
     ],
-    'NovaSearch': [
-        {
-            'name': 'stella_en_1.5B_v5',
-            'dimensions': 1024,
-            'max_sequence': 131072,
-            'size_mb': 6170,
-            'repo_id': 'NovaSearch/stella_en_1.5B_v5',
-            'cache_dir': 'NovaSearch--stella_en_1.5B_v5',
-            'type': 'vector',
-            'parameters': '1540m',
-            'precision': 'float32'
-        },
-        {
-            'name': 'stella_en_400M_v5',
-            'dimensions': 1024,
-            'max_sequence': 8192,
-            'size_mb': 1740,
-            'repo_id': 'NovaSearch/stella_en_400M_v5',
-            'cache_dir': 'NovaSearch--stella_en_400M_v5',
-            'type': 'vector',
-            'parameters': '435m',
-            'precision': 'float32'
-        },
-    ],
+    # 'NovaSearch': [
+        # {
+            # 'name': 'stella_en_1.5B_v5',
+            # 'dimensions': 1024,
+            # 'max_sequence': 512,
+            # 'size_mb': 6170,
+            # 'repo_id': 'NovaSearch/stella_en_1.5B_v5',
+            # 'cache_dir': 'NovaSearch--stella_en_1.5B_v5',
+            # 'type': 'vector',
+            # 'parameters': '1540m',
+            # 'precision': 'float32'
+        # },
+        # {
+            # 'name': 'stella_en_400M_v5',
+            # 'dimensions': 1024,
+            # 'max_sequence': 512,
+            # 'size_mb': 1740,
+            # 'repo_id': 'NovaSearch/stella_en_400M_v5',
+            # 'cache_dir': 'NovaSearch--stella_en_400M_v5',
+            # 'type': 'vector',
+            # 'parameters': '435m',
+            # 'precision': 'float32'
+        # },
+    # ],
     'Snowflake': [
         {
             'name': 'arctic-embed-m-v2.0',
             'dimensions': 768,
-            'max_sequence': 8192,
+            'max_sequence':8192,
             'size_mb': 1220,
             'repo_id': 'Snowflake/snowflake-arctic-embed-m-v2.0',
             'cache_dir': 'Snowflake--snowflake-arctic-embed-m-v2.0',
@@ -2959,19 +2971,21 @@ Torch & CUDA
 ************************ 
 
 # https://github.com/pytorch/pytorch/blob/main/RELEASE.md#release-compatibility-matrix
-+-------+----------------------------+----------------------------------------+----------------------------+
-| Torch | Python                     | Stable                                 | Experimental               |
-+-------+----------------------------+----------------------------------------+----------------------------+
-| 2.6   | >=3.9, <=3.13              | CUDA 11.8, 12.4 + CUDNN 9.1.0.70       | CUDA 12.6 + CUDNN 9.5.1.17 | ***
-+-------+----------------------------+----------------------------------------+----------------------------+
-| 2.5   | >=3.9, <=3.12, (3.13 exp.) | CUDA 11.8, 12.1, 12.4 + CUDNN 9.1.0.70 | None                       |
-+-------+----------------------------+----------------------------------------+----------------------------+
-| 2.4   | >=3.8, <=3.12              | CUDA 11.8, 12.1 + CUDNN 9.1.0.70       | CUDA 12.4 + CUDNN 9.1.0.70 |
-+-------+----------------------------+----------------------------------------+----------------------------+
-| 2.3   | >=3.8, <=3.11, (3.12 exp.) | CUDA 11.8 + CUDNN 8.7.0.84             | CUDA 12.1 + CUDNN 8.9.2.26 |
-+-------+----------------------------+----------------------------------------+----------------------------+
-| 2.2   | >=3.8, <=3.11, (3.12 exp.) | CUDA 11.8 + CUDNN 8.7.0.84             | CUDA 12.1 + CUDNN 8.9.2.26 |
-+-------+----------------------------+----------------------------------------+----------------------------+
++-------+----------------------------+---------------------------------------------------+----------------------------+
+| Torch | Python                     | Stable                                            | Experimental               |
++-------+----------------------------+---------------------------------------------------+----------------------------+
+| 2.7   | >=3.9, <=3.13              | CUDA 11.8 (cudnn 9.1.0.70), 12.6 (cudnn 9.5.1.17) | CUDA 12.8 (CUDNN 9.7.1.26) | ***
++-------+----------------------------+---------------------------------------------------+----------------------------+
+| 2.6   | >=3.9, <=3.13              | CUDA 11.8, 12.4 + CUDNN 9.1.0.70                  | CUDA 12.6 + CUDNN 9.5.1.17 | ***
++-------+----------------------------+---------------------------------------------------+----------------------------+
+| 2.5   | >=3.9, <=3.12, (3.13 exp.) | CUDA 11.8, 12.1, 12.4 + CUDNN 9.1.0.70            | None                       |
++-------+----------------------------+---------------------------------------------------+----------------------------+
+| 2.4   | >=3.8, <=3.12              | CUDA 11.8, 12.1 + CUDNN 9.1.0.70                  | CUDA 12.4 + CUDNN 9.1.0.70 |
++-------+----------------------------+---------------------------------------------------+----------------------------+
+| 2.3   | >=3.8, <=3.11, (3.12 exp.) | CUDA 11.8 + CUDNN 8.7.0.84                        | CUDA 12.1 + CUDNN 8.9.2.26 |
++-------+----------------------------+---------------------------------------------------+----------------------------+
+| 2.2   | >=3.8, <=3.11, (3.12 exp.) | CUDA 11.8 + CUDNN 8.7.0.84                        | CUDA 12.1 + CUDNN 8.9.2.26 |
++-------+----------------------------+---------------------------------------------------+----------------------------+
 
 ***********************
 Torch & Python & Triton

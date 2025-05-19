@@ -214,10 +214,24 @@ class BgeCodeEmbedding(BaseEmbeddingModel):
         # 1) add the custom prompt formatting if a query is being embedded
         if self.is_query:
             encode_kwargs["prompt"] = (
-                f"<instruct>{self.DEFAULT_INSTRUCTION}\n<query>"
+                f"<instruct>{self.DEFAULT_INSTRUCTION} <query>"
             )
 
         return encode_kwargs
+
+
+class InflyEmbedding(BaseEmbeddingModel):
+    def prepare_kwargs(self):
+        # 1) inherit all kwargs from the base class
+        infly_kwargs = super().prepare_kwargs()
+
+        # 2) update tokenizer_kwargs
+        tok_kw = infly_kwargs.setdefault("tokenizer_kwargs", {})
+        tok_kw.update({
+            "max_length": 8192,
+        })
+
+        return infly_kwargs
 
 
 def create_vector_db_in_process(database_name):
@@ -270,6 +284,7 @@ class CreateVectorDB:
         model_kwargs = {
             "device": compute_device, 
             "trust_remote_code": True,
+            "similarity_fn_name": "euclidean", # (str, optional); "cosine" (default), "dot", "euclidean", "manhattan"
             "model_kwargs": {
                 "torch_dtype": torch_dtype if torch_dtype is not None else None
             }
@@ -294,6 +309,10 @@ class CreateVectorDB:
                 'gte-base': 14,
                 'arctic-embed-m': 14,
                 'stella_en_400M_v5': 20,
+                'bge-code': 2,
+                'infly-retriever-v1-1.5b': 4,
+                'infly-retriever-v1-7b': 2,
+                'stella_en_1.5b_v5': 4,
             }
 
             for key, value in batch_size_mapping.items():
@@ -311,13 +330,19 @@ class CreateVectorDB:
             model = SnowflakeEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
         elif "alibaba" in embedding_model_name.lower():
             logger.debug("Matched Alibaba condition")
-            model = AlibabaEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
+            model = InflyEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
         elif "400m" in embedding_model_name.lower():
             logger.debug("Matched Stella 400m condition")
             model = Stella400MEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
-        elif "1.5b" in embedding_model_name.lower():
+        elif "stella_en_1.5b_v5" in embedding_model_name.lower():
             logger.debug("Matched Stella 1.5B condition")
             model = StellaEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
+        elif "bge-code" in embedding_model_name.lower():
+            logger.debug("Matches bge-code condition")
+            model = BgeCodeEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
+        elif "infly" in embedding_model_name.lower():
+            logger.debug("Matches infly condition")
+            model = InflyEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
         else:
             logger.debug("No conditions matched - using base model")
             model = BaseEmbeddingModel(embedding_model_name, model_kwargs, encode_kwargs).create()
@@ -359,7 +384,7 @@ class CreateVectorDB:
                 tiledb_id = str(random.randint(0, MAX_UINT64 - 1))
 
                 text_str = str(doc.page_content or "").strip()
-                if not text_str:            # silently drop zero-length chunks
+                if not text_str: # silently drop zero-length chunks
                     continue
                 all_texts.append(text_str)
 
@@ -383,7 +408,7 @@ class CreateVectorDB:
             with open(self.ROOT_DIRECTORY / "config.yaml", 'r', encoding='utf-8') as config_file:
                 config_data = yaml.safe_load(config_file)
 
-            # pre‑compute vectors, then write DB
+            # precompute vectors, then write DB
             vectors = embeddings.embed_documents(all_texts)
             text_embed_pairs = [
                 (txt, np.asarray(vec, dtype=np.float32))
@@ -469,7 +494,6 @@ class CreateVectorDB:
             conn.commit()
         finally:
             conn.close()
-
 
     def load_audio_documents(self, source_dir: Path = None) -> list:
         if source_dir is None:
@@ -598,38 +622,49 @@ class QueryVectorDB:
             raise
 
     @torch.inference_mode()
-    def initialize_vector_model(self):     
-        model_path = self.config['created_databases'][self.selected_database]['model']
+    def initialize_vector_model(self):
+        model_path   = self.config['created_databases'][self.selected_database]['model']
         self.model_name = os.path.basename(model_path)
-        compute_device = self.config['Compute_Device']['database_query']
+        compute_device  = self.config['Compute_Device']['database_query']
 
+        # ── outer kwargs passed to SentenceTransformer ──────────────
         model_kwargs = {
-            "device": compute_device, 
+            "device": compute_device,
             "trust_remote_code": True,
-            "model_kwargs": {}
+            "similarity_fn_name": "euclidean", # (str, optional); "cosine" (default), "dot", "euclidean", "manhattan"
+            "model_kwargs": {
+                "trust_remote_code": True,
+            },
+            "tokenizer_kwargs": {
+                "use_fast": True,
+                "trust_remote_code": True,
+            },
         }
-        # encode_kwargs = {'normalize_embeddings': True}
 
-        if "snowflake" in model_path.lower():
-            logger.debug("Matched Snowflake condition")
+        encode_kwargs = {"batch_size": 1}
+
+        mp_lower = model_path.lower()
+        if "snowflake" in mp_lower:
             embeddings = SnowflakeEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
-        elif "alibaba" in model_path.lower():
-            logger.debug("Matched Alibaba condition")
-            embeddings = AlibabaEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
-        elif "400m" in model_path.lower():
-            logger.debug("Matched Stella 400m condition")
+        elif "alibaba" in mp_lower:
+            embeddings = InflyEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
+        elif "400m" in mp_lower:
             embeddings = Stella400MEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
-        elif "1.5b" in model_path.lower():
-            logger.debug("Matched Stella 1.5B condition")
+        elif "stella_en_1.5b_v5" in mp_lower:
             embeddings = StellaEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
+        elif "infly" in mp_lower:
+            embeddings = InflyEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
+        elif "bge-code" in mp_lower:
+            embeddings = BgeCodeEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
         else:
-            if "bge" in model_path.lower():
-                logger.debug("Matched BGE condition - setting prompt in encode_kwargs")
-                encode_kwargs["prompt"] = "Represent this sentence for searching relevant passages: "
-            logger.debug("No specific condition matched - using base model")
+            if "bge" in mp_lower:
+                encode_kwargs["prompt"] = (
+                    "Represent this sentence for searching relevant passages: "
+                )
             embeddings = BaseEmbeddingModel(model_path, model_kwargs, encode_kwargs, is_query=True).create()
 
         return embeddings
+
 
     def initialize_database(self):
         persist_directory = Path(__file__).resolve().parent / "Vector_DB" / self.selected_database
