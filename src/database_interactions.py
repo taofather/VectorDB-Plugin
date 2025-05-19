@@ -43,10 +43,17 @@ class BaseEmbeddingModel:
     def prepare_kwargs(self):
         ready = deepcopy(self.model_kwargs)
 
+        # 1) update model_kwargs
+        ready.setdefault("model_kwargs", {}).setdefault("trust_remote_code", True)
+
+        # 2) update tokenizer_kwargs
         tok_kw = ready.setdefault("tokenizer_kwargs", {})
+        tok_kw.setdefault("trust_remote_code", True)
         tok_kw.setdefault("padding", True)
         tok_kw.setdefault("truncation", True)
         tok_kw.setdefault("return_token_type_ids", False)
+        tok_kw.setdefault("use_fast", True)
+        tok_kw.setdefault("max_length", 512)
 
         return ready
 
@@ -55,12 +62,9 @@ class BaseEmbeddingModel:
             self.encode_kwargs['batch_size'] = 1
         return self.encode_kwargs
 
-    # VERIFIED CORRECT
     def create(self):
         prepared_kwargs = self.prepare_kwargs()
         prepared_encode_kwargs = self.prepare_encode_kwargs()
-        logger.debug("HF init kwargs=%s", prepared_kwargs)
-        logger.debug("encode_kwargs=%s", prepared_encode_kwargs)
 
         hf = HuggingFaceEmbeddings(
             model_name=self.model_name,
@@ -78,120 +82,142 @@ class BaseEmbeddingModel:
 
 class SnowflakeEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
-        # 1) inherit the padded / truncated tokenizer-kwargs from the base class
+        # 1) inherit all kwargs from the base class
         snow_kwargs = super().prepare_kwargs()
 
-        # 2) If this is a “large” Snowflake model, no extra tweaks are required
+        # 2) update tokenizer_kwargs for large model
         if "large" in self.model_name.lower():
-            logging.debug("Model name contains 'large' – returning base kwargs unchanged")
+            tok_kw = snow_kwargs.setdefault("tokenizer_kwargs", {})
+            tok_kw.update({"max_length": 8192})
+
             return snow_kwargs
 
-        # 3) Decide whether xFormers memory-efficient attention is available
-        compute_device = snow_kwargs.get("device", "")
-        is_cuda        = compute_device.lower().startswith("cuda")
+        # 1) determine if xformers can be used
+        compute_device = snow_kwargs.get("device", "").lower()
+        is_cuda        = compute_device.startswith("cuda")
         use_xformers   = is_cuda and supports_flash_attention()
 
-        # 4) Merge or create the config-level overrides
-        extra_cfg = {
+        # 2) update tokenizer_kwargs for medium model
+        tok_kw = snow_kwargs.setdefault("tokenizer_kwargs", {})
+        tok_kw.update({"max_length": 8192})
+
+        # 3) update config_kwargs for medium model
+        snow_kwargs["config_kwargs"] = {
             "use_memory_efficient_attention": use_xformers,
             "unpad_inputs": use_xformers,
             "attn_implementation": "eager" if use_xformers else "sdpa",
         }
-        snow_kwargs["config_kwargs"] = {
-            **snow_kwargs.get("config_kwargs", {}),  # keep any user-supplied keys
-            **extra_cfg,
-        }
 
-        logging.debug("Final Snowflake config_kwargs: %s", snow_kwargs["config_kwargs"])
         return snow_kwargs
 
 
 class StellaEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
-        # Start with the padded/truncated tokenizer-kwargs that the base class
-        # already adds (return_token_type_ids=False, etc.).
+        # 1) inherit all kwargs from the base class
         stella_kwargs = super().prepare_kwargs()
 
-        # Ensure the HF loader is allowed to execute remote code for Stella.
-        stella_kwargs.setdefault("model_kwargs", {})
-        stella_kwargs["model_kwargs"]["trust_remote_code"] = True
+        # 2) update tokenizer_kwargs
+        tok_kw = stella_kwargs.setdefault("tokenizer_kwargs", {})
+        tok_kw.update({
+            "max_length": 512,
+        })
 
         return stella_kwargs
 
     def prepare_encode_kwargs(self):
         encode_kwargs = super().prepare_encode_kwargs()
+        # 1) add the appropriate prompt_name if a query is being embedded
         if self.is_query:
             encode_kwargs["prompt_name"] = "s2p_query"
+
         return encode_kwargs
 
 
 class Stella400MEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
-        # 1) start from the padded/truncated tokenizer defaults
+        # 1) inherit all kwargs from the base class
         stella_kwargs = super().prepare_kwargs()
 
-        # 2) detect whether we can use xFormers kernels
+        # 2) determine if xformers can be used
         compute_device = stella_kwargs.get("device", "")
-        is_cuda        = compute_device.lower().startswith("cuda")
-        use_xformers   = is_cuda and supports_flash_attention()
+        is_cuda = compute_device.lower().startswith("cuda")
+        use_xformers = is_cuda and supports_flash_attention()
 
-        # 3) ensure the inner model_kwargs exists and allows remote code
-        stella_kwargs.setdefault("model_kwargs", {})
-        stella_kwargs["model_kwargs"]["trust_remote_code"] = True
-
-        # 4) merge/update tokenizer settings *without* losing existing keys
+        # 3) update tokenizer_kwargs
         tok_kw = stella_kwargs.setdefault("tokenizer_kwargs", {})
         tok_kw.update({
-            "max_length": 8000,
-            "padding": True,
-            "truncation": True,
+            "max_length": 512,
         })
 
-        # 5) add config-level overrides
+        # 4) update config_kwargs
         stella_kwargs["config_kwargs"] = {
             "use_memory_efficient_attention": use_xformers,
             "unpad_inputs": use_xformers,
-            "attn_implementation": "eager",   # always eager for 400 M
+            "attn_implementation": "eager",   # always "eager" even when not using xformers
         }
 
-        logger.debug("Stella400M kwargs → %s", stella_kwargs)
         return stella_kwargs
 
     def prepare_encode_kwargs(self):
         encode_kwargs = super().prepare_encode_kwargs()
+        # 1) add the appropriate prompt_name if a query is being embedded
         if self.is_query:
             encode_kwargs["prompt_name"] = "s2p_query"
+
         return encode_kwargs
 
 
 class AlibabaEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
-        logging.debug("Starting AlibabaEmbedding prepare_kwargs.")
-        ali_kwargs = deepcopy(self.model_kwargs)
-        logging.debug(f"Original model_kwargs: {self.model_kwargs}")
+        # 1) inherit all kwargs from the base class
+        ali_kwargs = super().prepare_kwargs()
 
-        compute_device = self.model_kwargs.get("device", "").lower()
-        is_cuda = compute_device == "cuda"
+        # 2) determine if xformers can be used
+        compute_device = ali_kwargs.get("device", "").lower()
+        is_cuda = compute_device.startswith("cuda")
         use_xformers = is_cuda and supports_flash_attention()
-        logging.debug(f"Device: {compute_device}")
-        logging.debug(f"is_cuda: {is_cuda}")
-        logging.debug(f"use_xformers: {use_xformers}")
 
-        ali_kwargs["tokenizer_kwargs"] = {
+        # 3) update tokenizer_kwargs
+        tok_kw = ali_kwargs.setdefault("tokenizer_kwargs", {})
+        tok_kw.update({
             "max_length": 8192,
-            "padding": True,
-            "truncation": True
-        }
+        })
 
+        # 4) update config_kwargs
         ali_kwargs["config_kwargs"] = {
             "use_memory_efficient_attention": use_xformers,
             "unpad_inputs": use_xformers,
-            "attn_implementation": "eager" if use_xformers else "sdpa"
+            "attn_implementation": "eager" if use_xformers else "sdpa",
         }
-        logging.debug(f"Set 'config_kwargs': {ali_kwargs['config_kwargs']}")
 
-        logging.debug(f"Final ali_kwargs: {ali_kwargs}")
         return ali_kwargs
+
+
+class BgeCodeEmbedding(BaseEmbeddingModel):
+    DEFAULT_INSTRUCTION = ("Given a question in text, retrieve relevant code that is relevant.")
+
+    def prepare_kwargs(self):
+        # 1) inherit all kwargs from the base class
+        bge_kwargs = super().prepare_kwargs()
+
+        # 2) update tokenizer_kwargs
+        tok_kw = bge_kwargs.setdefault("tokenizer_kwargs", {})
+        tok_kw.update({
+            "max_length": 4096,
+        })
+
+        return bge_kwargs
+
+    def prepare_encode_kwargs(self):
+        encode_kwargs = super().prepare_encode_kwargs()
+
+        # 1) add the custom prompt formatting if a query is being embedded
+        if self.is_query:
+            encode_kwargs["prompt"] = (
+                f"<instruct>{self.DEFAULT_INSTRUCTION}\n<query>"
+            )
+
+        return encode_kwargs
 
 
 def create_vector_db_in_process(database_name):
@@ -249,7 +275,9 @@ class CreateVectorDB:
             }
         }
 
-        encode_kwargs = {'normalize_embeddings': True, 'batch_size': 8}
+        # encode_kwargs = {'normalize_embeddings': True, 'batch_size': 8}
+        # encode_kwargs = {'max_length': 512, 'batch_size': 8}
+        encode_kwargs = {'batch_size': 8}
 
         if compute_device.lower() == 'cpu':
             encode_kwargs['batch_size'] = 2
@@ -265,7 +293,7 @@ class CreateVectorDB:
                 'bge-small': 12,
                 'gte-base': 14,
                 'arctic-embed-m': 14,
-                'stella_en_400M_v5': 12,
+                'stella_en_400M_v5': 20,
             }
 
             for key, value in batch_size_mapping.items():
@@ -355,7 +383,7 @@ class CreateVectorDB:
             with open(self.ROOT_DIRECTORY / "config.yaml", 'r', encoding='utf-8') as config_file:
                 config_data = yaml.safe_load(config_file)
 
-            # ── NEW EMBEDDING FLOW: pre‑compute vectors, then write DB ─────────
+            # pre‑compute vectors, then write DB
             vectors = embeddings.embed_documents(all_texts)
             text_embed_pairs = [
                 (txt, np.asarray(vec, dtype=np.float32))
@@ -580,7 +608,7 @@ class QueryVectorDB:
             "trust_remote_code": True,
             "model_kwargs": {}
         }
-        encode_kwargs = {'normalize_embeddings': True}
+        # encode_kwargs = {'normalize_embeddings': True}
 
         if "snowflake" in model_path.lower():
             logger.debug("Matched Snowflake condition")
@@ -676,3 +704,100 @@ class QueryVectorDB:
 
         gc.collect()
         logging.debug(f"Cleanup completed for instance {self._debug_id}")
+
+"""
+╔══════════════════════════════════════════════════════════════════════════╗
+║  DEVELOPMENT NOTES – xFormers flags, attention-impl, and tokenization    ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+────────────────────────────────────────────────────────────────────────────
+1.  Which models can use xFormers memory-efficient attention?
+────────────────────────────────────────────────────────────────────────────
+• Snowflake-GTE family   (all sizes except the “-large” variants)
+• Alibaba-GTE family
+• Stella-400 M           (v5)
+
+Stella-1.5 B **cannot** use xFormers kernels at the time of writing.
+
+────────────────────────────────────────────────────────────────────────────
+2.  Snowflake-GTE & Alibaba-GTE  (shared behaviour)
+────────────────────────────────────────────────────────────────────────────
+✔  Flags belong in ✧config_kwargs✧ (which LangChain forwards to AutoConfig):
+
+    {
+        "config_kwargs": {
+            "use_memory_efficient_attention":  <bool>,   # enable xFormers
+            "unpad_inputs":                    <bool>,   # strip padding tokens
+            "attn_implementation":             "eager"   # MUST be "eager"
+        }
+    }
+
+Implementation rules inside the GTE source:
+
+    • If use_memory_efficient_attention is **True**
+        – xFormers must be importable, otherwise an assertion fires.
+        – attn_implementation is automatically coerced to "eager"
+          (the code does this for you, but supplying "eager" is clearer).
+
+    • If use_memory_efficient_attention is **False**
+        – You may still set unpad_inputs=True. The model will unpad/re-pad
+          tensors using pure-PyTorch helpers (slower but functional).
+        – attn_implementation can be "sdpa" or "eager". Either works.
+
+────────────────────────────────────────────────────────────────────────────
+3.  Stella-400 M (v5)
+────────────────────────────────────────────────────────────────────────────
+✔  Same flag block, but with stricter rules:
+
+    {
+        "config_kwargs": {
+            "use_memory_efficient_attention":  <bool>,   # optional
+            "unpad_inputs":                    <bool>,   # should match the flag above
+            "attn_implementation":             "eager"   # ALWAYS "eager"
+        }
+    }
+
+• The 400 M code path **does not implement an SDPA class** yet, so
+  "eager" is mandatory even when xFormers is disabled.
+
+• If you set use_memory_efficient_attention=True while xFormers is
+  missing, an assertion will raise at runtime.
+
+────────────────────────────────────────────────────────────────────────────
+4.  Flag placement summary
+────────────────────────────────────────────────────────────────────────────
+outer  model_kwargs   (passed to SentenceTransformer)
+│
+├── tokenizer_kwargs   → forwarded to AutoTokenizer   ← configure padding
+│                                                          & truncation here
+│
+├── model_kwargs       → forwarded to AutoModel       ← runtime knobs
+│                        (dtype, quantisation, ...)
+│
+└── config_kwargs      → forwarded to AutoConfig      ← put the three
+                         (BEFORE weights load)           xFormers flags here
+     • use_memory_efficient_attention
+     • unpad_inputs
+     • attn_implementation
+
+────────────────────────────────────────────────────────────────────────────
+5.  Tokenization vs. encode_kwargs  (common pit-fall)
+────────────────────────────────────────────────────────────────────────────
+• SentenceTransformer.encode() *never* forwards encode_kwargs into the
+  tokenizer. It tokenizes first, then passes encode_kwargs into the model’s
+  forward() call.
+
+• Therefore:
+      – padding / truncation / max_length → tokenizer_kwargs
+      – batch_size, convert_to_numpy, etc. → encode_kwargs
+
+Putting padding flags in encode_kwargs is silently ignored.
+
+────────────────────────────────────────────────────────────────────────────
+6.  Runtime checklist
+────────────────────────────────────────────────────────────────────────────
+□ GPU build?           → supports_flash_attention() must confirm
+□ xFormers installed?  → import xformers.ops succeeds
+□ Flags consistent?    → unpad_inputs should mirror use_memory_efficient_attention
+□ attn_implementation  → "eager" for 400 M; "eager"/"sdpa" for others
+"""
