@@ -14,29 +14,49 @@ from utilities import check_preconditions_for_db_creation, open_file, delete_fil
 from download_model import model_downloaded_signal
 from constants import TOOLTIPS
 
+
 class CreateDatabaseProcess:
     def __init__(self, database_name, parent=None):
         self.database_name = database_name
         self.process = None
+
     def start(self):
         self.process = multiprocessing.Process(target=create_vector_db_in_process, args=(self.database_name,))
         self.process.start()
+
     def wait(self):
         if self.process:
             self.process.join()
+
     def is_alive(self):
         if self.process:
             return self.process.is_alive()
         return False
+
+
 class CreateDatabaseThread(QThread):
     creationComplete = Signal()
-    def __init__(self, database_name, model_name, parent=None):
+    validationFailed = Signal(str)
+
+    def __init__(self, database_name, model_name, skip_ocr, parent=None):
         super().__init__(parent)
         self.database_name = database_name
         self.model_name = model_name
+        self.skip_ocr = skip_ocr
         self.process = None
+
     def run(self):
-        self.process = multiprocessing.Process(target=create_vector_db_in_process, args=(self.database_name,))
+        script_dir = Path(__file__).resolve().parent
+        ok, msg = check_preconditions_for_db_creation(script_dir,
+                                                      self.database_name,
+                                                      skip_ocr=self.skip_ocr)
+        if not ok:
+            self.validationFailed.emit(msg)
+            return
+
+        self.process = multiprocessing.Process(
+            target=create_vector_db_in_process,
+            args=(self.database_name,))
         self.process.start()
         self.process.join()
         my_cprint(f"{self.model_name} removed from memory.", "red")
@@ -44,6 +64,7 @@ class CreateDatabaseThread(QThread):
         time.sleep(.2)
         self.update_config_with_database_name()
         backup_database_incremental(self.database_name)
+
     def update_config_with_database_name(self):
         config_path = Path(__file__).resolve().parent / "config.yaml"
         if config_path.exists():
@@ -61,10 +82,14 @@ class CreateDatabaseThread(QThread):
             }
             with open(config_path, 'w', encoding='utf-8') as file:
                 yaml.safe_dump(config, file, allow_unicode=True)
+
+
 class CustomFileSystemModel(QFileSystemModel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFilter(QDir.Files)
+
+
 class DatabasesTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -103,16 +128,23 @@ class DatabasesTab(QWidget):
         self.layout.addLayout(grid_layout_top_buttons)
         self.layout.addLayout(hbox2)
         self.sync_combobox_with_config()
+
+    def _validation_failed(self, message: str):
+        QMessageBox.warning(self, "Validation Failed", message)
+        self._reenable_widgets()
+
     def refresh_model_combobox(self, index):
         current_text = self.model_combobox.currentText()
         self.populate_model_combobox()
         idx = self.model_combobox.findText(current_text)
         if idx >= 0:
             self.model_combobox.setCurrentIndex(idx)
+
     def update_model_combobox(self, model_name, model_type):
         if model_type == "vector":
             self.populate_model_combobox()
             self.sync_combobox_with_config()
+
     def populate_model_combobox(self):
         self.model_combobox.clear()
         self.model_combobox.addItem("Select a model", None)
@@ -125,6 +157,7 @@ class DatabasesTab(QWidget):
                 display_name = folder.name
                 full_path = str(folder)
                 self.model_combobox.addItem(display_name, full_path)
+
     def sync_combobox_with_config(self):
         config_path = Path(__file__).resolve().parent / "config.yaml"
         if config_path.exists():
@@ -141,6 +174,7 @@ class DatabasesTab(QWidget):
                 self.model_combobox.setCurrentIndex(0)
         else:
             self.model_combobox.setCurrentIndex(0)
+
     def on_model_selected(self, index):
         selected_path = self.model_combobox.itemData(index)
         config_path = Path(__file__).resolve().parent / "config.yaml"
@@ -165,6 +199,7 @@ class DatabasesTab(QWidget):
             config_data.pop("EMBEDDING_MODEL_DIMENSIONS", None)
         with open(config_path, 'w', encoding='utf-8') as file:
             yaml.safe_dump(config_data, file, allow_unicode=True)
+
     def create_group_box(self, title, directory_name):
         group_box = QGroupBox(title)
         layout = QVBoxLayout()
@@ -174,11 +209,13 @@ class DatabasesTab(QWidget):
         self.layout.addWidget(group_box)
         group_box.toggled.connect(lambda checked, gb=group_box: self.toggle_group_box(gb, checked))
         return group_box
+
     def _refresh_docs_model(self):
         if hasattr(self.docs_model, 'refresh'):
             self.docs_model.refresh()
         elif hasattr(self.docs_model, 'reindex'):
             self.docs_model.reindex()
+
     def setup_directory_view(self, directory_name):
         tree_view = QTreeView()
         model = CustomFileSystemModel()
@@ -201,11 +238,13 @@ class DatabasesTab(QWidget):
             self.docs_refresh.setInterval(500)
             self.docs_refresh.timeout.connect(self._refresh_docs_model)
         return tree_view
+
     def on_double_click(self, index):
         tree_view = self.sender()
         model = tree_view.model()
         file_path = model.filePath(index)
         open_file(file_path)
+
     def on_context_menu(self, point):
         tree_view = self.sender()
         context_menu = QMenu(self)
@@ -213,6 +252,7 @@ class DatabasesTab(QWidget):
         context_menu.addAction(delete_action)
         delete_action.triggered.connect(lambda: self.on_delete_file(tree_view))
         context_menu.exec_(tree_view.viewport().mapToGlobal(point))
+
     def on_delete_file(self, tree_view):
         selected_indexes = tree_view.selectedIndexes()
         model = tree_view.model()
@@ -220,28 +260,37 @@ class DatabasesTab(QWidget):
             if index.column() == 0:
                 file_path = model.filePath(index)
                 delete_file(file_path)
+
     def on_create_db_clicked(self):
         if self.model_combobox.currentIndex() == 0:
             QMessageBox.warning(self, "No Model Selected", "Please select a model before creating a database.")
             return
+
         self.create_db_button.setDisabled(True)
         self.choose_docs_button.setDisabled(True)
         self.model_combobox.setDisabled(True)
         self.database_name_input.setDisabled(True)
+
         database_name = self.database_name_input.text().strip()
-        model_name = self.model_combobox.currentText()
-        script_dir = Path(__file__).resolve().parent
-        checks_passed, message = check_preconditions_for_db_creation(script_dir, database_name)
-        if not checks_passed:
-            self.create_db_button.setDisabled(False)
-            self.choose_docs_button.setDisabled(False)
-            self.model_combobox.setDisabled(False)
-            self.database_name_input.setDisabled(False)
-            QMessageBox.warning(self, "Validation Failed", message)
-            return
-        self.create_database_thread = CreateDatabaseThread(database_name=database_name, model_name=model_name, parent=self)
+        model_name   = self.model_combobox.currentText()
+
+        docs_dir = Path(__file__).resolve().parent / "Docs_for_DB"
+        has_pdfs = any(p.suffix.lower() == ".pdf" for p in docs_dir.iterdir() if p.is_file())
+        skip_ocr = False
+        if has_pdfs:
+            reply = QMessageBox.question(self, "OCR Check",
+                                         "PDF files detected. Do you want to check if any of the PDFs need OCR? "
+                                         "If there are a lot of PDFs, it is time-consuming but strongly recommended.",
+                                         QMessageBox.Yes | QMessageBox.No,
+                                         QMessageBox.Yes)
+            skip_ocr = (reply == QMessageBox.No)
+
+        self.create_database_thread = CreateDatabaseThread(database_name, model_name, skip_ocr, parent=self)
+
         self.create_database_thread.creationComplete.connect(self.reenable_create_db_button)
+        self.create_database_thread.validationFailed.connect(self._validation_failed)
         self.create_database_thread.start()
+
     def reenable_create_db_button(self):
         self.create_db_button.setDisabled(False)
         self.choose_docs_button.setDisabled(False)
@@ -249,9 +298,11 @@ class DatabasesTab(QWidget):
         self.database_name_input.setDisabled(False)
         self.create_database_thread = None
         gc.collect()
+
     def toggle_group_box(self, group_box, checked):
         self.groups[group_box] = 1 if checked else 0
         self.adjust_stretch()
+
     def adjust_stretch(self):
         for group, stretch in self.groups.items():
             self.layout.setStretchFactor(group, stretch if group.isChecked() else 0)

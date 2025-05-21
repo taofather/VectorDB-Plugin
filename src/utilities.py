@@ -52,6 +52,19 @@ def set_cuda_paths():
     os.environ['CUDA_PATH'] = new_cuda_path
 
 
+def _needs_ocr_worker(path: str) -> bool:
+    import fitz, logging
+    try:
+        with fitz.open(path) as doc:
+            for page in doc:
+                if page.get_text().strip():
+                    return False
+        return True
+    except Exception as e:
+        logging.error(f"PDF check error {path}: {e}")
+        return False
+
+
 def clean_triton_cache():
     """Remove Triton cache to ensure clean compilation with current CUDA paths."""
     import shutil
@@ -73,63 +86,59 @@ def clean_triton_cache():
         return True
 
 def check_pdfs_for_ocr(script_dir):
-    import pymupdf
-    import tempfile
-    from datetime import datetime
-    from PySide6.QtWidgets import QPushButton
+    import multiprocessing as mp
+    from pathlib import Path
+    import fitz, logging, tempfile, os, threading
+    from PySide6.QtWidgets import QMessageBox
 
-    documents_dir = script_dir / "Docs_for_DB"
-    pdf_paths = [f for f in documents_dir.iterdir() if f.suffix.lower() == '.pdf']
+    try:
+        import psutil
+        physical = psutil.cpu_count(logical=False) or mp.cpu_count()
+    except ImportError:
+        logical = mp.cpu_count()
+        estimate = max(logical // 2, logical - 4)
+        physical = max(1, estimate)
+
+    n_procs = max(1, physical - 1)
+
+    docs_dir = Path(script_dir) / "Docs_for_DB"
+    pdf_paths = [p for p in docs_dir.iterdir() if p.suffix.lower() == ".pdf"]
     if not pdf_paths:
         return True, ""
 
-    non_ocr_pdfs = []
-    for pdf_path in pdf_paths:
-        try:
-            doc = pymupdf.open(str(pdf_path))
-            has_text = False
-            for page in doc:
-                if page.get_text().strip():
-                    has_text = True
-                    break
-            if not has_text:
-                non_ocr_pdfs.append(pdf_path)
-        except Exception as e:
-            logging.error(f"Error checking PDF {pdf_path}: {str(e)}")
-            continue
+    ctx = mp.get_context("spawn")
+    with ctx.Pool(processes=n_procs) as pool:
+        mask = pool.map(_needs_ocr_worker, map(str, pdf_paths), chunksize=16)
 
+    non_ocr_pdfs = [p for p, flag in zip(pdf_paths, mask) if flag]
     if non_ocr_pdfs:
-        message = "The following PDF files appear to have no text content and likelyk need OCR done on them:\n\n"
+        message = "The following PDF files appear to have no text content and likely need OCR done on them:\n\n"
         for pdf_path in non_ocr_pdfs:
             message += f"  - {pdf_path}\n"
         message += "\nPlease perform OCR on these by going to the Tools Tab first or remove them from the files selected for processing."
-        
+
         msg_box = QMessageBox()
         msg_box.setWindowTitle("PDFs Need OCR")
         msg_box.setText(message)
         msg_box.setIcon(QMessageBox.Icon.Warning)
-        
         msg_box.addButton(QMessageBox.StandardButton.Ok)
         view_report_button = msg_box.addButton("View Report", QMessageBox.ButtonRole.ActionRole)
-        
-        result = msg_box.exec()
-        
-        if msg_box.clickedButton() == view_report_button:
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_file:
-                temp_file.write("PDFs that need OCR:\n\n")
-                for pdf_path in non_ocr_pdfs:
-                    temp_file.write(f"{pdf_path}\n")
-                temp_path = temp_file.name
+        msg_box.exec()
 
+        if msg_box.clickedButton() == view_report_button:
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as tmp:
+                tmp.write("PDFs that need OCR:\n\n")
+                for pdf_path in non_ocr_pdfs:
+                    tmp.write(f"{pdf_path}\n")
+                temp_path = tmp.name
             os.startfile(temp_path)
 
-            def cleanup_temp_file():
+            def cleanup():
                 try:
                     os.unlink(temp_path)
-                except:
+                except FileNotFoundError:
                     pass
-
-            threading.Timer(1.0, cleanup_temp_file).start()
+            threading.Timer(1.0, cleanup).start()
 
         return False, "PDFs without text content detected."
 
@@ -730,80 +739,64 @@ def delete_file(file_path):
     except OSError:
         QMessageBox.warning(None, "Unable to delete file(s), please delete manually.")
 
-def check_preconditions_for_db_creation(script_dir, database_name):
-    # is db name valid
+def check_preconditions_for_db_creation(script_dir, database_name, skip_ocr=False):
+    # checks if the db name is valid
     if not database_name or len(database_name) < 3 or database_name.lower() in ["null", "none"]:
-        QMessageBox.warning(None, "Invalid Name", "Name must be at least 3 characters long and not be 'null' or 'none.'")
-        return False, "Invalid database name."
+        return False, "Name must be at least 3 characters long and not be 'null' or 'none.'"
 
-    # is the db name already used
+    # checks if the db name is already used
     database_folder_path = script_dir / "Docs_for_DB" / database_name
     if database_folder_path.exists():
-        QMessageBox.warning(None, "Database Exists", "A database with this name already exists. Please choose a different database name.")
-        return False, "Database already exists."
+        return False, "A database with this name already exists. Please choose a different database name."
 
-    # does config.yaml exist
+    # checks if config.yaml exists
     config_path = script_dir / 'config.yaml'
     if not config_path.exists():
-        QMessageBox.warning(None, "Configuration Missing", "The configuration file (config.yaml) is missing.")
-        return False, "Configuration file missing."
+        return False, "The configuration file (config.yaml) is missing."
 
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
 
-    # can't process images on mac
+    # checks if trying to process images on a mac
     image_extensions = ['.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tif', '.tiff']
     documents_dir = script_dir / "Docs_for_DB"
     if platform.system() == "Darwin" and any(file.suffix in image_extensions for file in documents_dir.iterdir() if file.is_file()):
-        QMessageBox.warning(None, "MacOS Limitation", "Image processing has been disabled for MacOS until a fix can be implemented. Please remove all image files and try again.")
-        return False, "Image files present on MacOS."
+        return False, "Image processing has been disabled for MacOS until a fix can be implemented. Please remove all image files and try again."
 
-    # is vector model selected
+    # checks if a vector model is selected
     embedding_model_name = config.get('EMBEDDING_MODEL_NAME')
     if not embedding_model_name:
-        QMessageBox.warning(None, "Model Missing", "You must first download an embedding model, select it, and choose documents first before proceeding.")
-        return False, "Embedding model not selected."
+        return False, "You must first download an embedding model, select it, and choose documents before proceeding."
 
-    # are documents selected
+    # checks if documents are selected
     if not any(file.is_file() for file in documents_dir.iterdir()):
-        QMessageBox.warning(None, "No Documents", "No documents are yet added to be processed.")
-        return False, "No documents in Docs_for_DB."
+        return False, "No documents are yet added to be processed."
 
-    # is gpu-acceleration selected
+    # checks if gpu-acceleration selected
     compute_device = config.get('Compute_Device', {}).get('available', [])
     database_creation = config.get('Compute_Device', {}).get('database_creation')
     if ("cuda" in compute_device or "mps" in compute_device) and database_creation == "cpu":
-        reply = QMessageBox.question(None, 'Warning', 
-                                     "GPU-acceleration is available and highly recommended. Click OK to proceed or Cancel to go back and change the device.", 
-                                     QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Cancel)
-        if reply == QMessageBox.Cancel:
-            return False, "User cancelled operation based on device check."
+        return False, ("GPU-acceleration is available and strongly recommended. "
+                       "Please switch the database creation device to 'cuda' or 'mps', "
+                       "or confirm your choice in the GUI.")
 
-    # if no cuda and half selected, inform user and exit early
+    # checks if no cuda and half selected, inform user and exit early
     if not torch.cuda.is_available():
-        with open(config_path, 'r') as file:
-            config = yaml.safe_load(file)
-
         if config.get('database', {}).get('half', False):
             message = ("CUDA is not available on your system, but half-precision (FP16) "
                        "is selected for database creation. Half-precision requires CUDA. "
                        "Please disable half-precision in the configuration or use a CUDA-enabled GPU.")
-            QMessageBox.warning(None, "CUDA Unavailable for Half-Precision", message)
-            return False, "CUDA unavailable for half-precision operation."
+            return False, message
 
-    # check for PDFs that need OCR
-    ocr_check, ocr_message = check_pdfs_for_ocr(script_dir)
-    if not ocr_check:
-        return False, ocr_message
+    # optional check for PDFs that need OCR
+    if not skip_ocr:
+        ocr_check, ocr_message = check_pdfs_for_ocr(script_dir)
+        if not ocr_check:
+            return False, ocr_message
 
     # final confirmation
-    confirmation_reply = QMessageBox.question(None, 'Confirmation', 
-                                             "Creating a vector database can take a significant amount of time and cannot be cancelled. Click OK to proceed.",
-                                             QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Cancel)
-    if confirmation_reply == QMessageBox.Cancel:
-        return False, "Database creation cancelled by user."
-
     return True, ""
+
 
 # gui.py
 def check_preconditions_for_submit_question(script_dir):
@@ -849,7 +842,7 @@ def get_cuda_version():
    logging.debug(f"CUDA version {major}.{minor} -> {version}")
    return version
 
-# returns True if cuda exists and supports compute 8.6 of higher
+# returns True if cuda exists and supports compute 8.0 of higher
 def has_bfloat16_support():
    logging.debug("Checking bfloat16 support")
 

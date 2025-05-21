@@ -220,7 +220,7 @@ class BgeCodeEmbedding(BaseEmbeddingModel):
         return encode_kwargs
 
 
-class InflyEmbedding(BaseEmbeddingModel):
+class InflyAndAlibabaEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
         # 1) inherit all kwargs from the base class
         infly_kwargs = super().prepare_kwargs()
@@ -330,7 +330,7 @@ class CreateVectorDB:
             model = SnowflakeEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
         elif "alibaba" in embedding_model_name.lower():
             logger.debug("Matched Alibaba condition")
-            model = InflyEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
+            model = InflyAndAlibabaEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
         elif "400m" in embedding_model_name.lower():
             logger.debug("Matched Stella 400m condition")
             model = Stella400MEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
@@ -342,7 +342,7 @@ class CreateVectorDB:
             model = BgeCodeEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
         elif "infly" in embedding_model_name.lower():
             logger.debug("Matches infly condition")
-            model = InflyEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
+            model = InflyAndAlibabaEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
         else:
             logger.debug("No conditions matched - using base model")
             model = BaseEmbeddingModel(embedding_model_name, model_kwargs, encode_kwargs).create()
@@ -647,13 +647,13 @@ class QueryVectorDB:
         if "snowflake" in mp_lower:
             embeddings = SnowflakeEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
         elif "alibaba" in mp_lower:
-            embeddings = InflyEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
+            embeddings = InflyAndAlibabaEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
         elif "400m" in mp_lower:
             embeddings = Stella400MEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
         elif "stella_en_1.5b_v5" in mp_lower:
             embeddings = StellaEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
         elif "infly" in mp_lower:
-            embeddings = InflyEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
+            embeddings = InflyAndAlibabaEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
         elif "bge-code" in mp_lower:
             embeddings = BgeCodeEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
         else:
