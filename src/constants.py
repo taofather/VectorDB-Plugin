@@ -63,7 +63,7 @@ priority_libs = {
             "nvidia-cuda-nvcc-cu12==12.4.131",
             "nvidia-cufft-cu12==11.2.1.3",
             "nvidia-cudnn-cu12==9.1.0.70",
-            "nvidia-ml-py==12.570.86",
+            "nvidia-ml-py==12.575.51",
         ],
         "CPU": [
             # CPU only libraries would go here
@@ -88,7 +88,7 @@ priority_libs = {
             "nvidia-cuda-nvcc-cu12==12.4.131",
             "nvidia-cufft-cu12==11.2.1.3",
             "nvidia-cudnn-cu12==9.1.0.70",
-            "nvidia-ml-py==12.570.86",
+            "nvidia-ml-py==12.575.51",
         ],
         "CPU": [
             # CPU only libraries would go here
@@ -108,7 +108,7 @@ libs = [
     "anndata==0.11.4",
     "annotated-types==0.7.0",
     "anyio==4.9.0",
-    "array_api_compat==1.11.2", # only anndata requires
+    "array_api_compat==1.12.0", # only anndata requires
     "async-timeout==5.0.1",
     "attrs==25.3.0",
     "av==14.3.0",
@@ -121,20 +121,20 @@ libs = [
     "chardet==5.2.0",
     "charset-normalizer==3.4.2", # requests requires <4
     "chattts==0.2.3",
-    "click==8.1.8",
+    "click==8.2.1",
     "cloudpickle==3.1.1", # only required by tiledb-cloud and 3+ is only supported by tiledb-cloud 0.13+
     "colorama==0.4.6",
     "coloredlogs==15.0.1",
     "contourpy==1.3.2", # only required by matplotlib
-    "cryptography==44.0.3", # only required by unstructured library
+    "cryptography==45.0.2", # only required by unstructured library
     "ctranslate2==4.6.0",
     "cycler==0.12.1",
     "dataclasses-json==0.6.7",
-    "datasets==3.5.0",
+    "datasets==3.6.0",
     "deepdiff==8.5.0", # required by unstructured
     "Deprecated==1.2.18", # only needed by pikepdf
     "deprecation==2.1.0", # only needed by ocrmypdf
-    "dill==0.3.8", # datasets 3.5.1 requires <0.3.9; multiprocess 0.70.16 requires >=0.3.8
+    "dill==0.3.8", # datasets 3.6.0 requires <0.3.9; multiprocess 0.70.16 requires >=0.3.8
     "distro==1.9.0",
     "docx2txt==0.9",
     "einops==0.8.1",
@@ -150,8 +150,8 @@ libs = [
     "fonttools==4.58.0", # only required by matplotlib
     "frozendict==2.4.6",
     "frozenlist==1.5.0",
-    "fsspec==2024.12.0", # datasets 3.5.1 requires <=2024.12.0
-    "fsspec[http]==2024.12.0", # datasets 3.5.1 requires <=2024.12.0
+    "fsspec==2025.3.0", # datasets 3.6.0 requires <=2025.3.0
+    "fsspec[http]==2025.3.0", # datasets 3.6.0 requires <=2025.3.0
     "greenlet==3.2.2",
     "gTTS==2.5.4",
     "h11==0.16.0",
@@ -160,14 +160,14 @@ libs = [
     "httpcore==1.0.9",
     "httpx==0.28.1",
     "httpx-sse==0.4.0",
-    "huggingface-hub==0.31.2", # tokenizers 0.21.1 requires >=0.16.4,<1.0
+    "huggingface-hub==0.31.4", # tokenizers 0.21.1 requires >=0.16.4,<1.0
     "humanfriendly==10.0",
     "HyperPyYAML==1.2.2",
     "idna==3.10",
     "img2pdf==0.6.1",
     "importlib_metadata==8.7.0",
     "Jinja2==3.1.6",
-    "jiter==0.9.0", # required by openai newer versions
+    "jiter==0.10.0", # required by openai newer versions
     "joblib==1.5.0",
     "jsonpatch==1.33",
     "jsonpath-python==1.0.6",
@@ -175,7 +175,7 @@ libs = [
     "kiwisolver==1.4.8",
     "langchain==0.3.25",
     "langchain-community==0.3.24",
-    "langchain-core==0.3.59",
+    "langchain-core==0.3.60",
     "langchain-huggingface==0.2.0",
     "langchain-text-splitters==0.3.8",
     "langdetect==1.0.9",
@@ -191,7 +191,7 @@ libs = [
     "more-itertools==10.7.0",
     "mpmath==1.3.0", # sympy 1.13.1 requires less than 1.4
     "msg-parser==1.2.0",
-    "multidict==6.4.3",
+    "multidict==6.4.4",
     "multiprocess==0.70.16", # datasets 3.6.0 requires <0.70.17
     "mypy-extensions==1.1.0",
     "natsort==8.4.0",
@@ -208,14 +208,14 @@ libs = [
     "numpy==1.26.4",
     "ocrmypdf==16.10.1",
     "olefile==0.47",
-    "openai==1.78.1", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
+    "openai==1.79.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
-    "optimum==1.25.0",
+    "optimum==1.25.3",
     "ordered-set==4.1.0",
     "orderly-set==5.4.1", # deepdiff 8.2.0 requires orderly-set>=5.3.0,<6
     "orjson==3.10.18",
-    "packaging==24.2", # langchain-core==0.3.59 requires less than 25
+    "packaging==24.2", # langchain-core==0.3.60 requires less than 25
     "pandas==2.2.3",
     "pdfminer.six==20250506", # ocrmypdf 16.10.1 requires >=20220319
     "pikepdf==9.7.0", # only needed by ocrmypdf
@@ -223,15 +223,15 @@ libs = [
     "pi-heif==0.22.0", # only needed by ocrmypdf, but not for my usage of ocrmypdf
     "pipdeptree",
     "platformdirs==4.3.8",
-    "pluggy==1.5.0", # only needed by ocrmypdf
+    "pluggy==1.6.0", # only needed by ocrmypdf
     "propcache==0.3.1",
     "protobuf==6.31.0",
     "psutil==7.0.0",
     "pyarrow==20.0.0",
     "pybase16384==0.3.8", # only required by chattts
     "pycparser==2.22",
-    "pydantic==2.11.3", # unstructured-client==0.35.0 requires pydantic>=2.11.2
-    "pydantic_core==2.33.1", # pydantic 2.11.3 requires pydantic_core==2.33.1
+    "pydantic==2.11.4", # unstructured-client==0.35.0 requires pydantic>=2.11.2
+    "pydantic_core==2.33.2", # pydantic 2.11.4 requires pydantic_core==2.33.2
     "pydantic-settings==2.9.1", # langchain-community==0.3.23 requires pydantic-settings>=2.4.0,<3.0.0
     "Pygments==2.19.1",
     "PyOpenGL==3.1.9",
@@ -262,7 +262,7 @@ libs = [
     "sentencepiece==0.2.0",
     "six==1.17.0",
     "sniffio==1.3.1",
-    "sounddevice==0.5.1",
+    "sounddevice==0.5.2",
     "soundfile==0.13.1",
     "soupsieve==2.7",
     "speechbrain==0.5.16",
@@ -283,7 +283,7 @@ libs = [
     "timm==1.0.15",
     "tokenizers==0.21.1",
     "tqdm==4.67.1",
-    "transformers==4.51.3",
+    "transformers==4.52.1",
     "typing-inspect==0.9.0",
     "typing_extensions==4.13.2",
     "unstructured-client==0.35.0",
