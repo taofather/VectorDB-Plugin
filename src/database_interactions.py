@@ -240,7 +240,7 @@ def create_vector_db_in_process(database_name):
 
 def process_chunks_only_query(database_name, query, result_queue):
     try:
-        query_db = QueryVectorDB(database_name)
+        query_db = QueryVectorDB.get_instance(database_name)
         contexts, metadata_list = query_db.search(query)
 
         formatted_contexts = []
@@ -310,8 +310,8 @@ class CreateVectorDB:
                 'arctic-embed-m': 14,
                 'stella_en_400M_v5': 20,
                 'bge-code': 2,
-                'infly-retriever-v1-1.5b': 4,
-                'infly-retriever-v1-7b': 2,
+                'inf-retriever-v1-1.5b': 4,
+                'inf-retriever-v1-7b': 2,
                 'stella_en_1.5b_v5': 4,
             }
 
@@ -586,15 +586,21 @@ class CreateVectorDB:
 class QueryVectorDB:
     _instance = None
     _instance_lock = threading.Lock()
+    _initialized = False
 
-    def __init__(self, selected_database):
-        self.config = self.load_configuration()
-        self.selected_database = selected_database
-        self.embeddings = None
-        self.db = None
-        self.model_name = None
-        self._debug_id = id(self)
-        logging.debug(f"Created new QueryVectorDB instance {self._debug_id} for database {selected_database}")
+    def __new__(cls, *args, **kwargs):
+        raise RuntimeError("Use QueryVectorDB.get_instance() instead of direct instantiation")
+
+    def _init_once(self, selected_database):
+        if not self._initialized:
+            self.config = self.load_configuration()
+            self.selected_database = selected_database
+            self.embeddings = None
+            self.db = None
+            self.model_name = None
+            self._debug_id = id(self)
+            self._initialized = True
+            logging.debug(f"Created new QueryVectorDB instance {self._debug_id} for database {selected_database}")
 
     @classmethod
     def get_instance(cls, selected_database):
@@ -608,7 +614,8 @@ class QueryVectorDB:
                     logging.debug(f"Reusing existing instance {cls._instance._debug_id} for database {selected_database}")
 
             if cls._instance is None:
-                cls._instance = cls(selected_database)
+                cls._instance = object.__new__(cls)
+                cls._instance._init_once(selected_database)
 
             return cls._instance
 

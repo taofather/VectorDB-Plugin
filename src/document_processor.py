@@ -40,7 +40,7 @@ from langchain_community.document_loaders.parsers import PyMuPDFParser
 import pymupdf
 
 from constants import DOCUMENT_LOADERS
-from extract_metadata import extract_document_metadata, add_pymupdf_page_metadata
+from extract_metadata import extract_document_metadata, add_pymupdf_page_metadata, compute_content_hash
 
 logging.basicConfig(
     level=logging.ERROR,
@@ -156,7 +156,20 @@ def load_single_document(file_path: Path) -> Document:
             return None
 
         document = documents[0]
-        metadata = extract_document_metadata(file_path)
+
+        if not isinstance(document.page_content, str):
+            if isinstance(document.page_content, (list, tuple)):
+                document.page_content = "\n".join(map(str, document.page_content))
+            else:
+                document.page_content = str(document.page_content)
+
+        safe_metadata = {}
+        for k, v in document.metadata.items():
+            safe_metadata[k] = v if isinstance(v, (str, int, float, bool)) or v is None else str(v)
+        document.metadata = safe_metadata
+
+        content_hash = compute_content_hash(document.page_content)
+        metadata = extract_document_metadata(file_path, content_hash)
         document.metadata.update(metadata)
         print(f"Loaded---> {file_path.name}")
         return document
@@ -209,62 +222,17 @@ def split_documents(documents=None, text_documents_pdf=None):
             chunk_size = config["database"]["chunk_size"]
             chunk_overlap = config["database"]["chunk_overlap"]
 
-        # ------------------------------------------------------------------ #
-        #  RecursiveCharacterTextSplitter that copes with any input type:    #
-        #  • length_function falls back to len(str(x)) for non-strings        #
-        # ------------------------------------------------------------------ #
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
-            # length_function=lambda x: len(x) if isinstance(x, str) else len(str(x)),
             keep_separator  = False,
         )
 
-        # DEBUG WITH MONKEY PATCCH
-        # print("TYPE OF _length_function:", type(text_splitter._length_function))
-        # import time; time.sleep(20)
-        """
-        Run the script once; if it prints <class 'function'>, the attribute is still correct at creation time and gets corrupted
-        later, so you’ll know to trace subsequent mutations. If it already shows <class 'list'> (or anything other than function),
-        then the problem is right at instantiation (e.g., the lambda got shadowed or a different object was passed in).
-        """
-
         texts = []
 
-        # ------------------------------------------------------------------ #
-        # 1. Split non-PDF documents                                         #
-        #    • Force page_content → string                                   #
-        #    • Ensure every metadata value is JSON-friendly (str/int/float…) #
-        # ------------------------------------------------------------------ #
+        # Split non-PDF documents (no cleanup needed - handled in load_single_document)
         if documents:
-            cleaned_docs = []
-            for i, doc in enumerate(documents):
-                # ---------- NORMALISE page_content ----------
-                pc = doc.page_content
-                if not isinstance(pc, str):
-                    try:
-                        if isinstance(pc, (list, tuple)):
-                            pc = "\n".join(map(str, pc))
-                        else:
-                            pc = str(pc)
-                    except Exception as conv_err:              # still not printable
-                        logging.warning(
-                            f"Doc {i} page_content could not be stringified "
-                            f"({conv_err}). Skipping this document."
-                        )
-                        continue  # 💥 drop this doc entirely
-                doc.page_content = pc
-
-                # ---------- METADATA safety ----------
-                safe_meta = {}
-                for k, v in doc.metadata.items():
-                    safe_meta[k] = v if isinstance(v, (str, int, float, bool)) or v is None else str(v)
-                doc.metadata = safe_meta
-
-                cleaned_docs.append(doc)
-
-            if cleaned_docs:
-                texts = text_splitter.split_documents(cleaned_docs)
+            texts = text_splitter.split_documents(documents)
 
         """
         I customized langchain's pymupdfparser to add custom page markers as follows:
