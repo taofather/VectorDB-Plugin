@@ -103,13 +103,11 @@ def load_single_document(file_path: Path) -> Document:
                 "strategy": "fast"
             }
         })
-
     elif file_extension == ".pdf":
         loader_options.update({
             "extract_images": False,
             "text_kwargs": {},  # Optional: passed to https://pymupdf.readthedocs.io/en/latest/page.html#Page.get_text
         })
-
     elif file_extension in [".eml", ".msg"]:
         loader_options.update({
             "mode": "single",
@@ -124,10 +122,9 @@ def load_single_document(file_path: Path) -> Document:
             "bs_kwargs": {
                 "features": "lxml",  # Specify the parser to use (lxml is generally fast and lenient)
                 # "parse_only": SoupStrainer("body"),  # Optionally parse only the body tag
-                # "from_encoding": "iso-8859-1",  # Specify a different input encoding if needed
+                # "from_encoding": "utf-8",  # Specify a different input encoding if needed
             },
             "get_text_separator": "\n",  # Use newline as separator when extracting text
-            # Additional parameters and comments:
             # "file_path": "path/to/file.html",  # Usually set automatically by the loader
             # "open_encoding": None,  # Set to None to let BeautifulSoup detect encoding
             # "get_text_separator": " ",  # Use space instead of newline if preferred
@@ -219,7 +216,7 @@ def split_documents(documents=None, text_documents_pdf=None):
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
-            length_function=lambda x: len(x) if isinstance(x, str) else len(str(x)),
+            # length_function=lambda x: len(x) if isinstance(x, str) else len(str(x)),
             keep_separator  = False,
         )
 
@@ -301,7 +298,6 @@ def split_documents(documents=None, text_documents_pdf=None):
         logging.exception("Error during document splitting")
         logging.error(f"Error type: {type(e)}")
         raise
-
 
 
 """
