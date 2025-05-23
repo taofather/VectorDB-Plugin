@@ -131,7 +131,7 @@ class DatabasesTab(QWidget):
 
     def _validation_failed(self, message: str):
         QMessageBox.warning(self, "Validation Failed", message)
-        self._reenable_widgets()
+        self.reenable_create_db_button()
 
     def refresh_model_combobox(self, index):
         current_text = self.model_combobox.currentText()
