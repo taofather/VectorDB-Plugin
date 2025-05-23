@@ -112,7 +112,7 @@ class ChatGPTChat:
 
     def ask_chatgpt(self, query, selected_database):
         if self.query_vector_db is None or self.query_vector_db.selected_database != selected_database:
-            self.query_vector_db = QueryVectorDB(selected_database)
+            self.query_vector_db = QueryVectorDB.get_instance(selected_database)
 
         contexts, metadata_list = self.query_vector_db.search(query)
 

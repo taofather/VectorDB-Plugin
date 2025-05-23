@@ -171,7 +171,7 @@ class LocalModelChat:
                     if message.type == MessageType.QUESTION:
                         user_question, _, selected_database = message.payload
                         if query_vector_db is None or current_database != selected_database:
-                            query_vector_db = QueryVectorDB(selected_database)
+                            query_vector_db = QueryVectorDB.get_instance(selected_database)
                             current_database = selected_database
                         contexts, metadata_list = query_vector_db.search(user_question)
                         if not contexts:

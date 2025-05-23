@@ -98,17 +98,17 @@ class LMStudioChat:
 
     def ask_local_chatgpt(self, query, selected_database):
         if self.query_vector_db is None or self.query_vector_db.selected_database != selected_database:
-            self.query_vector_db = QueryVectorDB(selected_database)
-        
+            self.query_vector_db = QueryVectorDB.get_instance(selected_database)
+
         contexts, metadata_list = self.query_vector_db.search(query)
-        
+
         self.save_metadata_to_file(metadata_list)
-        
+
         if not contexts:
             self.signals.error_signal.emit("No relevant contexts found.")
             self.signals.finished_signal.emit()
             return
-        
+
         augmented_query = f"{rag_string}\n\n---\n\n" + "\n\n---\n\n".join(contexts) + f"\n\n-----\n\n{query}"
         
         full_response = ""
@@ -116,13 +116,13 @@ class LMStudioChat:
         for response_chunk in response_generator:
             self.signals.response_signal.emit(response_chunk)
             full_response += response_chunk
-        
+
         with open('chat_history.txt', 'w', encoding='utf-8') as f:
             normalized_response = normalize_chat_text(full_response)
             f.write(normalized_response)
-        
+
         self.signals.response_signal.emit("\n")
-        
+
         citations = self.handle_response_and_cleanup(full_response, metadata_list)
         self.signals.citations_signal.emit(citations)
         self.signals.finished_signal.emit()
