@@ -408,12 +408,16 @@ class CreateVectorDB:
             with open(self.ROOT_DIRECTORY / "config.yaml", 'r', encoding='utf-8') as config_file:
                 config_data = yaml.safe_load(config_file)
 
-            # precompute vectors, then write DB
+            # precompute vectors
             vectors = embeddings.embed_documents(all_texts)
             text_embed_pairs = [
                 (txt, np.asarray(vec, dtype=np.float32))
                 for txt, vec in zip(all_texts, vectors)
             ]
+
+            # IMMEDIATE CLEANUP - free ~50-75% of memory
+            del all_texts, vectors
+            gc.collect()
 
             TileDB.from_embeddings(
                 text_embeddings=text_embed_pairs,
