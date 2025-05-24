@@ -519,6 +519,16 @@ class DatabaseQueryTab(QWidget):
     def on_submission_finished(self):
         self.submit_button.setDisabled(False)
 
+        ix = self.raw_response.lower().rfind("</think>")
+        answer_only = self.raw_response[ix + len("</think>"):] if ix != -1 else self.raw_response
+        answer_only = answer_only.lstrip("\n")
+
+        try:
+            with open(input_text_file, "w", encoding="utf-8") as f:
+                f.write(answer_only)
+        except OSError as e:
+            logging.exception(f"Could not write chat_history.txt: {e}")
+
     def update_transcription(self, transcription_text):
         self.text_input.setPlainText(transcription_text)
 
