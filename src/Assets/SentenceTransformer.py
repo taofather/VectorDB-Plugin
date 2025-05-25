@@ -1,4 +1,4 @@
-# slight modification of version 4.0.2
+# modified 4.1.0 to add some commented out print statements for debugging; likely remove in next patch due to padding/trunction solved
 from __future__ import annotations
 
 import copy
@@ -10,6 +10,9 @@ import os
 import queue
 import shutil
 import sys
+import logging, sys
+import logging
+
 import tempfile
 import traceback
 import warnings
@@ -652,6 +655,13 @@ class SentenceTransformer(nn.Sequential, FitMixin, PeftAdapterMixin):
         for start_index in trange(0, len(sentences), batch_size, desc="Batches", disable=not show_progress_bar):
             sentences_batch = sentences_sorted[start_index : start_index + batch_size]
             features = self.tokenize(sentences_batch)
+
+            # print(
+                # f"SentenceTransformer.py - DEBUG: batch {start_index // batch_size} padded_side={self.tokenizer.padding_side if hasattr(self, 'tokenizer') else 'n/a'} "
+                # f"max_len={self.tokenizer.model_max_length if hasattr(self, 'tokenizer') else 'n/a'} "
+                # f"seq_lens={[len(ids) for ids in features['input_ids'].tolist()] if 'input_ids' in features else 'n/a'}"
+            # )
+
             if self.device.type == "hpu":
                 if "input_ids" in features:
                     curr_tokenize_len = features["input_ids"].shape
@@ -701,9 +711,15 @@ class SentenceTransformer(nn.Sequential, FitMixin, PeftAdapterMixin):
                         embeddings.append(token_emb[0 : last_mask_id + 1])
                 elif output_value is None:  # Return all outputs
                     embeddings = []
-                    for sent_idx in range(len(out_features["sentence_embedding"])):
-                        row = {name: out_features[name][sent_idx] for name in out_features}
-                        embeddings.append(row)
+                    for idx in range(len(out_features["sentence_embedding"])):
+                        batch_item = {}
+                        for name, value in out_features.items():
+                            try:
+                                batch_item[name] = value[idx]
+                            except TypeError:
+                                # Handle non-indexable values (like prompt_length)
+                                batch_item[name] = value
+                        embeddings.append(batch_item)
                 else:  # Sentence embeddings
                     embeddings = out_features[output_value]
                     embeddings = embeddings.detach()
@@ -1020,7 +1036,7 @@ class SentenceTransformer(nn.Sequential, FitMixin, PeftAdapterMixin):
         if show_progress_bar is None:
             show_progress_bar = logger.getEffectiveLevel() in (logging.INFO, logging.DEBUG)
 
-        logger.debug(f"Chunk data into {math.ceil(len(sentences) / chunk_size)} packages of size {chunk_size}")
+        # print(f"Chunk data into {math.ceil(len(sentences) / chunk_size)} packages of size {chunk_size}")
 
         input_queue = pool["input"]
         last_chunk_id = 0
@@ -1116,6 +1132,7 @@ class SentenceTransformer(nn.Sequential, FitMixin, PeftAdapterMixin):
             Dict[str, Tensor]: A dictionary of tensors with the tokenized texts. Common keys are "input_ids",
                 "attention_mask", and "token_type_ids".
         """
+        # print(f"SentenceTransformer.py - DEBUG: tokenize(): got {len(texts)} texts")
         return self._first_module().tokenize(texts)
 
     def get_sentence_features(self, *features) -> dict[Literal["sentence_embedding"], Tensor]:
@@ -1524,15 +1541,14 @@ print(similarities)
             return folder_url.pr_url
         return folder_url.commit_url
 
-    def _text_length(self, text: str | list[int] | list[list[int]]) -> int:
+    def _text_length(self, text: list[int] | list[list[int]]) -> int:
         """
         Help function to get the length for the input text. Text can be either
         a list of ints (which means a single text as input), or a tuple of list of ints
         (representing several text inputs to the model).
         """
-        if isinstance(text, str):  # Handle string input directly
-            return len(text)
-        elif isinstance(text, dict):  # {key: value} case
+
+        if isinstance(text, dict):  # {key: value} case
             return len(next(iter(text.values())))
         elif not hasattr(text, "__len__"):  # Object has no len() method
             return 1
