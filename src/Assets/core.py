@@ -1,4 +1,4 @@
-# custom code compatible with chattts 0.2.3
+# custom code compatible with chattts 0.2.4
 # adds the "local_dir" parameter
 
 import os
@@ -296,9 +296,10 @@ class Chat:
             return res_gen
         elif not refine_text_only:
             stripped_wavs = []
+            thr = np.float32(1e-5)
             for wavs in res_gen:
                 for wav in wavs:
-                    stripped_wavs.append(wav[np.abs(wav) > 1e-5])
+                    stripped_wavs.append(wav[np.abs(wav) > thr])
             if split_text:
                 return [np.concatenate(stripped_wavs)]
             return stripped_wavs
