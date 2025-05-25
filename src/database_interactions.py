@@ -417,7 +417,7 @@ class CreateVectorDB:
 
             # IMMEDIATE CLEANUP - free ~50-75% of memory
             del all_texts, vectors
-            gc.collect()
+            # gc.collect()
 
             TileDB.from_embeddings(
                 text_embeddings=text_embed_pairs,
@@ -430,7 +430,7 @@ class CreateVectorDB:
                 allow_dangerous_deserialization=True,
             )
 
-            my_cprint(f"Processed {len(all_texts)} chunks", "yellow")
+            my_cprint(f"Processed all chunks", "yellow")
             
             end_time = time.time()
             elapsed_time = end_time - start_time

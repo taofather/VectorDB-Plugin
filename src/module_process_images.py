@@ -162,6 +162,7 @@ class loader_florence2(BaseLoader):
         )
         return parsed.get('<MORE_DETAILED_CAPTION>', generated_text)
 
+
 class loader_glmv4(BaseLoader):
     def initialize_model_and_tokenizer(self):
         chosen_model = self.config['vision']['chosen_model']
@@ -225,6 +226,83 @@ class loader_molmo(BaseLoader):
             return ""
 
 
+# class loader_ovis(BaseLoader):
+    # def __init__(self, config):
+        # super().__init__(config)
+        # native = VISION_MODELS[self.config["vision"]["chosen_model"]]["precision"]
+        # # Choose dtype on GPU: bfloat16 if supported, else float16; always float32 on CPU
+        # if self.device == "cuda":
+            # if native in ("float32", "bfloat16") and has_bfloat16_support():
+                # self.dtype = torch.bfloat16
+            # elif native == "float32":
+                # self.dtype = torch.float16
+            # else:
+                # self.dtype = torch.float16
+        # else:
+            # self.dtype = torch.float32
+
+    # def initialize_model_and_tokenizer(self):
+        # chosen_model = self.config["vision"]["chosen_model"]
+        # info = VISION_MODELS[chosen_model]
+
+        # cache_dir = CACHE_DIR / info["cache_dir"]
+        # cache_dir.mkdir(parents=True, exist_ok=True)
+
+        # model = AutoModelForCausalLM.from_pretrained(
+            # info["repo_id"],
+            # torch_dtype=self.dtype,
+            # trust_remote_code=True,
+            # multimodal_max_length=8192,
+            # cache_dir=cache_dir
+        # ).to(self.device)
+        # model.eval()
+
+        # text_tokenizer = model.get_text_tokenizer()
+        # visual_tokenizer = model.get_visual_tokenizer()
+
+        # for module in visual_tokenizer.modules():
+            # if isinstance(module, torch.nn.Linear):
+                # module.to(device=self.device, dtype=self.dtype)
+
+        # return model, text_tokenizer, visual_tokenizer
+
+    # @torch.inference_mode()
+    # def process_single_image(self, raw_image):
+        # prompt = (
+            # "Explain everything you see in this picture "
+            # "but your response should be no more than one paragraph."
+        # )
+        # query = f"<image>\n{prompt}"
+
+        # _, input_ids, pixel_values = self.model.preprocess_inputs(query, [raw_image])
+        # attention_mask = torch.ne(input_ids, self.tokenizer.pad_token_id)
+
+        # # Batchify and move to the correct device & dtype
+        # input_ids      = input_ids.unsqueeze(0).to(self.device)        # [1, seq_len]
+        # attention_mask = attention_mask.unsqueeze(0).to(self.device)  # [1, seq_len]
+        # pixel_values   = pixel_values.to(device=self.device, dtype=self.dtype)  # [num_patches,3,14,14]
+        # pixel_values   = [pixel_values]  # wrap in list for generate()
+
+        # gen_kwargs = {
+            # "max_new_tokens": 1024,
+            # "do_sample": False,
+            # "pad_token_id": self.tokenizer.pad_token_id,
+            # "eos_token_id": self.tokenizer.eos_token_id,
+            # "use_cache": True,
+        # }
+
+        # # **Pass input_ids positionally** so Ovis2’s generate() sees it as text_input_ids
+        # output_ids = self.model.generate(
+            # input_ids,
+            # pixel_values=pixel_values,
+            # attention_mask=attention_mask,
+            # **gen_kwargs
+        # )[0]
+
+        # description = self.tokenizer.decode(output_ids, skip_special_tokens=True)
+        # return " ".join(line.strip() for line in description.split("\n") if line.strip())
+
+
 class loader_ovis(BaseLoader):
     def __init__(self, config):
         super().__init__(config)
@@ -233,12 +311,18 @@ class loader_ovis(BaseLoader):
         if self.device == "cuda":
             if native in ("float32", "bfloat16") and has_bfloat16_support():
                 self.dtype = torch.bfloat16
+                print(f"OVIS: Selected bfloat16 precision based on native={native}")
             elif native == "float32":
                 self.dtype = torch.float16
+                print(f"OVIS: Selected float16 precision based on native={native}")
             else:
                 self.dtype = torch.float16
+                print(f"OVIS: Selected float16 precision based on native={native}")
         else:
             self.dtype = torch.float32
+            print(f"OVIS: Selected float32 precision for CPU based on native={native}")
+        
+        print(f"OVIS: Device={self.device}, Initial dtype selection={self.dtype}")
 
     def initialize_model_and_tokenizer(self):
         chosen_model = self.config["vision"]["chosen_model"]
@@ -247,6 +331,8 @@ class loader_ovis(BaseLoader):
         cache_dir = CACHE_DIR / info["cache_dir"]
         cache_dir.mkdir(parents=True, exist_ok=True)
 
+        print(f"OVIS: Loading model with dtype={self.dtype}")
+        
         model = AutoModelForCausalLM.from_pretrained(
             info["repo_id"],
             torch_dtype=self.dtype,
@@ -254,15 +340,55 @@ class loader_ovis(BaseLoader):
             multimodal_max_length=8192,
             cache_dir=cache_dir
         ).to(self.device)
+        
+        # Print model layers precision before eval
+        print("OVIS: Model layer precisions after loading:")
+        for name, module in model.named_modules():
+            if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d, torch.nn.LayerNorm)):
+                if hasattr(module, "weight") and module.weight is not None:
+                    print(f"  Layer {name}: {module.weight.dtype}")
+        
         model.eval()
+        
+        # Print model layers precision after eval
+        print("OVIS: Model layer precisions after eval():")
+        for name, module in model.named_modules():
+            if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d, torch.nn.LayerNorm)):
+                if hasattr(module, "weight") and module.weight is not None:
+                    print(f"  Layer {name}: {module.weight.dtype}")
 
         text_tokenizer = model.get_text_tokenizer()
         visual_tokenizer = model.get_visual_tokenizer()
 
+        # Print visual tokenizer layer info before conversion
+        print("OVIS: Visual tokenizer layer precisions before conversion:")
+        for name, module in visual_tokenizer.named_modules():
+            if isinstance(module, torch.nn.Linear):
+                if hasattr(module, "weight") and module.weight is not None:
+                    print(f"  VT Layer {name}: {module.weight.dtype}")
+        
+        # Count modules before conversion
+        linear_count = sum(1 for module in visual_tokenizer.modules() 
+                          if isinstance(module, torch.nn.Linear))
+        print(f"OVIS: Found {linear_count} Linear modules in visual_tokenizer")
+
         for module in visual_tokenizer.modules():
             if isinstance(module, torch.nn.Linear):
+                old_dtype = module.weight.dtype if hasattr(module, "weight") else "unknown"
                 module.to(device=self.device, dtype=self.dtype)
+                new_dtype = module.weight.dtype if hasattr(module, "weight") else "unknown"
+                print(f"OVIS: Converting module from {old_dtype} to {self.dtype}, result={new_dtype}")
+        
+        # Print visual tokenizer layer info after conversion
+        print("OVIS: Visual tokenizer layer precisions after conversion:")
+        for name, module in visual_tokenizer.named_modules():
+            if isinstance(module, torch.nn.Linear):
+                if hasattr(module, "weight") and module.weight is not None:
+                    print(f"  VT Layer {name}: {module.weight.dtype}")
 
+        # Save model for process_single_image
+        self.model = model
+        
         return model, text_tokenizer, visual_tokenizer
 
     @torch.inference_mode()
@@ -273,14 +399,29 @@ class loader_ovis(BaseLoader):
         )
         query = f"<image>\n{prompt}"
 
+        print("OVIS: Starting image processing")
         _, input_ids, pixel_values = self.model.preprocess_inputs(query, [raw_image])
+        print(f"OVIS: After preprocess_inputs - pixel_values dtype={pixel_values.dtype}")
+        
         attention_mask = torch.ne(input_ids, self.tokenizer.pad_token_id)
 
         # Batchify and move to the correct device & dtype
-        input_ids      = input_ids.unsqueeze(0).to(self.device)        # [1, seq_len]
-        attention_mask = attention_mask.unsqueeze(0).to(self.device)  # [1, seq_len]
-        pixel_values   = pixel_values.to(device=self.device, dtype=self.dtype)  # [num_patches,3,14,14]
-        pixel_values   = [pixel_values]  # wrap in list for generate()
+        input_ids = input_ids.unsqueeze(0).to(self.device)
+        attention_mask = attention_mask.unsqueeze(0).to(self.device)
+        
+        print(f"OVIS: Before pixel_values conversion - dtype={pixel_values.dtype}")
+        pixel_values = pixel_values.to(device=self.device, dtype=self.dtype)
+        print(f"OVIS: After pixel_values conversion - dtype={pixel_values.dtype}")
+        
+        pixel_values = [pixel_values]  # wrap in list for generate()
+
+        # Check model precision during inference
+        print("OVIS: Model layer precisions during inference:")
+        for name, module in self.model.named_modules():
+            if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d)):
+                if hasattr(module, "weight") and module.weight is not None:
+                    if name.startswith("transformer") or name.startswith("lm_head"):
+                        print(f"  Inference layer {name}: {module.weight.dtype}")
 
         gen_kwargs = {
             "max_new_tokens": 1024,
@@ -290,7 +431,7 @@ class loader_ovis(BaseLoader):
             "use_cache": True,
         }
 
-        # **Pass input_ids positionally** so Ovis2’s generate() sees it as text_input_ids
+        # **Pass input_ids positionally** so Ovis2's generate() sees it as text_input_ids
         output_ids = self.model.generate(
             input_ids,
             pixel_values=pixel_values,

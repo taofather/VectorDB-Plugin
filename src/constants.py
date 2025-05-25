@@ -103,7 +103,7 @@ libs = [
     "accelerate==1.7.0",
     "aiofiles==24.1.0",
     "aiohappyeyeballs==2.6.1",
-    "aiohttp==3.11.18", # langchain libraries require <4
+    "aiohttp==3.12.0", # langchain libraries require <4
     "aiosignal==1.3.2", # only required by aiohttp
     "anndata==0.11.4",
     "annotated-types==0.7.0",
@@ -120,8 +120,8 @@ libs = [
     "cffi==1.17.1",
     "chardet==5.2.0",
     "charset-normalizer==3.4.2", # requests requires <4
-    "chattts==0.2.3",
-    "click==8.2.1",
+    "chattts==0.2.4",
+    "click==8.1.8", # gtts 2.5.4 requires <8.2, >=7.1
     "cloudpickle==3.1.1", # only required by tiledb-cloud and 3+ is only supported by tiledb-cloud 0.13+
     "colorama==0.4.6",
     "coloredlogs==15.0.1",
@@ -160,7 +160,7 @@ libs = [
     "httpcore==1.0.9",
     "httpx==0.28.1",
     "httpx-sse==0.4.0",
-    "huggingface-hub==0.31.4", # tokenizers 0.21.1 requires >=0.16.4,<1.0
+    "huggingface-hub==0.32.0", # tokenizers 0.21.1 requires >=0.16.4,<1.0
     "humanfriendly==10.0",
     "HyperPyYAML==1.2.2",
     "idna==3.10",
@@ -168,14 +168,14 @@ libs = [
     "importlib_metadata==8.7.0",
     "Jinja2==3.1.6",
     "jiter==0.10.0", # required by openai newer versions
-    "joblib==1.5.0",
+    "joblib==1.5.1",
     "jsonpatch==1.33",
     "jsonpath-python==1.0.6",
     "jsonpointer==3.0.0",
     "kiwisolver==1.4.8",
     "langchain==0.3.25",
     "langchain-community==0.3.24",
-    "langchain-core==0.3.60",
+    "langchain-core==0.3.61",
     "langchain-huggingface==0.2.0",
     "langchain-text-splitters==0.3.8",
     "langdetect==1.0.9",
@@ -199,16 +199,14 @@ libs = [
     "networkx==3.4.2",
     "nltk==3.9.1", # not higher; gives unexplained error
     "numba==0.61.2", # only required by openai-whisper and chattts
-    # langchain 0.3.23 requires <3,>=1.26.4
-    # langchain-community 0.3.21 requires >=1.26.2,<3
-    # langchain-core 0.3.51 requires numpy >=1.24.0, <2.0.0 if python is less than 3.12 and <3,>=1.26.0 if 3.12+
-    # numba 0.61.0 requires >=1.24,<2.2
-    # scipy 1.15.2 requires >=1.23.5,<2.5
-    # chattts 0.2.3 says it requires <2.0.0 but Claude cays 2+ is compatible
-    "numpy==1.26.4",
+    # langchain requires at least 1.26.2
+    # numba requires less than 2.3
+    # Scipy requires less than 2.5
+    # "numpy==1.26.4",
+    "numpy==2.2.2",
     "ocrmypdf==16.10.1",
     "olefile==0.47",
-    "openai==1.79.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
+    "openai==1.82.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
     "optimum==1.25.3",
@@ -230,8 +228,8 @@ libs = [
     "pyarrow==20.0.0",
     "pybase16384==0.3.8", # only required by chattts
     "pycparser==2.22",
-    "pydantic==2.11.4", # unstructured-client==0.35.0 requires pydantic>=2.11.2
-    "pydantic_core==2.33.2", # pydantic 2.11.4 requires pydantic_core==2.33.2
+    "pydantic==2.11.5", # unstructured-client==0.35.0 requires pydantic>=2.11.2
+    "pydantic_core==2.33.2", # pydantic 2.11.5 requires pydantic_core==2.33.2
     "pydantic-settings==2.9.1", # langchain-community==0.3.23 requires pydantic-settings>=2.4.0,<3.0.0
     "Pygments==2.19.1",
     "PyOpenGL==3.1.9",
@@ -253,7 +251,7 @@ libs = [
     "requests==2.32.3",
     "requests-toolbelt==1.0.0",
     "rich==14.0.0",
-    "ruamel.yaml==0.18.10",
+    "ruamel.yaml==0.18.11",
     "ruamel.yaml.clib==0.2.12",
     "safetensors==0.5.3",
     "scikit-learn==1.6.1",
@@ -283,8 +281,8 @@ libs = [
     "timm==1.0.15",
     "tokenizers==0.21.1",
     "tqdm==4.67.1",
-    "transformers==4.52.1",
-    "typing-inspect==0.9.0",
+    "transformers==4.52.3",
+    "typing-inspection==0.4.1", # required by pydantic and pydantic-settings
     "typing_extensions==4.13.2",
     "unstructured-client==0.35.0",
     "tzdata==2025.2",
@@ -304,7 +302,7 @@ libs = [
 
 full_install_libs = [
     "PySide6==6.9.0",
-    "pymupdf==1.25.5",
+    "pymupdf==1.26.0",
     "unstructured==0.17.2"
 ]
 
@@ -572,7 +570,7 @@ VECTOR_MODELS = {
     ],
     'infly': [
         {
-            'name': 'infly-retriever-v1-1.5b',
+            'name': 'inf-retriever-v1-1.5b',
             'dimensions': 1536,
             'max_sequence': 8192,
             'size_mb': 3090,
@@ -583,12 +581,12 @@ VECTOR_MODELS = {
             'precision': 'bfloat16'
         },
         {
-            'name': 'infly-retriever-v1-7b',
+            'name': 'inf-retriever-v1-7b',
             'dimensions': 3584,
             'max_sequence': 8192,
             'size_mb': 14130,
             'repo_id': 'infly/inf-retriever-v1',
-            'cache_dir': 'infly--inf-retriever-v1',
+            'cache_dir': 'infly--inf-retriever-v1-7b',
             'type': 'vector',
             'parameters': '7070m',
             'precision': 'bfloat16'
