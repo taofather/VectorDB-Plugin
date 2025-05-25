@@ -416,7 +416,7 @@ class CreateVectorDB:
             ]
 
             # IMMEDIATE CLEANUP - free ~50-75% of memory
-            del all_texts, vectors
+            # del all_texts, vectors
             # gc.collect()
 
             TileDB.from_embeddings(
