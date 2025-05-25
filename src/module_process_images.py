@@ -311,18 +311,18 @@ class loader_ovis(BaseLoader):
         if self.device == "cuda":
             if native in ("float32", "bfloat16") and has_bfloat16_support():
                 self.dtype = torch.bfloat16
-                print(f"OVIS: Selected bfloat16 precision based on native={native}")
+                # print(f"OVIS: Selected bfloat16 precision based on native={native}")
             elif native == "float32":
                 self.dtype = torch.float16
-                print(f"OVIS: Selected float16 precision based on native={native}")
+                # print(f"OVIS: Selected float16 precision based on native={native}")
             else:
                 self.dtype = torch.float16
-                print(f"OVIS: Selected float16 precision based on native={native}")
+                # print(f"OVIS: Selected float16 precision based on native={native}")
         else:
             self.dtype = torch.float32
-            print(f"OVIS: Selected float32 precision for CPU based on native={native}")
+            # print(f"OVIS: Selected float32 precision for CPU based on native={native}")
         
-        print(f"OVIS: Device={self.device}, Initial dtype selection={self.dtype}")
+        # print(f"OVIS: Device={self.device}, Initial dtype selection={self.dtype}")
 
     def initialize_model_and_tokenizer(self):
         chosen_model = self.config["vision"]["chosen_model"]
@@ -341,50 +341,50 @@ class loader_ovis(BaseLoader):
             cache_dir=cache_dir
         ).to(self.device)
         
-        # Print model layers precision before eval
-        print("OVIS: Model layer precisions after loading:")
-        for name, module in model.named_modules():
-            if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d, torch.nn.LayerNorm)):
-                if hasattr(module, "weight") and module.weight is not None:
-                    print(f"  Layer {name}: {module.weight.dtype}")
+        # # Print model layers precision before eval
+        # print("OVIS: Model layer precisions after loading:")
+        # for name, module in model.named_modules():
+            # if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d, torch.nn.LayerNorm)):
+                # if hasattr(module, "weight") and module.weight is not None:
+                    # print(f"  Layer {name}: {module.weight.dtype}")
         
         model.eval()
         
-        # Print model layers precision after eval
-        print("OVIS: Model layer precisions after eval():")
-        for name, module in model.named_modules():
-            if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d, torch.nn.LayerNorm)):
-                if hasattr(module, "weight") and module.weight is not None:
-                    print(f"  Layer {name}: {module.weight.dtype}")
+        # # Print model layers precision after eval
+        # print("OVIS: Model layer precisions after eval():")
+        # for name, module in model.named_modules():
+            # if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d, torch.nn.LayerNorm)):
+                # if hasattr(module, "weight") and module.weight is not None:
+                    # print(f"  Layer {name}: {module.weight.dtype}")
 
         text_tokenizer = model.get_text_tokenizer()
         visual_tokenizer = model.get_visual_tokenizer()
 
-        # Print visual tokenizer layer info before conversion
-        print("OVIS: Visual tokenizer layer precisions before conversion:")
-        for name, module in visual_tokenizer.named_modules():
-            if isinstance(module, torch.nn.Linear):
-                if hasattr(module, "weight") and module.weight is not None:
-                    print(f"  VT Layer {name}: {module.weight.dtype}")
+        # # Print visual tokenizer layer info before conversion
+        # print("OVIS: Visual tokenizer layer precisions before conversion:")
+        # for name, module in visual_tokenizer.named_modules():
+            # if isinstance(module, torch.nn.Linear):
+                # if hasattr(module, "weight") and module.weight is not None:
+                    # print(f"  VT Layer {name}: {module.weight.dtype}")
         
-        # Count modules before conversion
-        linear_count = sum(1 for module in visual_tokenizer.modules() 
-                          if isinstance(module, torch.nn.Linear))
-        print(f"OVIS: Found {linear_count} Linear modules in visual_tokenizer")
+        # # Count modules before conversion
+        # linear_count = sum(1 for module in visual_tokenizer.modules() 
+                          # if isinstance(module, torch.nn.Linear))
+        # print(f"OVIS: Found {linear_count} Linear modules in visual_tokenizer")
 
-        for module in visual_tokenizer.modules():
-            if isinstance(module, torch.nn.Linear):
-                old_dtype = module.weight.dtype if hasattr(module, "weight") else "unknown"
-                module.to(device=self.device, dtype=self.dtype)
-                new_dtype = module.weight.dtype if hasattr(module, "weight") else "unknown"
-                print(f"OVIS: Converting module from {old_dtype} to {self.dtype}, result={new_dtype}")
+        # for module in visual_tokenizer.modules():
+            # if isinstance(module, torch.nn.Linear):
+                # old_dtype = module.weight.dtype if hasattr(module, "weight") else "unknown"
+                # module.to(device=self.device, dtype=self.dtype)
+                # new_dtype = module.weight.dtype if hasattr(module, "weight") else "unknown"
+                # print(f"OVIS: Converting module from {old_dtype} to {self.dtype}, result={new_dtype}")
         
-        # Print visual tokenizer layer info after conversion
-        print("OVIS: Visual tokenizer layer precisions after conversion:")
-        for name, module in visual_tokenizer.named_modules():
-            if isinstance(module, torch.nn.Linear):
-                if hasattr(module, "weight") and module.weight is not None:
-                    print(f"  VT Layer {name}: {module.weight.dtype}")
+        # # Print visual tokenizer layer info after conversion
+        # print("OVIS: Visual tokenizer layer precisions after conversion:")
+        # for name, module in visual_tokenizer.named_modules():
+            # if isinstance(module, torch.nn.Linear):
+                # if hasattr(module, "weight") and module.weight is not None:
+                    # print(f"  VT Layer {name}: {module.weight.dtype}")
 
         # Save model for process_single_image
         self.model = model
@@ -399,9 +399,9 @@ class loader_ovis(BaseLoader):
         )
         query = f"<image>\n{prompt}"
 
-        print("OVIS: Starting image processing")
+        # print("OVIS: Starting image processing")
         _, input_ids, pixel_values = self.model.preprocess_inputs(query, [raw_image])
-        print(f"OVIS: After preprocess_inputs - pixel_values dtype={pixel_values.dtype}")
+        # print(f"OVIS: After preprocess_inputs - pixel_values dtype={pixel_values.dtype}")
         
         attention_mask = torch.ne(input_ids, self.tokenizer.pad_token_id)
 
@@ -409,19 +409,19 @@ class loader_ovis(BaseLoader):
         input_ids = input_ids.unsqueeze(0).to(self.device)
         attention_mask = attention_mask.unsqueeze(0).to(self.device)
         
-        print(f"OVIS: Before pixel_values conversion - dtype={pixel_values.dtype}")
+        # print(f"OVIS: Before pixel_values conversion - dtype={pixel_values.dtype}")
         pixel_values = pixel_values.to(device=self.device, dtype=self.dtype)
-        print(f"OVIS: After pixel_values conversion - dtype={pixel_values.dtype}")
+        # print(f"OVIS: After pixel_values conversion - dtype={pixel_values.dtype}")
         
         pixel_values = [pixel_values]  # wrap in list for generate()
 
-        # Check model precision during inference
-        print("OVIS: Model layer precisions during inference:")
-        for name, module in self.model.named_modules():
-            if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d)):
-                if hasattr(module, "weight") and module.weight is not None:
-                    if name.startswith("transformer") or name.startswith("lm_head"):
-                        print(f"  Inference layer {name}: {module.weight.dtype}")
+        # # Check model precision during inference
+        # print("OVIS: Model layer precisions during inference:")
+        # for name, module in self.model.named_modules():
+            # if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d)):
+                # if hasattr(module, "weight") and module.weight is not None:
+                    # if name.startswith("transformer") or name.startswith("lm_head"):
+                        # print(f"  Inference layer {name}: {module.weight.dtype}")
 
         gen_kwargs = {
             "max_new_tokens": 1024,
