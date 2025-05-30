@@ -140,6 +140,22 @@ def get_hf_token():
     return None
 
 
+def check_if_model_is_gated(repo_id, hf_token):
+    try:
+        api = HfApi(token=False)
+        repo_info = api.repo_info(repo_id, token=False)
+        return getattr(repo_info, 'gated', False)
+    except Exception:
+        if hf_token:
+            try:
+                api_with_token = HfApi(token=hf_token)
+                repo_info = api_with_token.repo_info(repo_id)
+                return getattr(repo_info, 'gated', False)
+            except Exception:
+                return False
+        return False
+
+
 class _StopOnToken(StoppingCriteria):
     """Stop generation when any ID in `stop_ids` is produced."""
     def __init__(self, stop_ids):
@@ -175,6 +191,10 @@ class BaseModel(ABC):
         cache_dir = script_dir / "Models" / "chat" / self.model_info['cache_dir']
 
         hf_token = get_hf_token()
+        
+        is_gated = self.model_info.get('gated', False)
+        if not is_gated:
+            is_gated = check_if_model_is_gated(model_info['repo_id'], hf_token)
 
         tokenizer_settings = {
             **self.settings.get('tokenizer_settings', {}), 
@@ -182,8 +202,10 @@ class BaseModel(ABC):
         }
         if tokenizer_kwargs:
             tokenizer_settings.update(tokenizer_kwargs)
-        if hf_token:
+        if is_gated and hf_token:
             tokenizer_settings['token'] = hf_token
+        elif not is_gated:
+            tokenizer_settings['token'] = False
 
         with utf8_file_operations():
             self.tokenizer = AutoTokenizer.from_pretrained(model_info['repo_id'], **tokenizer_settings)
@@ -198,8 +220,10 @@ class BaseModel(ABC):
         if model_kwargs:
             model_settings.update(model_kwargs)
 
-        if hf_token:
+        if is_gated and hf_token:
             model_settings['token'] = hf_token
+        elif not is_gated:
+            model_settings['token'] = False
 
         self.model = AutoModelForCausalLM.from_pretrained(model_info['repo_id'], **model_settings)
         self.model.eval()
