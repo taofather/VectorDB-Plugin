@@ -6,83 +6,114 @@ from PySide6.QtCore import QObject, Signal
 import fnmatch
 import humanfriendly
 import atexit
+import yaml
+import functools
 
 class ModelDownloadedSignal(QObject):
-    downloaded = Signal(str, str)
+   downloaded = Signal(str, str)
 
 model_downloaded_signal = ModelDownloadedSignal()
 
 MODEL_DIRECTORIES = {
-    "vector": "vector",
-    "chat": "chat", 
-    "tts": "tts",
-    "jeeves": "jeeves",
-    "ocr": "ocr"
+   "vector": "vector",
+   "chat": "chat", 
+   "tts": "tts",
+   "jeeves": "jeeves",
+   "ocr": "ocr"
 }
 
+@functools.lru_cache(maxsize=1)
+def get_hf_token():
+   config_path = Path("config.yaml")
+   if config_path.exists():
+       try:
+           with open(config_path, 'r', encoding='utf-8') as config_file:
+               config = yaml.safe_load(config_file)
+               return config.get('hf_access_token')
+       except Exception as e:
+           print(f"Warning: Could not load config: {e}")
+   return None
+
 class ModelDownloader(QObject):
-    def __init__(self, model_info, model_type):
-        super().__init__()
-        self.model_info = model_info
-        self.model_type = model_type
-        self._model_directory = None
-        self.api = HfApi()
-        self.api.timeout = 60 # increase timeout
-        disable_progress_bars()
-        self.local_dir = self.get_model_directory()
+   def __init__(self, model_info, model_type):
+       super().__init__()
+       self.model_info = model_info
+       self.model_type = model_type
+       self._model_directory = None
+       
+       self.hf_token = get_hf_token()
+       
+       self.api = HfApi(token=False)
+       self.api.timeout = 60
+       disable_progress_bars()
+       self.local_dir = self.get_model_directory()
 
-    def cleanup_incomplete_download(self):
-        if self.local_dir.exists():
-            import shutil
-            shutil.rmtree(self.local_dir)
+   def cleanup_incomplete_download(self):
+       if self.local_dir.exists():
+           import shutil
+           shutil.rmtree(self.local_dir)
 
-    def get_model_url(self):
-        if isinstance(self.model_info, dict):
-            return self.model_info['repo_id']
-        else:
-            return self.model_info
+   def get_model_url(self):
+       if isinstance(self.model_info, dict):
+           return self.model_info['repo_id']
+       else:
+           return self.model_info
 
-    def check_repo_type(self, repo_id):
-        try:
-            repo_info = self.api.repo_info(repo_id, timeout=60) # increase timeout
-            if repo_info.private:
-                return "private"
-            elif getattr(repo_info, 'gated', False):
-                return "gated"
-            else:
-                return "public"
-        except GatedRepoError:
-            return "gated"
-        except RepositoryNotFoundError:
-            return "not_found"
-        except Exception as e:
-            return f"error: {str(e)}"
+   def check_repo_type(self, repo_id):
+       try:
+           repo_info = self.api.repo_info(repo_id, timeout=60, token=False)
+           if repo_info.private:
+               return "private"
+           elif getattr(repo_info, 'gated', False):
+               return "gated"
+           else:
+               return "public"
+       except Exception as e:
+           if self.hf_token and ("401" in str(e) or "Unauthorized" in str(e)):
+               try:
+                   api_with_token = HfApi(token=self.hf_token)
+                   repo_info = api_with_token.repo_info(repo_id, timeout=60)
+                   if repo_info.private:
+                       return "private"
+                   elif getattr(repo_info, 'gated', False):
+                       return "gated"
+                   else:
+                       return "public"
+               except Exception as e2:
+                   return f"error: {str(e2)}"
+           elif "404" in str(e):
+               return "not_found"
+           else:
+               return f"error: {str(e)}"
 
-    def get_model_directory_name(self):
-        if isinstance(self.model_info, dict):
-            return self.model_info['cache_dir']
-        else:
-            return self.model_info.replace("/", "--")
+   def get_model_directory_name(self):
+       if isinstance(self.model_info, dict):
+           return self.model_info['cache_dir']
+       else:
+           return self.model_info.replace("/", "--")
 
-    def get_model_directory(self):
-        return Path("Models") / self.model_type / self.get_model_directory_name()
+   def get_model_directory(self):
+       return Path("Models") / self.model_type / self.get_model_directory_name()
 
-    def download_model(self, allow_patterns=None, ignore_patterns=None):
+   def download_model(self, allow_patterns=None, ignore_patterns=None):
        repo_id = self.get_model_url()
 
-       # only download if repo is public
-       # https://huggingface.co/docs/hub/models-gated#access-gated-models-as-a-user
-       # https://huggingface.co/docs/hub/en/enterprise-hub-tokens-management
        repo_type = self.check_repo_type(repo_id)
-       if repo_type != "public":
+       if repo_type not in ["public", "gated"]:
            if repo_type == "private":
-               print(f"Repository {repo_id} is private and requires a token. Aborting download.")
-           elif repo_type == "gated":
-               print(f"Repository {repo_id} is gated. Please request access through the web interface. Aborting download.")
+               print(f"Repository {repo_id} is private and requires a token.")
+               if not self.hf_token:
+                   print("No Hugging Face token found. Please add one through the credentials menu.")
+               return
            elif repo_type == "not_found":
                print(f"Repository {repo_id} not found. Aborting download.")
+               return
            else:
                print(f"Error checking repository {repo_id}: {repo_type}. Aborting download.")
+               return
+
+       if repo_type == "gated" and not self.hf_token:
+           print(f"Repository {repo_id} is gated. Please add a Hugging Face token and request access through the web interface.")
            return
 
        local_dir = self.get_model_directory()
@@ -91,13 +122,12 @@ class ModelDownloader(QObject):
        atexit.register(self.cleanup_incomplete_download)
 
        try:
-           repo_files = list(self.api.list_repo_tree(repo_id, recursive=True))
-           """
-           allow_patterns: If provided, only matching files are downloaded (ignore_patterns is disregarded)
-           ignore_patterns: If provided alone, matching files are excluded
-           neither: Uses default ignore patterns (.gitattributes, READMEs, etc.) with smart model file filtering
-           both: Behaves same as allow_patterns only
-           """
+           if repo_type == "gated" and self.hf_token:
+               api_for_listing = HfApi(token=self.hf_token)
+               repo_files = list(api_for_listing.list_repo_tree(repo_id, recursive=True))
+           else:
+               repo_files = list(self.api.list_repo_tree(repo_id, recursive=True, token=False))
+           
            if allow_patterns is not None:
                final_ignore_patterns = None
            elif ignore_patterns is not None:
@@ -154,14 +184,21 @@ class ModelDownloader(QObject):
                print(f"- {file}")
            print(f"\nDownloading to {local_dir}...")
 
-           snapshot_download(
-               repo_id=repo_id,
-               local_dir=str(local_dir),
-               max_workers=4,
-               ignore_patterns=final_ignore_patterns,
-               allow_patterns=allow_patterns,
-               etag_timeout=60 # increase timeout
-           )
+           download_kwargs = {
+               'repo_id': repo_id,
+               'local_dir': str(local_dir),
+               'max_workers': 4,
+               'ignore_patterns': final_ignore_patterns,
+               'allow_patterns': allow_patterns,
+               'etag_timeout': 60
+           }
+           
+           if repo_type == "gated" and self.hf_token:
+               download_kwargs['token'] = self.hf_token
+           elif repo_type == "public":
+               download_kwargs['token'] = False
+
+           snapshot_download(**download_kwargs)
 
            print("\033[92mModel downloaded and ready to use.\033[0m")
            atexit.unregister(self.cleanup_incomplete_download)
