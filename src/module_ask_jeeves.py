@@ -201,8 +201,8 @@ class ChatWindow(QMainWindow):
         self.tokenizer = None
         self.worker = None
 
-        self.vector_db = QueryVectorDB(selected_database="user_manual")
-        self.model = SentenceTransformer('BAAI/bge-small-en-v1.5')
+        self.vector_db = QueryVectorDB.get_instance("user_manual")
+        self.model = SentenceTransformer('BAAI/bge-small-en-v1.5', token=False)
         self.question_embeddings = self.model.encode(master_questions)
         self.suggestion_cache = {}
         self.current_text = ""
@@ -299,7 +299,7 @@ class ChatWindow(QMainWindow):
             device=device,
             intra_threads=physical_cores,
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_dir, trust_remote_code=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_dir, token=False, trust_remote_code=True)
         self.eject_button.setEnabled(True)
 
     def showEvent(self, event):

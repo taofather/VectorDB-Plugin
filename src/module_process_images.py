@@ -131,8 +131,8 @@ class loader_florence2(BaseLoader):
         save_dir = VISION_MODELS[chosen_model]["cache_dir"]
         cache_dir = CACHE_DIR / save_dir
         cache_dir.mkdir(parents=True, exist_ok=True)
-        model = AutoModelForCausalLM.from_pretrained(repo_id, trust_remote_code=True, low_cpu_mem_usage=True, cache_dir=cache_dir).eval()
-        processor = AutoProcessor.from_pretrained(repo_id, trust_remote_code=True, cache_dir=cache_dir)
+        model = AutoModelForCausalLM.from_pretrained(repo_id, token=False, trust_remote_code=True, low_cpu_mem_usage=True, cache_dir=cache_dir).eval()
+        processor = AutoProcessor.from_pretrained(repo_id,  token=False, trust_remote_code=True, cache_dir=cache_dir)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if self.device.type == "cuda":
             if torch.cuda.get_device_capability()[0] >= 8:
@@ -176,8 +176,8 @@ class loader_glmv4(BaseLoader):
         dtype = torch.bfloat16 if use_bf16 else torch.float16
         quant_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_compute_dtype=dtype)
         AutoConfig.from_pretrained(model_id, cache_dir=cache_dir, trust_remote_code=True).vision_config.update(image_size=448)
-        model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=dtype, low_cpu_mem_usage=True, trust_remote_code=True, quantization_config=quant_config, cache_dir=cache_dir).eval()
-        tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True, cache_dir=cache_dir)
+        model = AutoModelForCausalLM.from_pretrained(model_id, token=False, torch_dtype=dtype, low_cpu_mem_usage=True, trust_remote_code=True, quantization_config=quant_config, cache_dir=cache_dir).eval()
+        tokenizer = AutoTokenizer.from_pretrained(model_id, token=False, trust_remote_code=True, cache_dir=cache_dir)
         prec = "bfloat16" if use_bf16 else "float16"
         my_cprint(f"Running {chosen_model} on CUDA in {prec}", "green")
         return model, tokenizer, None
@@ -200,9 +200,9 @@ class loader_molmo(BaseLoader):
         source = info.get('model_path') or info['repo_id']
         cache_dir = CACHE_DIR / info.get('cache_dir','')
         cache_dir.mkdir(parents=True, exist_ok=True)
-        self.processor = AutoProcessor.from_pretrained(source, trust_remote_code=True, torch_dtype=torch.bfloat16, device_map='auto', cache_dir=cache_dir)
+        self.processor = AutoProcessor.from_pretrained(source, token=False, trust_remote_code=True, torch_dtype=torch.bfloat16, device_map='auto', cache_dir=cache_dir)
         quant_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_quant_type="nf4", bnb_4bit_use_double_quant=True)
-        self.model = AutoModelForCausalLM.from_pretrained(source, trust_remote_code=True, quantization_config=quant_config, torch_dtype=torch.bfloat16, device_map='auto', cache_dir=cache_dir)
+        self.model = AutoModelForCausalLM.from_pretrained(source, token=False, trust_remote_code=True, quantization_config=quant_config, torch_dtype=torch.bfloat16, device_map='auto', cache_dir=cache_dir)
         self.model.model.vision_backbone = self.model.model.vision_backbone.to(torch.float32)
         self.model.eval()
         my_cprint(f"{chosen_model} vision model loaded into memory", "green")
@@ -338,7 +338,8 @@ class loader_ovis(BaseLoader):
             torch_dtype=self.dtype,
             trust_remote_code=True,
             multimodal_max_length=8192,
-            cache_dir=cache_dir
+            cache_dir=cache_dir,
+            token=False
         ).to(self.device)
         
         # # Print model layers precision before eval
@@ -468,12 +469,14 @@ class loader_internvl2_5(BaseLoader):
             torch_dtype=torch.bfloat16,
             low_cpu_mem_usage=True,
             trust_remote_code=True,
-            cache_dir=cache_dir
+            cache_dir=cache_dir,
+            token=False
         ).eval()
         tokenizer = AutoTokenizer.from_pretrained(
             info['repo_id'],
             trust_remote_code=True,
-            cache_dir=cache_dir
+            cache_dir=cache_dir,
+            token=False
         )
         my_cprint("InternVL2.5 vision model loaded into memory", "green")
         return model, tokenizer, None
@@ -564,14 +567,16 @@ class loader_granite(BaseLoader):
         processor = AutoProcessor.from_pretrained(
             model_id,
             use_fast=True,
-            cache_dir=cache_dir
+            cache_dir=cache_dir,
+            token=False
         )
         model = AutoModelForVision2Seq.from_pretrained(
             model_id,
             quantization_config=config,
             torch_dtype=torch.bfloat16,
             low_cpu_mem_usage=True,
-            cache_dir=cache_dir
+            cache_dir=cache_dir,
+            token=False
         ).eval()
         my_cprint("Granite Vision model loaded into memory", "green")
         return model, None, processor
@@ -645,7 +650,8 @@ class loader_qwenvl(BaseLoader):
             min_pixels=28*28,
             max_pixels=1280*28*28,
             trust_remote_code=True,
-            cache_dir=cache_dir
+            cache_dir=cache_dir,
+            token=False
         )
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             model_id,
@@ -653,7 +659,8 @@ class loader_qwenvl(BaseLoader):
             torch_dtype=torch.bfloat16,
             low_cpu_mem_usage=True,
             trust_remote_code=True,
-            cache_dir=cache_dir
+            cache_dir=cache_dir,
+            token=False
         )
         model = model.to(self.device)
         model.eval()

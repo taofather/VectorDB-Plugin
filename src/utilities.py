@@ -184,7 +184,8 @@ def download_kokoro_tts():
         snapshot_download(
             repo_id=repo_id,
             local_dir=str(tts_path),
-            max_workers=4
+            max_workers=4,
+            token=False
         )
         print("Kokoro TTS model downloaded successfully")
         return True
