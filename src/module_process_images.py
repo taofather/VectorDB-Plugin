@@ -184,7 +184,6 @@ class loader_glmv4(BaseLoader):
 
     @torch.inference_mode()
     def process_single_image(self, raw_image):
-        # NEW – drop alpha if present
         if raw_image.mode != "RGB":
             raw_image = raw_image.convert("RGB")
 
@@ -565,16 +564,20 @@ class loader_granite(BaseLoader):
         save_dir = VISION_MODELS[chosen_model]["cache_dir"]
         cache_dir = CACHE_DIR / save_dir
         cache_dir.mkdir(parents=True, exist_ok=True)
+        
         config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_compute_dtype=torch.bfloat16,
             bnb_4bit_quant_type="nf4",
             llm_int8_skip_modules=[
                 "vision_tower",
-                "multi_modal_projector",
-                "language_model.lm_head"
+                "multi_modal_projector", 
+                "language_model.embed_tokens",
+                "language_model.norm",
+                "lm_head"
             ]
         )
+        
         processor = AutoProcessor.from_pretrained(
             model_id,
             use_fast=True,
@@ -588,30 +591,25 @@ class loader_granite(BaseLoader):
             low_cpu_mem_usage=True,
             cache_dir=cache_dir,
             token=False
-        ).eval()
+        )
+        model.to(self.device)
+        model.eval()
         my_cprint("Granite Vision model loaded into memory", "green")
         return model, None, processor
 
     @torch.inference_mode()
     def process_single_image(self, raw_image):
-        msg = "Describe in detail what this image depicts but limit your response to one paragraph with no line breaks in it."
-        prompt = f"<|user|>\n<image>\n{msg}\n<|assistant|>\n"
-        inputs = self.processor(
-            images=raw_image,
-            text=prompt,
-            return_tensors="pt"
-        ).to(self.device)
-        output = self.model.generate(
-            **inputs,
-            max_new_tokens=1024,
-            do_sample=False,
-            num_beams=1
+        if raw_image.mode != "RGB":
+            raw_image = raw_image.convert("RGB")
+        msg = (
+            "Describe in detail what this image depicts but limit your response "
+            "to one paragraph with no line breaks in it."
         )
-        resp = self.processor.decode(
-            output[0],
-            skip_special_tokens=True
-        ).split('<|assistant|>')[-1].strip()
-        return ' '.join(line.strip() for line in resp.split('\n') if line.strip())
+        prompt = f"<|user|>\n<image>\n{msg}\n<|assistant|>\n"
+        inputs = self.processor(images=raw_image, text=prompt, return_tensors="pt").to(self.device)
+        output = self.model.generate(**inputs, max_new_tokens=1024, do_sample=False, num_beams=1)
+        resp = self.processor.decode(output[0], skip_special_tokens=True).split('<|assistant|>')[-1].strip()
+        return " ".join(line.strip() for line in resp.split("\n") if line.strip())
 
 
 class loader_qwenvl(BaseLoader):
