@@ -225,14 +225,24 @@ def split_documents(documents=None, text_documents_pdf=None):
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
-            keep_separator  = False,
+            keep_separator=False,
         )
 
         texts = []
 
         # Split non-PDF documents (no cleanup needed - handled in load_single_document)
         if documents:
+            # Ensure all input documents have string content before splitting
+            for doc in documents:
+                if not isinstance(doc.page_content, str):
+                    doc.page_content = str(doc.page_content or "")
+            
             texts = text_splitter.split_documents(documents)
+            
+            # Ensure all split documents have string content
+            for text_doc in texts:
+                if not isinstance(text_doc.page_content, str):
+                    text_doc.page_content = str(text_doc.page_content or "")
 
         """
         I customized langchain's pymupdfparser to add custom page markers as follows:
@@ -250,6 +260,11 @@ def split_documents(documents=None, text_documents_pdf=None):
         # 2. Split PDF documents (with custom page markers)                   #
         # ------------------------------------------------------------------ #
         if text_documents_pdf:
+            # Ensure all PDF documents have string content before processing
+            for pdf_doc in text_documents_pdf:
+                if not isinstance(pdf_doc.page_content, str):
+                    pdf_doc.page_content = str(pdf_doc.page_content or "")
+            
             processed_pdf_docs = []
             for doc in text_documents_pdf:
                 chunked_docs = add_pymupdf_page_metadata(
@@ -258,7 +273,18 @@ def split_documents(documents=None, text_documents_pdf=None):
                     chunk_overlap=chunk_overlap,
                 )
                 processed_pdf_docs.extend(chunked_docs)
+            
+            # Ensure all PDF chunks have string content
+            for pdf_doc in processed_pdf_docs:
+                if not isinstance(pdf_doc.page_content, str):
+                    pdf_doc.page_content = str(pdf_doc.page_content or "")
+            
             texts.extend(processed_pdf_docs)
+
+        # Final safety check: ensure ALL texts have string content
+        for text_doc in texts:
+            if not isinstance(text_doc.page_content, str):
+                text_doc.page_content = str(text_doc.page_content or "")
 
         return texts
 
@@ -266,7 +292,6 @@ def split_documents(documents=None, text_documents_pdf=None):
         logging.exception("Error during document splitting")
         logging.error(f"Error type: {type(e)}")
         raise
-
 
 """
 The PyMUPDF parser was modified in langchain-community 0.3.15+
