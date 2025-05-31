@@ -281,7 +281,7 @@ libs = [
     "timm==1.0.15",
     "tokenizers==0.21.1",
     "tqdm==4.67.1",
-    "transformers==4.52.3",
+    "transformers==4.52.4",
     "typing-inspection==0.4.1", # required by pydantic and pydantic-settings
     "typing_extensions==4.13.2",
     "unstructured-client==0.35.0",
