@@ -383,16 +383,42 @@ class CreateVectorDB:
                 chunk_counters[file_hash] += 1
                 tiledb_id = str(random.randint(0, MAX_UINT64 - 1))
 
-                text_str = str(doc.page_content or "").strip()
-                if not text_str: # silently drop zero-length chunks
-                    continue
-                all_texts.append(text_str)
+                # CRITICAL FIX: Ensure page_content is a string and handle edge cases
+                if hasattr(doc, 'page_content'):
+                    if doc.page_content is None:
+                        text_str = ""
+                    elif isinstance(doc.page_content, str):
+                        text_str = doc.page_content.strip()
+                    elif isinstance(doc.page_content, (list, tuple)):
+                        # Handle list/tuple by joining with newlines
+                        text_str = "\n".join(str(item) for item in doc.page_content).strip()
+                    elif isinstance(doc.page_content, bytes):
+                        # Handle bytes by decoding
+                        try:
+                            text_str = doc.page_content.decode('utf-8', errors='ignore').strip()
+                        except:
+                            text_str = str(doc.page_content).strip()
+                    else:
+                        # Fallback for any other type
+                        text_str = str(doc.page_content).strip()
+                else:
+                    # If no page_content attribute, convert the whole doc to string
+                    text_str = str(doc).strip()
 
+                if not text_str:  # silently drop zero-length chunks
+                    continue
+                    
+                # Final validation - ensure it's really a string
+                if not isinstance(text_str, str):
+                    logging.error(f"Failed to convert to string: {type(text_str)} - {text_str[:100]}")
+                    continue
+
+                all_texts.append(text_str)
                 all_metadatas.append(doc.metadata)
                 all_ids.append(tiledb_id)
                 hash_id_mappings.append((tiledb_id, file_hash))
 
-            # ── NEW GUARD: ensure every chunk is a string ──────────────────────
+            # Debug check - log if we find any non-strings (this should never happen now)
             bad_chunks = [
                 (idx, type(txt), str(txt)[:60])
                 for idx, txt in enumerate(all_texts)
@@ -403,10 +429,25 @@ class CreateVectorDB:
                 for idx, typ, preview in bad_chunks[:10]:
                     print(f"   #{idx}: {typ} → {preview!r}")
                 raise ValueError(f"Found {len(bad_chunks)} non-string chunks — fix loaders")
-            # ───────────────────────────────────────────────────────────────────
 
             with open(self.ROOT_DIRECTORY / "config.yaml", 'r', encoding='utf-8') as config_file:
                 config_data = yaml.safe_load(config_file)
+
+            # Additional safety: validate all_texts one more time and ensure proper format
+            validated_texts = []
+            for i, text in enumerate(all_texts):
+                if isinstance(text, str):
+                    # Remove any null characters or other problematic characters
+                    cleaned_text = text.replace('\x00', '').strip()
+                    if cleaned_text:  # Only add non-empty strings
+                        validated_texts.append(cleaned_text)
+                    else:
+                        logging.warning(f"Skipping empty text at index {i}")
+                else:
+                    logging.error(f"Non-string found at index {i}: {type(text)}")
+
+            # Replace all_texts with validated version
+            all_texts = validated_texts
 
             # precompute vectors
             vectors = embeddings.embed_documents(all_texts)
@@ -422,8 +463,8 @@ class CreateVectorDB:
             TileDB.from_embeddings(
                 text_embeddings=text_embed_pairs,
                 embedding=embeddings,
-                metadatas=all_metadatas,
-                ids=all_ids,
+                metadatas=all_metadatas[:len(all_texts)],  # Ensure metadata matches text count
+                ids=all_ids[:len(all_texts)],  # Ensure IDs match text count
                 metric="euclidean",
                 index_uri=str(self.PERSIST_DIRECTORY),
                 index_type="FLAT",
