@@ -565,36 +565,52 @@ class loader_granite(BaseLoader):
         cache_dir = CACHE_DIR / save_dir
         cache_dir.mkdir(parents=True, exist_ok=True)
         
-        config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.bfloat16,
-            bnb_4bit_quant_type="nf4",
-            llm_int8_skip_modules=[
-                "vision_tower",
-                "multi_modal_projector", 
-                "language_model.embed_tokens",
-                "language_model.norm",
-                "lm_head"
-            ]
-        )
-        
         processor = AutoProcessor.from_pretrained(
             model_id,
             use_fast=True,
             cache_dir=cache_dir,
             token=False
         )
-        model = AutoModelForVision2Seq.from_pretrained(
-            model_id,
-            quantization_config=config,
-            torch_dtype=torch.bfloat16,
-            low_cpu_mem_usage=True,
-            cache_dir=cache_dir,
-            token=False
-        )
-        model.to(self.device)
+
+        if self.device == "cuda" and torch.cuda.is_available():
+            # Use quantization on CUDA
+            config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.bfloat16,
+                bnb_4bit_quant_type="nf4",
+                llm_int8_skip_modules=[
+                    "vision_tower",
+                    "multi_modal_projector", 
+                    "language_model.embed_tokens",
+                    "language_model.norm",
+                    "lm_head"
+                ]
+            )
+
+            model = AutoModelForVision2Seq.from_pretrained(
+                model_id,
+                quantization_config=config,
+                torch_dtype=torch.bfloat16,
+                low_cpu_mem_usage=True,
+                cache_dir=cache_dir,
+                token=False,
+                device_map="auto"
+            )
+            my_cprint("Granite Vision model loaded with quantization on CUDA", "green")
+            
+        else:
+            # CPU mode - no quantization
+            model = AutoModelForVision2Seq.from_pretrained(
+                model_id,
+                torch_dtype=torch.float32,
+                low_cpu_mem_usage=True,
+                cache_dir=cache_dir,
+                token=False,
+                device_map={"": "cpu"}
+            )
+            my_cprint("Granite Vision model loaded on CPU (no quantization)", "yellow")
+        
         model.eval()
-        my_cprint("Granite Vision model loaded into memory", "green")
         return model, None, processor
 
     @torch.inference_mode()

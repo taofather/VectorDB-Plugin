@@ -114,7 +114,7 @@ libs = [
     "av==14.3.0",
     "backoff==2.2.1",
     "beautifulsoup4==4.13.4",
-    "bitsandbytes==0.45.5",
+    "bitsandbytes==0.46.0",
     "braceexpand==0.1.7",
     "certifi==2025.4.26",
     "cffi==1.17.1",
@@ -154,6 +154,7 @@ libs = [
     "fsspec[http]==2025.3.0", # datasets 3.6.0 requires <=2025.3.0
     "greenlet==3.2.2",
     "gTTS==2.5.4",
+    "hf_xet==1.1.2",
     "h11==0.16.0",
     "h5py==3.13.0",
     "html5lib==1.1", # only required by unstructured
