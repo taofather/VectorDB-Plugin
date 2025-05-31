@@ -62,8 +62,8 @@ def choose_image_loader():
         loader_func = loader_molmo(config).process_images
     elif chosen_model in ['Ovis2 - 1b', 'Ovis2 - 2b']:
         loader_func = loader_ovis(config).process_images
-    elif chosen_model in ['InternVL2.5 - 1b', 'InternVL2.5 - 4b']:
-        loader_func = loader_internvl2_5(config).process_images
+    elif chosen_model in ['InternVL3 - 1b', 'InternVL3 - 2b', 'InternVL2.5 - 4b', 'InternVL3 - 8b', 'InternVL3 - 14b']:
+        loader_func = loader_internvl(config).process_images
     elif chosen_model in ['Qwen VL - 3b', 'Qwen VL - 7b']:
         loader_func = loader_qwenvl(config).process_images
     else:
@@ -184,13 +184,24 @@ class loader_glmv4(BaseLoader):
 
     @torch.inference_mode()
     def process_single_image(self, raw_image):
+        # NEW – drop alpha if present
+        if raw_image.mode != "RGB":
+            raw_image = raw_image.convert("RGB")
+
         query = "Describe this image in as much detail as possible but do not repeat yourself."
-        inputs = self.tokenizer.apply_chat_template([{"role":"user","image":raw_image,"content":query}], add_generation_prompt=True, tokenize=True, return_tensors="pt", return_dict=True).to(self.device)
+        inputs = self.tokenizer.apply_chat_template(
+            [{"role": "user", "image": raw_image, "content": query}],
+            add_generation_prompt=True,
+            tokenize=True,
+            return_tensors="pt",
+            return_dict=True
+        ).to(self.device)
+
         with torch.no_grad():
             outputs = self.model.generate(**inputs, max_length=1024, do_sample=False)
-        outputs = outputs[:, inputs['input_ids'].shape[1]:]
-        desc = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        return ' '.join(line.strip() for line in desc.split('\n') if line.strip())
+
+        outputs = outputs[:, inputs["input_ids"].shape[1]:]
+        return self.tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
 
 
 class loader_molmo(BaseLoader):
@@ -444,7 +455,7 @@ class loader_ovis(BaseLoader):
         return " ".join(line.strip() for line in description.split("\n") if line.strip())
 
 
-class loader_internvl2_5(BaseLoader):
+class loader_internvl(BaseLoader):
     def initialize_model_and_tokenizer(self):
         chosen_model = self.config['vision']['chosen_model']
         info = VISION_MODELS[chosen_model]
