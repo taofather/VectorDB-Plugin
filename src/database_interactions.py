@@ -17,6 +17,8 @@ import queue
 from collections import defaultdict, deque
 import shutil
 import random
+import sys
+import traceback
 
 import numpy as np
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -32,6 +34,23 @@ from constants import VECTOR_MODELS
 logging.basicConfig(level=logging.CRITICAL, force=True)
 # logging.basicConfig(level=logging.DEBUG, force=True)
 logger = logging.getLogger(__name__)
+
+
+# DEBUG - implement later to potentially see the size of objects
+def get_memory_usage(obj, name):
+    """Helper function to get memory usage of an object"""
+    try:
+        size_bytes = sys.getsizeof(obj)
+        if hasattr(obj, '__len__'):
+            # For lists/collections, also get size of contained objects
+            if len(obj) > 0:
+                item_size = sys.getsizeof(obj[0]) if len(obj) > 0 else 0
+                total_size = size_bytes + (item_size * len(obj))
+                return f"{name}: {total_size / (1024**2):.2f} MB ({len(obj)} items)"
+        return f"{name}: {size_bytes / (1024**2):.2f} MB"
+    except:
+        return f"{name}: Unable to calculate size"
+
 
 class BaseEmbeddingModel:
     def __init__(self, model_name, model_kwargs, encode_kwargs, is_query=False):
@@ -326,25 +345,25 @@ class CreateVectorDB:
                         break
 
         if "snowflake" in embedding_model_name.lower():
-            logger.debug("Matched Snowflake condition")
+            print("Matched Snowflake condition")
             model = SnowflakeEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
         elif "alibaba" in embedding_model_name.lower():
-            logger.debug("Matched Alibaba condition")
+            print("Matched Alibaba condition")
             model = InflyAndAlibabaEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
         elif "400m" in embedding_model_name.lower():
-            logger.debug("Matched Stella 400m condition")
+            print("Matched Stella 400m condition")
             model = Stella400MEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
         elif "stella_en_1.5b_v5" in embedding_model_name.lower():
-            logger.debug("Matched Stella 1.5B condition")
+            print("Matched Stella 1.5B condition")
             model = StellaEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
         elif "bge-code" in embedding_model_name.lower():
-            logger.debug("Matches bge-code condition")
+            print("Matches bge-code condition")
             model = BgeCodeEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
         elif "infly" in embedding_model_name.lower():
-            logger.debug("Matches infly condition")
+            print("Matches infly condition")
             model = InflyAndAlibabaEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
         else:
-            logger.debug("No conditions matched - using base model")
+            print("No conditions matched - using base model")
             model = BaseEmbeddingModel(embedding_model_name, model_kwargs, encode_kwargs).create()
 
         logger.debug("🛈 %s tokenizer_kwargs=%s",
@@ -359,6 +378,7 @@ class CreateVectorDB:
 
     @torch.inference_mode()
     def create_database(self, texts, embeddings):
+
         my_cprint("\nComputing vectors...", "yellow")
         start_time = time.time()
 
@@ -383,34 +403,29 @@ class CreateVectorDB:
                 chunk_counters[file_hash] += 1
                 tiledb_id = str(random.randint(0, MAX_UINT64 - 1))
 
-                # CRITICAL FIX: Ensure page_content is a string and handle edge cases
+                # ── ensure page_content is a clean string ──────────────────────
                 if hasattr(doc, 'page_content'):
                     if doc.page_content is None:
                         text_str = ""
                     elif isinstance(doc.page_content, str):
                         text_str = doc.page_content.strip()
                     elif isinstance(doc.page_content, (list, tuple)):
-                        # Handle list/tuple by joining with newlines
                         text_str = "\n".join(str(item) for item in doc.page_content).strip()
                     elif isinstance(doc.page_content, bytes):
-                        # Handle bytes by decoding
                         try:
                             text_str = doc.page_content.decode('utf-8', errors='ignore').strip()
-                        except:
+                        except Exception:
                             text_str = str(doc.page_content).strip()
                     else:
-                        # Fallback for any other type
                         text_str = str(doc.page_content).strip()
                 else:
-                    # If no page_content attribute, convert the whole doc to string
                     text_str = str(doc).strip()
 
-                if not text_str:  # silently drop zero-length chunks
+                if not text_str:          # silently drop zero-length chunks
                     continue
-                    
-                # Final validation - ensure it's really a string
+
                 if not isinstance(text_str, str):
-                    logging.error(f"Failed to convert to string: {type(text_str)} - {text_str[:100]}")
+                    logging.error(f"Failed to convert to string: {type(text_str)} - {str(text_str)[:100]}")
                     continue
 
                 all_texts.append(text_str)
@@ -418,7 +433,7 @@ class CreateVectorDB:
                 all_ids.append(tiledb_id)
                 hash_id_mappings.append((tiledb_id, file_hash))
 
-            # Debug check - log if we find any non-strings (this should never happen now)
+            # Debug check – ensure no non-strings slipped through
             bad_chunks = [
                 (idx, type(txt), str(txt)[:60])
                 for idx, txt in enumerate(all_texts)
@@ -433,53 +448,52 @@ class CreateVectorDB:
             with open(self.ROOT_DIRECTORY / "config.yaml", 'r', encoding='utf-8') as config_file:
                 config_data = yaml.safe_load(config_file)
 
-            # Additional safety: validate all_texts one more time and ensure proper format
+            # Final clean-up of texts
             validated_texts = []
             for i, text in enumerate(all_texts):
                 if isinstance(text, str):
-                    # Remove any null characters or other problematic characters
                     cleaned_text = text.replace('\x00', '').strip()
-                    if cleaned_text:  # Only add non-empty strings
+                    if cleaned_text:
                         validated_texts.append(cleaned_text)
                     else:
                         logging.warning(f"Skipping empty text at index {i}")
                 else:
                     logging.error(f"Non-string found at index {i}: {type(text)}")
 
-            # Replace all_texts with validated version
             all_texts = validated_texts
 
-            # precompute vectors
+            # ── embed documents ───────────────────────────────────────────────
             vectors = embeddings.embed_documents(all_texts)
+
+            # Build (text, embedding) tuples in correct order
             text_embed_pairs = [
                 (txt, np.asarray(vec, dtype=np.float32))
                 for txt, vec in zip(all_texts, vectors)
             ]
 
-            # IMMEDIATE CLEANUP - free ~50-75% of memory
-            # del all_texts, vectors
-            # gc.collect()
-
+            # ── create TileDB vector store ────────────────────────────────────
             TileDB.from_embeddings(
                 text_embeddings=text_embed_pairs,
                 embedding=embeddings,
-                metadatas=all_metadatas[:len(all_texts)],  # Ensure metadata matches text count
-                ids=all_ids[:len(all_texts)],  # Ensure IDs match text count
+                metadatas=all_metadatas[:len(all_texts)],
+                ids=all_ids[:len(all_texts)],
                 metric="euclidean",
                 index_uri=str(self.PERSIST_DIRECTORY),
                 index_type="FLAT",
                 allow_dangerous_deserialization=True,
             )
 
-            my_cprint(f"Processed all chunks", "yellow")
-            
+            my_cprint("Processed all chunks", "yellow")
+
             end_time = time.time()
             elapsed_time = end_time - start_time
             my_cprint(f"Database created. Elapsed time: {elapsed_time:.2f} seconds.", "green")
-            
+
             return hash_id_mappings
 
         except Exception as e:
+            # ── NEW: show full traceback from child process ───────────────────
+            traceback.print_exc()
             logging.error(f"Error creating database: {str(e)}")
             if self.PERSIST_DIRECTORY.exists():
                 try:
