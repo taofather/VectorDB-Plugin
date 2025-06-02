@@ -10,6 +10,10 @@ import logging, sys
 import multiprocessing
 if __name__ == '__main__':
     multiprocessing.set_start_method('spawn', force=True)
+
+import warnings
+warnings.filterwarnings("ignore", message="pkg_resources is deprecated", category=UserWarning)
+
 import os
 from pathlib import Path
 
