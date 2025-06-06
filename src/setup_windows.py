@@ -275,8 +275,8 @@ def update_config_yaml():
     """
     1. If 'created_databases' parent key doesn't exist, creates it
     2. If 'user_manual' mapping doesn't exist under 'created_databases', adds it with:
-       - chunk_overlap: 549
-       - chunk_size: 1100
+       - chunk_overlap: 599
+       - chunk_size: 1200
        - model: path to the BAAI vector model
 
     3. If 'openai' parent key doesn't exist, creates it
@@ -307,12 +307,12 @@ def update_config_yaml():
 
     if 'created_databases' not in config:
         config['created_databases'] = {}
-    if 'user_manual' not in config['created_databases']:
-        config['created_databases']['user_manual'] = {}
 
-    config['created_databases']['user_manual']['chunk_overlap'] = 549
-    config['created_databases']['user_manual']['chunk_size'] = 1100
-    config['created_databases']['user_manual']['model'] = vector_model_path
+    config['created_databases']['user_manual'] = {
+        'chunk_overlap': 599,
+        'chunk_size': 1200,
+        'model': vector_model_path
+    }
 
     if 'openai' not in config:
         config['openai'] = {}

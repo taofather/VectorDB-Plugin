@@ -148,7 +148,7 @@ class ChatWindow(QMainWindow):
         self.speak_button = QPushButton("Speak Response")
         self.speak_button.setEnabled(False)
         self.speak_button.setFixedHeight(30)
-        self.speak_button.clicked.connect(self.speak_response)
+        self.speak_button.clicked.connect(self.toggle_speech)
         self.speak_button.setStyleSheet(CustomButtonStyles.TEAL_BUTTON_STYLE)
         input_row_layout.addWidget(self.speak_button)
 
@@ -222,6 +222,10 @@ class ChatWindow(QMainWindow):
         except Exception:
             self.tts = None
 
+        self.tts_thread = None
+        self.tts_worker = None
+        self.is_speaking = False
+
     def eject_model(self):
         if self.generator:
             del self.generator
@@ -235,6 +239,12 @@ class ChatWindow(QMainWindow):
         self.model_selector.setCurrentIndex(0)
         self.eject_button.setEnabled(False)
         gc.collect()
+
+    def toggle_speech(self):
+        if self.is_speaking:
+            self.cancel_speech()
+        else:
+            self.speak_response()
 
     def on_model_selected(self, index):
         if index == 0:
@@ -407,8 +417,7 @@ class ChatWindow(QMainWindow):
 
         top_indices = similarities.argsort()[-top_k:][::-1]
         top_similarities = similarities[top_indices]
-        
-        threshold = 0.6
+        threshold = 0.8
         top_questions = [
             master_questions[idx] for idx, sim in zip(top_indices, top_similarities) if sim > threshold
         ]
@@ -471,31 +480,46 @@ class ChatWindow(QMainWindow):
                 "The response is empty. Please ask a question first.")
             return
 
-        self.speak_button.setEnabled(False)
+        self.is_speaking = True
+        self.speak_button.setText("Cancel Playback")
         self.voice_select.setEnabled(False)
         self.speed_control.setEnabled(False)
 
         self.tts_thread = QThread()
 
-        def enable_controls():
-            self.speak_button.setEnabled(True)
-            self.voice_select.setEnabled(True)
-            self.speed_control.setEnabled(True)
-
         self.tts_worker = TTSWorker(self.tts, response_text, selected_voice, selected_speed)
         self.tts_worker.moveToThread(self.tts_thread)
 
         self.tts_thread.started.connect(self.tts_worker.run)
-        self.tts_worker.finished.connect(self.tts_thread.quit)
-        self.tts_worker.finished.connect(enable_controls)
+        self.tts_worker.finished.connect(self.on_speech_finished)
         self.tts_worker.finished.connect(self.tts_worker.deleteLater)
         self.tts_thread.finished.connect(self.tts_thread.deleteLater)
         self.tts_worker.error.connect(self.handle_tts_error)
 
         self.tts_thread.start()
 
+    def cancel_speech(self):
+        if self.tts_worker:
+            self.tts_worker.stop()
+
     def handle_tts_error(self, error_message):
         self.speak_button.setEnabled(True)
+        QMessageBox.warning(self, "TTS Error", 
+            f"An error occurred while trying to speak: {error_message}")
+
+    def on_speech_finished(self):
+        self.is_speaking = False
+        self.speak_button.setText("Speak Response")
+        self.speak_button.setEnabled(True)
+        self.voice_select.setEnabled(True)
+        self.speed_control.setEnabled(True)
+        
+        if self.tts_thread:
+            self.tts_thread.quit()
+            self.tts_thread.wait()
+
+    def handle_tts_error(self, error_message):
+        self.on_speech_finished()
         QMessageBox.warning(self, "TTS Error", 
             f"An error occurred while trying to speak: {error_message}")
 
@@ -518,16 +542,26 @@ class TTSWorker(QObject):
         self.text = text
         self.voice = voice
         self.speed = speed
+        self._should_stop = False
+
+    def stop(self):
+        self._should_stop = True
+        if hasattr(self.tts, 'stop'):
+            self.tts.stop()
 
     def run(self):
         try:
             text_without_asterisks = self.text.replace('*', '')
             text_cleaned = re.sub(r'#{2,}', '', text_without_asterisks)
             normalized_text = normalize_chat_text(text_cleaned)
-            self.tts.speak(normalized_text, voice=self.voice, speed=self.speed)
+            
+            if not self._should_stop:
+                self.tts.speak(normalized_text, voice=self.voice, speed=self.speed)
+            
             self.finished.emit()
         except Exception as e:
-            self.error.emit(str(e))
+            if not self._should_stop:
+                self.error.emit(str(e))
 
 def launch_jeeves_process():
     from PySide6.QtWidgets import QApplication

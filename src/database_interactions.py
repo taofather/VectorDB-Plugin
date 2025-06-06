@@ -42,7 +42,6 @@ def get_memory_usage(obj, name):
     try:
         size_bytes = sys.getsizeof(obj)
         if hasattr(obj, '__len__'):
-            # For lists/collections, also get size of contained objects
             if len(obj) > 0:
                 item_size = sys.getsizeof(obj[0]) if len(obj) > 0 else 0
                 total_size = size_bytes + (item_size * len(obj))
@@ -50,7 +49,6 @@ def get_memory_usage(obj, name):
         return f"{name}: {size_bytes / (1024**2):.2f} MB"
     except:
         return f"{name}: Unable to calculate size"
-
 
 class BaseEmbeddingModel:
     def __init__(self, model_name, model_kwargs, encode_kwargs, is_query=False):
@@ -421,7 +419,7 @@ class CreateVectorDB:
                 else:
                     text_str = str(doc).strip()
 
-                if not text_str:          # silently drop zero-length chunks
+                if not text_str: # silently drop zero-length chunks
                     continue
 
                 if not isinstance(text_str, str):
@@ -462,8 +460,34 @@ class CreateVectorDB:
 
             all_texts = validated_texts
 
+            # # ── Save chunks for testing ──────────────────────────────────────
+            # test_chunks_dir = self.ROOT_DIRECTORY / "Test_Chunks"
+            # if test_chunks_dir.exists():
+                # shutil.rmtree(test_chunks_dir)
+            # test_chunks_dir.mkdir(parents=True, exist_ok=True)
+
+            # import json
+            # chunks_file = test_chunks_dir / "chunks.jsonl"
+
+            # my_cprint(f"Saving {len(all_texts)} chunks to JSONL format...", "yellow")
+
+            # # Save chunks as JSONL
+            # with open(chunks_file, 'w', encoding='utf-8') as f:
+                # for i, text in enumerate(all_texts):
+                    # chunk_data = {
+                        # "chunk_id": i,
+                        # "text": text
+                    # }
+                    # f.write(json.dumps(chunk_data, ensure_ascii=False) + '\n')
+
+            # my_cprint(f"Chunks saved to: {chunks_file}", "green")
+
             # ── embed documents ───────────────────────────────────────────────
+            embedding_start_time = time.time()
             vectors = embeddings.embed_documents(all_texts)
+            embedding_end_time = time.time()
+            embedding_elapsed = embedding_end_time - embedding_start_time
+            my_cprint(f"Embedding computation completed in {embedding_elapsed:.2f} seconds.", "cyan")
 
             # Build (text, embedding) tuples in correct order
             text_embed_pairs = [

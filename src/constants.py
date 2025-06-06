@@ -1351,9 +1351,9 @@ TOOLTIPS = {
 }
 
 scrape_documentation = {
-    "Accelerate 1.5.2": {
-        "URL": "https://huggingface.co/docs/accelerate/v1.6.0/en",
-        "folder": "accelerate_160",
+    "Accelerate 1.7.0": {
+        "URL": "https://huggingface.co/docs/accelerate/v1.7.0/en",
+        "folder": "accelerate_170",
         "scraper_class": "HuggingfaceScraper"
     },
     "aiohappyeyeballs": {
@@ -1399,9 +1399,9 @@ scrape_documentation = {
         "URL": "https://www.crummy.com/software/BeautifulSoup/bs4/doc/",
         "folder": "beautiful_soup_4"
     },
-    "bitsandbytes 0.45.4": {
-        "URL": "https://huggingface.co/docs/bitsandbytes/v0.45.4/en/",
-        "folder": "bitsandbytes_0454",
+    "bitsandbytes 0.46.0": {
+        "URL": "https://huggingface.co/docs/bitsandbytes/v0.46.0/en/",
+        "folder": "bitsandbytes_0460",
         "scraper_class": "HuggingfaceScraper"
     },
     "Black": {
@@ -1459,9 +1459,9 @@ scrape_documentation = {
         "folder": "dataclasses_json",
         # "scraper_class": "HuggingfaceScraper"
     },
-    "datasets 3.4.1": {
-        "URL": "https://huggingface.co/docs/datasets/v3.5.0/en/index",
-        "folder": "datasets_0350",
+    "datasets 3.6.0": {
+        "URL": "https://huggingface.co/docs/datasets/v3.6.0/en/index",
+        "folder": "datasets_0360",
         "scraper_class": "HuggingfaceScraper"
     },
     "deepdiff 8.4.2": {
@@ -1527,9 +1527,9 @@ scrape_documentation = {
         "folder": "httpx",
         # "scraper_class": "HuggingfaceScraper"
     },
-    "Huggingface Hub 0.29.3": {
-        "URL": "https://huggingface.co/docs/huggingface_hub/v0.30.1/en/",
-        "folder": "huggingface_hub_0301",
+    "Huggingface Hub 0.32.4": {
+        "URL": "https://huggingface.co/docs/huggingface_hub/v0.32.4/en/",
+        "folder": "huggingface_hub_0324",
         "scraper_class": "HuggingfaceScraper"
     },
     "humanfriendly": {
@@ -1596,9 +1596,9 @@ scrape_documentation = {
         "URL": "https://loguru.readthedocs.io/en/stable/",
         "folder": "loguru"
     },
-    "lxml 5.3.0": {
-        "URL": "https://lxml.de/5.3/",
-        "folder": "lxml_530"
+    "lxml 5.4.0": {
+        "URL": "https://lxml.de/5.4/",
+        "folder": "lxml_540"
     },
     "lxml-html-clean": {
         "URL": "https://lxml-html-clean.readthedocs.io/en/stable/",
@@ -1687,9 +1687,9 @@ scrape_documentation = {
         "URL": "https://openpyxl.readthedocs.io/en/stable/",
         "folder": "openpyxl"
     },
-    "Optimum 1.24.0": {
-        "URL": "https://huggingface.co/docs/optimum/v1.24.0/en/",
-        "folder": "optimum_1240",
+    "Optimum 1.25.2": {
+        "URL": "https://huggingface.co/docs/optimum/v1.25.2/en/",
+        "folder": "optimum_1252",
         "scraper_class": "HuggingfaceScraper"
     },
     "packaging": {
@@ -1856,9 +1856,9 @@ scrape_documentation = {
         "URL": "https://scikit-learn.org/stable/",
         "folder": "scikit_learn"
     },
-    "SciPy 1.15.2": {
-        "URL": "https://docs.scipy.org/doc/scipy-1.15.2/",
-        "folder": "scipy_1152"
+    "SciPy 1.15.3": {
+        "URL": "https://docs.scipy.org/doc/scipy-1.15.3/",
+        "folder": "scipy_1153"
     },
     "Sentence-Transformers": {
         "URL": "https://www.sbert.net/docs",
@@ -1879,9 +1879,9 @@ scrape_documentation = {
         "folder": "soundfile_0131",
         "scraper_class": "ReadthedocsScraper"
     },
-    "sounddevice 0.5.1": {
-        "URL": "https://python-sounddevice.readthedocs.io/en/0.5.1/",
-        "folder": "sounddevice_051"
+    "sounddevice 0.5.2": {
+        "URL": "https://python-sounddevice.readthedocs.io/en/0.5.2/",
+        "folder": "sounddevice_052"
     },
     "Soupsieve": {
         "URL": "https://facelessuser.github.io/soupsieve/",
@@ -1957,6 +1957,11 @@ scrape_documentation = {
         "folder": "torch_26",
         "scraper_class": "PyTorchScraper"
     },
+    "torch 2.7": {
+        "URL": "https://pytorch.org/docs/2.7/",
+        "folder": "torch_27",
+        "scraper_class": "PyTorchScraper"
+    },
     "Torchaudio 2.4": {
         "URL": "https://pytorch.org/audio/2.4.0/",
         "folder": "torchaudio_24",
@@ -1965,6 +1970,11 @@ scrape_documentation = {
     "Torchaudio 2.6": {
         "URL": "https://pytorch.org/audio/2.6.0/",
         "folder": "torchaudio_26",
+        "scraper_class": "PyTorchScraper"
+    },
+    "Torchaudio 2.7": {
+        "URL": "https://pytorch.org/audio/2.7.0/",
+        "folder": "torchaudio_27",
         "scraper_class": "PyTorchScraper"
     },
     "Torchmetrics": {
@@ -1981,13 +1991,18 @@ scrape_documentation = {
         "folder": "torchvision_021",
         "scraper_class": "PyTorchScraper"
     },
+    "Torchvision 0.22": {
+        "URL": "https://pytorch.org/vision/0.22/",
+        "folder": "torchvision_022",
+        "scraper_class": "PyTorchScraper"
+    },
     "tqdm": {
         "URL": "https://tqdm.github.io",
         "folder": "tqdm"
     },
-    "Transformers 4.51": {
-        "URL": "https://huggingface.co/docs/transformers/v4.51.0/en",
-        "folder": "transformers_4510",
+    "Transformers 4.52.3": {
+        "URL": "https://huggingface.co/docs/transformers/v4.52.3/en",
+        "folder": "transformers_4523",
         "scraper_class": "HuggingfaceScraper"
     },
     "Transformers.js 3.x": {
@@ -2823,101 +2838,85 @@ GPUS_INTEL = {
 }
 
 master_questions = [
-    "Overview of Program",
-    "What is LM Studio and how is it used in this program?",
-    "What is Kobold and how is it used in this program?",
-    "What is ChatGPT?",
-    "What are embedding or vector models?",
-    "What are local models and how do I use them?",
-    "What local models are available to use?",
-    "How do I get a Huggingface access token?",
-    "What are context limits for a chat model?",
-    "What happens if I exceed the context limit or maximum sequence length and how does the chunk size and overlap setting relate?",
-    "How many context should I retrieve when querying the vector database?",
+    "What is the VectorDB-Plugin and what can it do?",
+    "What are the system requirements and prerequisites?",
+    "Why is Visual Studio required to run this program?",
+    "How do I install and launch the VectorDB-Plugin?",
+    "How do I download or add embedding models?",
+    "How do I query the database for answers?",
+    "Which chat backend should I use?",
+    "What is LM Studio chat model backend?",
+    "What is Kobold chat model backend?",
+    "What is the OpenAI GPT Chat Model Backend?",
+    "What local chat models are available and how can I use them?",
+    "How do I get a huggingface access token?",
+    "What is a context limit or maximum sequence length?",
+    "What happens if I exceed the maximum sequence length of an embedding model?",
+    "How many contexts should I retrieve when querying the vector database?",
     "What does the chunks only checkbox do?",
+    "What are embedding or vector models?",
     "Which embedding or vector model should I choose?",
-    "What are the characteristics of vector or embedding models?",
-    "What does precision mean regarding embedding models specifically?",
-    "What does parameters mean specifically regarding embedding models?",
-    "What does dimensions mean specifically regarding embedding models?",
-    "What does max sequence mean regarding embedding models?",
-    "Tips for using vector or embedding models",
+    "What are the dimensions of a vector or embedding model?",
+    "What are some general tips for choosing an embedding model?",
+    "What Are Vision Models?",
+    "What vision models are available in this program?",
+    "Do you have any tips for choosing a vision model?",
     "What is whisper and how does this program use voice recording or transcribing an audio file?",
-    "What do the Whisper models do?",
     "How can I record my question for the vector database query?",
     "How can I transcribe an audio file to be put into the vector database?",
-    "What is a good batch size to use when transcribing an audio file in this program?",
     "What are the distil variants of the whisper models when transcribing and audio file?",
+    "What whisper model should I choose to transcribe a file?",
     "What are floating point formats, precision, and quantization?",
-    "What is the float16 floating point format?",
-    "What is the bfloat16 floating point format?",
-    "What is the difference between float32, bfloat16 and float16?",
-    "What is quantization?",
-    "What settings are available in this program and how can I adjust them?",
-    "What are the LM Studio Server Settings?",
-    "What are the database creation settings and what do they do?",
-    "What is the Device setting when creating or querying a vector database?",
-    "What is the chunk size setting when creating a vector database?",
-    "What is the chunk overlap setting when creating a vector database?",
-    "What is the half-precision setting?",
-    "What is the contexts setting when querying the vector database?",
-    "What is the similarity setting when querying the vector database?",
-    "What is the search term filter setting when querying the vector database?",
-    "What is the File Type setting when querying the vector database?",
-    "What are text to speech models (aka TTS models) and how are they used in this program?",
+    "What are the common floating point formats?",
+    "What are precision and range regarding floating point formats and which should I use?",
+    "What is Quantization?",
+    "What are the aspects or effects of quantization?",
+    "What are the LM Studio Server settings?",
+    "What are the database creation settings?",
+    "What are the database query settings?",
+    "How does the Contexts setting work exactly?",
+    "What is the similarity setting?",
+    "What is the search term filter setting?",
+    "What is the File Type setting?",
+    "What are text to speech models (aks TTS models) and how are they used in this program?",
+    "What text to speech models are availble in this program to use?",
     "Which text to speech backend or models should I use",
-    "Can I back up or restore my vector databases and are they backed up automatically",
+    "Can I back up or restore my databases and are they backed up automatically",
     "What happens if I lose a configuration file and can I restore it?",
     "What are some good tips for searching a vector database?",
-    "How can I conserve memory or vram usage for this program?",
-    "What device is best for querying a vector database?",
-    "What are maximum context length of a chat model and and maximum sequence length of an embedding model?",
-    "What is the scrape documentation feature in this program?",
+    "General VRAM Considerations",
+    "How can I manage vram?",
+    "What are the speed and VRAM requirements for the various chat models?",
+    "What are the speed and VRAM requirements for the various vision models?",
+    "What are maximunm context length and maximum sequence length and how to they relate?",
+    "What is the scrape documentaton feature?",
     "Which vector or embedding models are available in this program?",
-    "What are the Alibaba embedding models?",
-    "What are the BGE embedding models?",
-    "What are the IBM or granite embedding models?",
-    "What are the intfloat embedding models?",
-    "What are the NovaSearch or Nova Search embedding models?",
-    "What are the sentence transformer or 'sentence-t5' embedding models?",
-    "What are the arctic or snowflake embedding models?",
-    "What is the sentence transformer static-retrieval embedding model?",
-    "What are chat models and what models does this program offer?",
-    "What are the exaone chat models?",
-    "What are the qwen 2.5 coder chat models?",
-    "What are the qwen chat models and not the coder models?",
-    "What is the mistral small chat model?",
-    "What are the IBM or granite chat models?",
-    "What is the InternLM chat model?",
-    "What is the QwQ chat model?",
-    "What are the Deepseek R1 chat models?",
-    "What is the OLMo 2 chat model?",
-    "What is the Reka Flash chat model?",
-    "What are the Olympic Coder chat models?",
-    "What is the Manage Databases Tab?",
+    "What is the manage databaes tab?",
     "How can I create a vector database?",
-    "What is the Query Database Tab",
-    "What is the Tools Tab?",
-    "What is the Create Database Tab?",
-    "What is the manage databases Tab?",
-    "What is the Settings Tab?",
-    "What is the Models Tab?",
-    "What does precision mean?",
-    "What is OCR or Optical Character Recognition?",
-    "What OCR backends are available in this program?",
-    "What is Tesseract?",
-    "How can I use optical character recognition in this program?",
-    "What Are Vision Models?",
-    "What vision models does this program use?",
-    "What are the InternVL2.5 vision models?",
-    "What are the Florence2 vision models?",
-    "What is the Ovis 2 vision model?",
-    "What is the GLM4v vision model?",
-    "What is the Molmo-D-0924 vision model?",
-    "What is the Granite Vision model?",
-    "What are the Qwen2.5-VL vision models?",
-    "Do you have any tips for choosing a vision model?",
-    "How can I test the various vision models?"
+    "Can I use images and audio files in my database?",
+    "What chat models are available with the local models option?",
+    "What are the Qwen 3 Chat Models?",
+    "What are the Granite 3.3 Chat Models?",
+    "What are the GLM-Z1 Chat Models?",
+    "What is the Mistral Small Chat Model?",
+    "What is the gte-Qwen2-1.5B-instruct embedding model?",
+    "What are the BGE Embedding Models?",
+    "What are the Granite Embedding Models?",
+    "What are the Intfloat Embedding Models?",
+    "What are the Arctic Embedding Models?",
+    "What is the Scrape Documentation tool?",
+    "How do I test vision models on images?",
+    "What is Optical Character Recognition?",
+    "How can I extract text from PDFs or images with OCR?",
+    "What other features does the Misc tab have?",
+    "What is Ask Jeeves and how do I use it?",
+    "What are the InternVL3 Vision Models?",
+    "What are the Ovis2 Vision Models?",
+    "What are the Florence-2 Vision Models?",
+    "What are the Granite Vision Models?",
+    "What are the Qwen2.5VL Vision Models?",
+    "What is the GLM-4V-9B Vision Model?",
+    "What is the Molmo-D-0924 Vision Model?",
 ]
 
 jeeves_system_message = "You are a helpful British butler who clearly and directly answers questions in a succinct fashion based on contexts provided to you. If you cannot find the answer within the contexts simply tell me that the contexts do not provide an answer. However, if the contexts partially address a question you answer based on what the contexts say and then briefly summarize the parts of the question that the contexts didn't provide an answer to.  Also, you should be very respectful to the person asking the question and frequently offer traditional butler services like various fancy drinks, snacks, various butler services like shining of shoes, pressing of suites, and stuff like that. Also, if you can't answer the question at all based on the provided contexts, you should apologize profusely and beg to keep your job.  Lastly, it is essential that if there are no contexts actually provided it means that a user's question wasn't relevant and you should state that you can't answer based off of the contexts because there are none.  And it goes without saying you should refuse to answer any questions that are not directly answerable by the provided contexts.  Moreover, some of the contexts might not have relevant information and you should simply ignore them and focus on only answering a user's question.  I cannot emphasize enough that you must gear your answer towards using this program and based your response off of the contexts you receive.  Lastly, in addition to offering to perform stereotypical butler services in the midst of your response, you must always always always end your response with some kind of offering of butler services even they don't want it."

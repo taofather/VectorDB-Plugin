@@ -58,6 +58,7 @@ class DocQA_GUI(QWidget):
         self.init_ui()
         self.init_menu()
         self.chat_window = None
+        self.jeeves_process = None
         self.set_dark_titlebar()
 
     def set_dark_titlebar(self):
@@ -156,29 +157,40 @@ class DocQA_GUI(QWidget):
                 download_with_threadpool(download_kokoro_tts, callback=on_kokoro_download_complete)
                 return
 
+        if self.jeeves_process and self.jeeves_process.is_alive():
+            self.jeeves_process.terminate()
+            self.jeeves_process.join(timeout=3)
+            if self.jeeves_process.is_alive():
+                self.jeeves_process.kill()
+
         if sys.platform == 'win32':
             import multiprocessing
             multiprocessing.freeze_support()
-            jeeves_process = multiprocessing.Process(target=launch_jeeves_process)
-            jeeves_process.start()
+            self.jeeves_process = multiprocessing.Process(target=launch_jeeves_process)
+            self.jeeves_process.start()
         else:
-            jeeves_process = multiprocessing.Process(target=launch_jeeves_process)
-            jeeves_process.start()
-
-    def cleanup_tabs(self):
-        for i in range(self.tab_widget.count()):
-            tab = self.tab_widget.widget(i)
-            if hasattr(tab, 'cleanup') and callable(tab.cleanup):
-                tab.cleanup()
+            self.jeeves_process = multiprocessing.Process(target=launch_jeeves_process)
+            self.jeeves_process.start()
 
     def closeEvent(self, event):
+        # Clean shutdown of Jeeves process
+        if self.jeeves_process and self.jeeves_process.is_alive():
+            self.jeeves_process.terminate()
+            self.jeeves_process.join(timeout=3)
+            if self.jeeves_process.is_alive():
+                self.jeeves_process.kill()
+
         docs_dir = Path(__file__).parent / 'Docs_for_DB'
         for item in docs_dir.glob('*'):
             if item.is_file():
                 item.unlink()
         self.metrics_bar.stop_metrics_collector()
 
-        self.cleanup_tabs()
+        # Clean up individual tabs if they have cleanup methods
+        for i in range(self.tab_widget.count()):
+            tab = self.tab_widget.widget(i)
+            if hasattr(tab, 'cleanup') and callable(tab.cleanup):
+                tab.cleanup()
 
         super().closeEvent(event)
 

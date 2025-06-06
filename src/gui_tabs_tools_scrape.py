@@ -132,13 +132,18 @@ class ScrapeDocumentationTab(QWidget):
 
     def scraping_finished(self):
         self.scrape_button.setEnabled(True)
-        selected_doc = self.doc_combo.currentText()
+
         final_count = len([f for f in os.listdir(self.current_folder) if f.endswith('.html')])
         self.status_label.setText(
-            f'<span style="color: #FF9800;"><b>Scraping {selected_doc} completed.</b></span> '
+            f'<span style="color: #FF9800;"><b>Scraping {self.current_doc_name} completed.</b></span> '
             f'<span style="color: #4CAF50;"><b>Pages scraped:</b></span> {final_count} '
             f'<span style="color: #2196F3;"><a href="open_folder" style="color: #2196F3;">Open Folder</a></span>'
         )
+
+        self.populate_combo_box()
+        idx = self.doc_combo.findText(self.current_doc_name)
+        if idx >= 0:
+            self.doc_combo.setCurrentIndex(idx)
 
     def show_error(self, message):
         QMessageBox.critical(self, "Error", message)
