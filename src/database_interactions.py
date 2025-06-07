@@ -383,11 +383,17 @@ class CreateVectorDB:
         hash_id_mappings = []
         MAX_UINT64 = 18446744073709551615
 
-        if not self.PERSIST_DIRECTORY.exists():
-            self.PERSIST_DIRECTORY.mkdir(parents=True, exist_ok=True)
-            print(f"Created directory: {self.PERSIST_DIRECTORY}")
-        else:
-            logging.warning(f"Directory already exists: {self.PERSIST_DIRECTORY}")
+        # atomically create the DB folder
+        created_new_dir = False
+        try:
+            self.PERSIST_DIRECTORY.mkdir(parents=True, exist_ok=False)
+            created_new_dir = True
+            my_cprint(f"Created directory: {self.PERSIST_DIRECTORY}", "green")
+        except FileExistsError:
+            raise FileExistsError(
+                f"Vector database '{self.PERSIST_DIRECTORY.name}' already exists. "
+                "Choose a different name or delete the existing DB first."
+            )
 
         try:
             all_texts = []

@@ -746,9 +746,12 @@ def check_preconditions_for_db_creation(script_dir, database_name, skip_ocr=Fals
         return False, "Name must be at least 3 characters long and not be 'null' or 'none.'"
 
     # checks if the db name is already used
-    database_folder_path = script_dir / "Docs_for_DB" / database_name
-    if database_folder_path.exists():
-        return False, "A database with this name already exists. Please choose a different database name."
+    vector_db_path = script_dir / "Vector_DB" / database_name
+    if vector_db_path.exists():
+        return False, (
+            f"A vector database called '{database_name}' already exists—"
+            "choose a different name or delete the old one first."
+        )
 
     # checks if config.yaml exists
     config_path = script_dir / 'config.yaml'
