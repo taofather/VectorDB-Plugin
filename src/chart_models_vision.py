@@ -43,7 +43,6 @@ def create_vision_models_comparison_plot():
     ax2 = ax1.twinx()
     gradient = LinearSegmentedColormap.from_list("", ["#003328", "#004D40"])
 
-    # Modified bar creation with borders
     bars = []
     for i, (index, row) in enumerate(df.iterrows()):
         border_color = None

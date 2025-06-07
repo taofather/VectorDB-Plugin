@@ -120,6 +120,7 @@ libs = [
     "cffi==1.17.1",
     "chardet==5.2.0",
     "charset-normalizer==3.4.2", # requests requires <4
+    "https://github.com/BBC-Esq/chatterbox-light",
     "chattts==0.2.4",
     "click==8.1.8", # gtts 2.5.4 requires <8.2, >=7.1
     "cloudpickle==3.1.1", # only required by tiledb-cloud and 3+ is only supported by tiledb-cloud 0.13+
@@ -134,6 +135,7 @@ libs = [
     "deepdiff==8.5.0", # required by unstructured
     "Deprecated==1.2.18", # only needed by pikepdf
     "deprecation==2.1.0", # only needed by ocrmypdf
+    "diffusers==0.33.1", # required by chatterbox-lite
     "dill==0.3.8", # datasets 3.6.0 requires <0.3.9; multiprocess 0.70.16 requires >=0.3.8
     "distro==1.9.0",
     "docx2txt==0.9",
@@ -207,6 +209,7 @@ libs = [
     "numpy==2.2.2",
     "ocrmypdf==16.10.1",
     "olefile==0.47",
+    "onnx==1.18.0", # required by chatterbox-lite
     "openai==1.82.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
@@ -254,6 +257,7 @@ libs = [
     "rich==14.0.0",
     "ruamel.yaml==0.18.11",
     "ruamel.yaml.clib==0.2.12",
+    "s3tokenizer==0.1.7", # required by chatterbox-lite
     "safetensors==0.5.3",
     "scikit-learn==1.6.1",
     "scipy==1.15.3",

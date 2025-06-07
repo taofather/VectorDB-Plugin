@@ -34,7 +34,7 @@ class VectorModelsTab(QWidget):
        if not models_dir.exists():
            models_dir.mkdir(parents=True)
 
-       vector_models_dir = models_dir / "Vector"
+       vector_models_dir = models_dir / "vector"
 
        existing_vector_directories = {d.name for d in vector_models_dir.iterdir() if d.is_dir()}
 

@@ -59,6 +59,14 @@ class CreateDatabaseThread(QThread):
             args=(self.database_name,))
         self.process.start()
         self.process.join()
+
+        # detect child-process failure
+        if self.process.exitcode != 0:
+            err_msg = (f"Database build failed (exit code {self.process.exitcode}). "
+                       "Check the log window for details.")
+            self.validationFailed.emit(err_msg)
+            return
+
         my_cprint(f"{self.model_name} removed from memory.", "red")
         self.creationComplete.emit()
         time.sleep(.2)
