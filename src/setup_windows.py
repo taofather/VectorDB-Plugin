@@ -339,6 +339,10 @@ def update_config_yaml():
     for key in server_keys:
         if key not in server_allowed_keys:
             del config['server'][key]
+    if 'chatterbox' not in config:
+        config['chatterbox'] = {
+            'device': 'auto'
+        }
 
     with open(config_path, 'w', encoding='utf-8') as file:
         yaml.dump(config, file, default_flow_style=False)
