@@ -1460,7 +1460,7 @@ scrape_documentation = {
         # "scraper_class": "HuggingfaceScraper"
     },
     "datasets 3.6.0": {
-        "URL": "https://huggingface.co/docs/datasets/v3.6.0/en/index",
+        "URL": "https://huggingface.co/docs/datasets/v3.6.0/en/",
         "folder": "datasets_0360",
         "scraper_class": "HuggingfaceScraper"
     },
@@ -1548,17 +1548,14 @@ scrape_documentation = {
         "URL": "https://jinja.palletsprojects.com/en/stable/",
         "folder": "jinja"
     },
-    "Jiter": {
-        "URL": "https://crates.io/crates/jiter",
-        "folder": "jiter"
-    },
     "jiwer": {
         "URL": "https://jitsi.github.io/jiwer/",
         "folder": "jiwer"
     },
     "joblib": {
-        "URL": "https://kiwisolver.readthedocs.io/en/stable/",
-        "folder": "kiwisolver"
+        "URL": "https://joblib.readthedocs.io/en/stable/",
+        "folder": "kiwisolver",
+        "scraper_class": "ReadthedocsScraper"
     },
     "kdenlive": {
         "URL": "https://docs.kdenlive.org/en/",
@@ -1566,8 +1563,8 @@ scrape_documentation = {
         "scraper_class": "ReadthedocsScraper"
     },
     "kiwisolver": {
-        "URL": "https://joblib.readthedocs.io/en/stable/",
-        "folder": "joblib",
+        "URL": "https://kiwisolver.readthedocs.io/en/stable/",
+        "folder": "kiwisolver",
         "scraper_class": "ReadthedocsScraper"
     },
     "Langchain": {
@@ -1616,10 +1613,10 @@ scrape_documentation = {
         "URL": "https://marshmallow.readthedocs.io/en/stable/",
         "folder": "marshmallow"
     },
-    # "Matplotlib": {
-        # "URL": "https://matplotlib.org/stable/", # won't scrape
-        # "folder": "matplotlib"
-    # },
+    "Matplotlib": {
+        "URL": "https://matplotlib.org/stable/",
+        "folder": "matplotlib"
+    },
     "more-itertools": {
         "URL": "https://more-itertools.readthedocs.io/en/stable/",
         "folder": "more_itertools",
@@ -1679,23 +1676,23 @@ scrape_documentation = {
         "URL": "https://onnxruntime.ai/docs/api/python/",
         "folder": "onnx_runtime"
     },
-    "openai": {
-        "URL": "https://platform.openai.com/docs/api-reference/",
-        "folder": "openai"
-    },
-    "openpyxl": {
-        "URL": "https://openpyxl.readthedocs.io/en/stable/",
-        "folder": "openpyxl"
-    },
+    # "openai": {
+        # "URL": "https://platform.openai.com/docs/api-reference/",
+        # "folder": "openai"
+    # },
+    # "openpyxl": {
+        # "URL": "https://openpyxl.readthedocs.io/en/stable/",
+        # "folder": "openpyxl"
+    # },
     "Optimum 1.25.2": {
         "URL": "https://huggingface.co/docs/optimum/v1.25.2/en/",
         "folder": "optimum_1252",
         "scraper_class": "HuggingfaceScraper"
     },
-    "packaging": {
-        "URL": "https://packaging.pypa.io/en/stable/",
-        "folder": "packaging"
-    },
+    # "packaging": {
+        # "URL": "https://packaging.pypa.io/en/stable/",
+        # "folder": "packaging"
+    # },
     "pandas": {
         "URL": "https://pandas.pydata.org/docs/",
         "folder": "pandas"
@@ -1704,43 +1701,43 @@ scrape_documentation = {
         "URL": "https://pandoc.org",
         "folder": "pandoc"
     },
-    "pdfminer.six": {
-        "URL": "https://pdfminersix.readthedocs.io/en/master/",
-        "folder": "pdfminer_six"
-    },
+    # "pdfminer.six": {
+        # "URL": "https://pdfminersix.readthedocs.io/en/master/",
+        # "folder": "pdfminer_six"
+    # },
     "pikepdf": {
         "URL": "https://pikepdf.readthedocs.io/en/stable/",
         "folder": "pikepdf",
         "scraper_class": "ReadthedocsScraper"
     },
-    "platformdirs": {
-        "URL": "https://platformdirs.readthedocs.io/en/stable/",
-        "folder": "platformdirs"
-    },
+    # "platformdirs": {
+        # "URL": "https://platformdirs.readthedocs.io/en/stable/",
+        # "folder": "platformdirs"
+    # },
     "Playwright": {
         "URL": "https://playwright.dev/python/",
         "folder": "playwright"
     },
-    "pluggy": {
-        "URL": "https://pluggy.readthedocs.io/en/stable/",
-        "folder": "pluggy"
-    },
-    "Pillow": {
-        "URL": "https://pillow.readthedocs.io/en/stable/",
-        "folder": "pillow"
-    },
+    # "pluggy": {
+        # "URL": "https://pluggy.readthedocs.io/en/stable/",
+        # "folder": "pluggy"
+    # },
+    # "Pillow": {
+        # "URL": "https://pillow.readthedocs.io/en/stable/",
+        # "folder": "pillow"
+    # },
     # "propcache": {
         # "URL": "https://propcache.aio-libs.org/",
         # "folder": "propcache",
     # },
-    "protobuf": {
-        "URL": "https://protobuf.dev/",
-        "folder": "protobuf"
-    },
-    "pyarrow": {
-        "URL": "https://arrow.apache.org/docs/python/",
-        "folder": "pyarrow"
-    },
+    # "protobuf": {
+        # "URL": "https://protobuf.dev/",
+        # "folder": "protobuf"
+    # },
+    # "pyarrow": {
+        # "URL": "https://arrow.apache.org/docs/python/",
+        # "folder": "pyarrow"
+    # },
     "psutil": {
         "URL": "https://psutil.readthedocs.io/en/stable/",
         "folder": "psutil",
@@ -1766,20 +1763,20 @@ scrape_documentation = {
         "URL": "https://pyinstaller.org/en/stable/",
         "folder": "pyinstaller"
     },
-    "PyMuPDF": {
-        "URL": "https://pymupdf.readthedocs.io/en/latest/",
-        "folder": "pymupdf",
-        "scraper_class": "PyMuScraper"
-    },
+    # "PyMuPDF": {
+        # "URL": "https://pymupdf.readthedocs.io/en/latest/",
+        # "folder": "pymupdf",
+        # "scraper_class": "PyMuScraper"
+    # },
     "PyOpenGL": {
         "URL": "https://mcfletch.github.io/pyopengl/documentation/manual/",
         "folder": "pyopengl",
     },
-    "PyPDF": {
-        "URL": "https://pypdf.readthedocs.io/en/stable/",
-        "folder": "pypdf",
-        "scraper_class": "ReadthedocsScraper"
-    },
+    # "PyPDF": {
+        # "URL": "https://pypdf.readthedocs.io/en/stable/",
+        # "folder": "pypdf",
+        # "scraper_class": "ReadthedocsScraper"
+    # },
     # "Python 3.11": {
         # "URL": "https://docs.python.org/3.11/",
         # "folder": "Python_311",
@@ -1858,7 +1855,8 @@ scrape_documentation = {
     },
     "SciPy 1.15.3": {
         "URL": "https://docs.scipy.org/doc/scipy-1.15.3/",
-        "folder": "scipy_1153"
+        "folder": "scipy_1153",
+        "scraper_class": "ScipyScraper",
     },
     "Sentence-Transformers": {
         "URL": "https://www.sbert.net/docs",
@@ -1909,14 +1907,14 @@ scrape_documentation = {
         "URL": "https://docs.sympy.org/latest/",
         "folder": "sympy"
     },
-    "tblib": {
-        "URL": "https://python-tblib.readthedocs.io/en/stable/",
-        "folder": "tblib"
-    },
-    "tenacity": {
-        "URL": "https://tenacity.readthedocs.io/en/stable/",
-        "folder": "tenacity"
-    },
+    # "tblib": {
+        # "URL": "https://python-tblib.readthedocs.io/en/stable/",
+        # "folder": "tblib"
+    # },
+    # "tenacity": {
+        # "URL": "https://tenacity.readthedocs.io/en/stable/",
+        # "folder": "tenacity"
+    # },
     "Tile DB": {
         "URL": "https://tiledb-inc-tiledb.readthedocs-hosted.com/projects/tiledb-py/en/stable/python-api.html",
         "folder": "tiledb",
@@ -2015,28 +2013,28 @@ scrape_documentation = {
         "folder": "typing_extensions",
         "scraper_class": "ReadthedocsScraper"
     },
-    "tzdata": {
-        "URL": "https://tzdata.readthedocs.io/en/stable/",
-        "folder": "tzdata",
-        "scraper_class": "ReadthedocsScraper"
-    },
-    "urllib3": {
-        "URL": "https://urllib3.readthedocs.io/en/stable/",
-        "folder": "urllib3"
-    },
-    "Unstructured": {
-        "URL": "https://docs.unstructured.io/api-reference/api-services/sdk-python",
-        "folder": "unstructured"
-    },
+    # "tzdata": {
+        # "URL": "https://tzdata.readthedocs.io/en/stable/",
+        # "folder": "tzdata",
+        # "scraper_class": "ReadthedocsScraper"
+    # },
+    # "urllib3": {
+        # "URL": "https://urllib3.readthedocs.io/en/stable/",
+        # "folder": "urllib3"
+    # },
+    # "Unstructured": {
+        # "URL": "https://docs.unstructured.io/api-reference/api-services/sdk-python",
+        # "folder": "unstructured"
+    # },
     "Watchdog": {
         "URL": "https://python-watchdog.readthedocs.io/en/stable/",
         "folder": "watchdog"
     },
-    "webdataset": {
-        "URL": "https://webdataset.github.io/webdataset/",
-        "folder": "webdataset",
-        "scraper_class": "ReadthedocsScraper"
-    },
+    # "webdataset": {
+        # "URL": "https://webdataset.github.io/webdataset/",
+        # "folder": "webdataset",
+        # "scraper_class": "ReadthedocsScraper"
+    # },
     "webencodings": {
         "URL": "https://pythonhosted.org/webencodings/",
         "folder": "webencodings",
@@ -2046,23 +2044,23 @@ scrape_documentation = {
         "folder": "wrapt",
         "scraper_class": "ReadthedocsScraper"
     },
-    "xlrd": {
-        "URL": "https://xlrd.readthedocs.io/en/stable/",
-        "folder": "xlrd",
-        "scraper_class": "ReadthedocsScraper"
-    },
+    # "xlrd": {
+        # "URL": "https://xlrd.readthedocs.io/en/stable/",
+        # "folder": "xlrd",
+        # "scraper_class": "ReadthedocsScraper"
+    # },
     "xFormers": {
         "URL": "https://facebookresearch.github.io/xformers/",
         "folder": "xformers"
     },
-    "yarl": {
-        "URL": "https://yarl.aio-libs.org/en/stable/",
-        "folder": "yarl"
-    },
-    "zstandard": {
-        "URL": "https://python-zstandard.readthedocs.io/en/stable/",
-        "folder": "zstandard"
-    },
+    # "yarl": {
+        # "URL": "https://yarl.aio-libs.org/en/stable/",
+        # "folder": "yarl"
+    # },
+    # "zstandard": {
+        # "URL": "https://python-zstandard.readthedocs.io/en/stable/",
+        # "folder": "zstandard"
+    # },
 }
 
 class CustomButtonStyles:
@@ -2502,6 +2500,16 @@ GPUS_NVIDIA = {
 }
 
 GPUS_AMD = {
+    "Radeon RX 9060 XT 16GB": {
+        "Brand": "AMD",
+        "Size (GB)": 16,
+        "Shaders": 2048
+    },
+    "Radeon RX 9060 XT 8GB": {
+        "Brand": "AMD",
+        "Size (GB)": 8,
+        "Shaders": 2048
+    },
     "Radeon RX 7600": {
         "Brand": "AMD",
         "Size (GB)": 8,
