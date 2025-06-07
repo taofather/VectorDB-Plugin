@@ -120,7 +120,7 @@ libs = [
     "cffi==1.17.1",
     "chardet==5.2.0",
     "charset-normalizer==3.4.2", # requests requires <4
-    "https://github.com/BBC-Esq/chatterbox-light",
+    "git+https://github.com/BBC-Esq/chatterbox-light",
     "chattts==0.2.4",
     "click==8.1.8", # gtts 2.5.4 requires <8.2, >=7.1
     "cloudpickle==3.1.1", # only required by tiledb-cloud and 3+ is only supported by tiledb-cloud 0.13+
@@ -2892,6 +2892,11 @@ master_questions = [
     "What is the File Type setting?",
     "What are text to speech models (aks TTS models) and how are they used in this program?",
     "What text to speech models are availble in this program to use?",
+    "What is the Bark text to speech?",
+    "What is the WhisperSpeech text to speech?",
+    "What is the ChatTTS text to speech?",
+    "What is the Google TTS text to speech?",
+    "What is the Chatterbox text to speech?",
     "Which text to speech backend or models should I use",
     "Can I back up or restore my databases and are they backed up automatically",
     "What happens if I lose a configuration file and can I restore it?",
