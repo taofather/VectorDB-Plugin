@@ -1,236 +1,206 @@
+# gui_tabs_settings_tts.py
 import yaml
 from pathlib import Path
-
-from PySide6.QtWidgets import QLabel, QComboBox, QWidget, QGridLayout, QRadioButton, QButtonGroup, QMessageBox
+from PySide6.QtWidgets import (
+    QLabel, QComboBox, QWidget, QGridLayout, QMessageBox, QHBoxLayout
+)
 
 from constants import WHISPER_SPEECH_MODELS
 
-class BarkModelSettingsTab(QWidget):
-    
+
+class TTSSettingsTab(QWidget):
+    """A single-row, space-saving TTS settings panel."""
+
+    # 1. Describe every backend (easy to extend later)
+    BACKENDS = {
+        "bark": {
+            "label": "Bark (GPU)",
+            "extras": {
+                "size": {
+                    "label": "Model",
+                    "options": ["normal", "small"],
+                    "default": "small",
+                },
+                "speaker": {
+                    "label": "Speaker",
+                    "options": [
+                        "v2/en_speaker_0", "v2/en_speaker_1", "v2/en_speaker_2",
+                        "v2/en_speaker_3", "v2/en_speaker_4", "v2/en_speaker_5",
+                        "v2/en_speaker_6", "v2/en_speaker_7", "v2/en_speaker_8",
+                        "v2/en_speaker_9",
+                    ],
+                    "default": "v2/en_speaker_6",
+                },
+            },
+        },
+        "whisperspeech": {
+            "label": "WhisperSpeech (GPU)",
+            "extras": {
+                "s2a": {
+                    "label": "S2A Model",
+                    "options": list(WHISPER_SPEECH_MODELS["s2a"].keys()),
+                    "default": list(WHISPER_SPEECH_MODELS["s2a"].keys())[0],
+                },
+                "t2s": {
+                    "label": "T2S Model",
+                    "options": list(WHISPER_SPEECH_MODELS["t2s"].keys()),
+                    "default": list(WHISPER_SPEECH_MODELS["t2s"].keys())[0],
+                },
+            },
+        },
+        "chattts": {
+            "label": "ChatTTS (CPU/CPU)",
+            "extras": {},
+        },
+        "chatterbox": {
+            "label": "Chatterbox (CPU/GPU)",
+            "extras": {},
+        },
+        "googletts": {
+            "label": "Google TTS (CPU)",
+            "extras": {},
+        },
+    }
+
+    # 2. Qt-setup
     def __init__(self):
         super().__init__()
-        self.initialize_layout()
-        self.load_config_and_set_values()
-        self.connect_signals()
-        self.update_widgets_state()
+        self.widgets_for_backend: dict[str, dict[str, QWidget]] = {}
+        self._build_ui()
+        self._load_from_yaml()
+        self._update_visible_extras()
 
-    def initialize_layout(self):
-        main_layout = QGridLayout()
+    def _build_ui(self):
+        layout = QGridLayout(self)
 
-        self.radio_button_group = QButtonGroup(self)
+        layout.setColumnStretch(0, 0)
+        layout.setColumnStretch(1, 0)
+        layout.setColumnStretch(2, 1)
 
-        self.use_bark_radio = QRadioButton("Bark (GPU)")
-        self.radio_button_group.addButton(self.use_bark_radio)
+        # static backend picker (always column-1)
+        layout.addWidget(QLabel("TTS Backend:"), 0, 0)
+        self.backend_combo = QComboBox()
+        for key, spec in self.BACKENDS.items():
+            self.backend_combo.addItem(spec["label"], userData=key)
+        layout.addWidget(self.backend_combo, 0, 1)
 
-        self.use_whisper_radio = QRadioButton("WhisperSpeech (GPU)")
-        self.use_whisper_radio.setChecked(True)
-        self.radio_button_group.addButton(self.use_whisper_radio)
+        # dynamic extras live in this container (always column-2)
+        self._extras_box = QWidget()
+        self._extras_layout = QHBoxLayout(self._extras_box)
+        self._extras_layout.setContentsMargins(0, 0, 0, 0)
+        self._extras_layout.setSpacing(10)
+        layout.addWidget(self._extras_box, 0, 2)
 
-        self.use_chattts_radio = QRadioButton("ChatTTS - (CPU/CPU)")
-        self.radio_button_group.addButton(self.use_chattts_radio)
+        # build, but don’t place, every backend’s extra widgets
+        self.widgets_for_backend: dict[str, dict[str, tuple[QLabel, QComboBox]]] = {}
+        for key, spec in self.BACKENDS.items():
+            wdict = {}
+            for extra_key, meta in spec["extras"].items():
+                lbl = QLabel(meta["label"])
+                cmb = QComboBox()
+                cmb.addItems(meta["options"])
+                cmb.currentTextChanged.connect(self._save_to_yaml)
+                wdict[extra_key] = (lbl, cmb)
+            self.widgets_for_backend[key] = wdict
 
-        self.use_googletts_radio = QRadioButton("Google TTS - (CPU)")
-        self.radio_button_group.addButton(self.use_googletts_radio)
+        self.backend_combo.currentIndexChanged.connect(self._update_visible_extras)
 
-        main_layout.addWidget(self.use_bark_radio, 0, 0, 1, 2)
+    # 3. YAML helpers
+    def _config_path(self) -> Path:
+        return Path("config.yaml")
 
-        self.model_size_label = QLabel("Model")
-        main_layout.addWidget(self.model_size_label, 0, 2)
+    def _load_from_yaml(self):
+        """Read config.yaml and populate widgets."""
+        cfg = self._try_read_yaml()
 
-        self.model_size_combo = QComboBox()
-        self.model_size_combo.addItems(["normal", "small"])
-        self.model_size_combo.setMinimumWidth(100)
-        main_layout.addWidget(self.model_size_combo, 0, 3)
+        # ---------------- backend ---------------- #
+        tts_cfg = cfg.get("tts", {}) if cfg else {}
+        backend = tts_cfg.get("model", "whisperspeech")
+        idx = self.backend_combo.findData(backend)
+        self.backend_combo.setCurrentIndex(idx if idx != -1 else 0)
 
-        self.speaker_label = QLabel("Speaker")
-        main_layout.addWidget(self.speaker_label, 0, 4)
+        # --------------- extras ------------------ #
+        # Bark
+        bark_cfg = cfg.get("bark", {}) if cfg else {}
+        for (lbl, cmb) in self.widgets_for_backend["bark"].values():
+            if cmb.objectName() == "size":
+                cmb.setCurrentText(bark_cfg.get("size", "small"))
+            else:  # speaker
+                cmb.setCurrentText(bark_cfg.get("speaker", "v2/en_speaker_6"))
 
-        self.speaker_combo = QComboBox()
-        self.speaker_combo.addItems([
-            "v2/en_speaker_0", "v2/en_speaker_1", "v2/en_speaker_2",
-            "v2/en_speaker_3", "v2/en_speaker_4", "v2/en_speaker_5",
-            "v2/en_speaker_6", "v2/en_speaker_7", "v2/en_speaker_8",
-            "v2/en_speaker_9"])
-        self.speaker_combo.setMinimumWidth(100)
-        main_layout.addWidget(self.speaker_combo, 0, 5)
-
-        main_layout.addWidget(self.use_whisper_radio, 1, 0, 1, 2)
-        
-        self.s2a_label = QLabel("S2A Model:")
-        main_layout.addWidget(self.s2a_label, 1, 2)
-
-        self.s2a_combo = QComboBox()
-        self.s2a_combo.addItems(list(WHISPER_SPEECH_MODELS["s2a"].keys()))
-        self.s2a_combo.setCurrentText(list(WHISPER_SPEECH_MODELS["s2a"].keys())[0])  # Set default
-        self.s2a_combo.setMinimumWidth(100)
-        main_layout.addWidget(self.s2a_combo, 1, 3)
-
-        self.t2s_label = QLabel("T2S Model:")
-        main_layout.addWidget(self.t2s_label, 1, 4)
-
-        self.t2s_combo = QComboBox()
-        self.t2s_combo.addItems(list(WHISPER_SPEECH_MODELS["t2s"].keys()))
-        self.t2s_combo.setCurrentText(list(WHISPER_SPEECH_MODELS["t2s"].keys())[0])  # Set default
-        self.t2s_combo.setMinimumWidth(100)
-        main_layout.addWidget(self.t2s_combo, 1, 5)
-
-        main_layout.addWidget(self.use_chattts_radio, 2, 0, 1, 2)
-        main_layout.addWidget(self.use_googletts_radio, 3, 0, 1, 2)
-
-        self.setLayout(main_layout)
-
-    def load_config_and_set_values(self):
-        config_file_path = Path('config.yaml')
-        if config_file_path.exists():
-            try:
-                with open(config_file_path, 'r') as f:
-                    config = yaml.safe_load(f)
-            except Exception as e:
-                QMessageBox.warning(
-                    self,
-                    "Configuration Error",
-                    f"Error loading configuration file: {e}"
+        # WhisperSpeech
+        if tts_cfg.get("model") == "whisperspeech":
+            self.widgets_for_backend["whisperspeech"]["s2a"][1].setCurrentText(
+                self._find_key_by_value(
+                    WHISPER_SPEECH_MODELS["s2a"], tts_cfg.get("s2a")
                 )
-                config = None
-        else:
-            config = None
-
-        bark_config = config.get('bark', {}) if config else {}
-
-        self.model_size_combo.setCurrentText(bark_config.get('size', "small"))
-        self.speaker_combo.setCurrentText(bark_config.get('speaker', "v2/en_speaker_6"))
-
-        tts_config = config.get('tts', {}) if config else {}
-        tts_model = tts_config.get('model', 'whisperspeech')
-        if tts_model == 'bark':
-            self.use_bark_radio.setChecked(True)
-        elif tts_model == 'chattts':
-            self.use_chattts_radio.setChecked(True)
-        elif tts_model == 'googletts':
-            self.use_googletts_radio.setChecked(True)
-        else:
-            self.use_whisper_radio.setChecked(True)
-
-        s2a_model = tts_config.get('s2a', "s2a-q4-tiny-en+pl.model")
-        t2s_model = tts_config.get('t2s', "t2s-tiny-en+pl.model")
-
-        self.s2a_combo.setCurrentText(
-            next(
-                (k for k, v in WHISPER_SPEECH_MODELS["s2a"].items() if v == s2a_model),
-                list(WHISPER_SPEECH_MODELS["s2a"].keys())[0]
             )
-        )
-
-        self.t2s_combo.setCurrentText(
-            next(
-                (k for k, v in WHISPER_SPEECH_MODELS["t2s"].items() if v == t2s_model),
-                list(WHISPER_SPEECH_MODELS["t2s"].keys())[0]
+            self.widgets_for_backend["whisperspeech"]["t2s"][1].setCurrentText(
+                self._find_key_by_value(
+                    WHISPER_SPEECH_MODELS["t2s"], tts_cfg.get("t2s")
+                )
             )
-        )
 
-        self.update_whisperspeech_config()
+    def _save_to_yaml(self):
+        cfg = self._try_read_yaml()
 
-    def connect_signals(self):
-        self.model_size_combo.currentTextChanged.connect(self.update_config)
-        self.speaker_combo.currentTextChanged.connect(self.update_config)
-        self.use_bark_radio.toggled.connect(self.update_widgets_state)
-        self.use_whisper_radio.toggled.connect(self.update_widgets_state)
-        self.use_chattts_radio.toggled.connect(self.update_widgets_state)
-        self.use_googletts_radio.toggled.connect(self.update_widgets_state)
-        self.use_bark_radio.toggled.connect(self.update_tts_model)
-        self.use_whisper_radio.toggled.connect(self.update_tts_model)
-        self.use_chattts_radio.toggled.connect(self.update_tts_model)
-        self.use_googletts_radio.toggled.connect(self.update_tts_model)
-        self.s2a_combo.currentTextChanged.connect(self.update_whisperspeech_config)
-        self.t2s_combo.currentTextChanged.connect(self.update_whisperspeech_config)
+        # ---------------- backend ---------------- #
+        backend_key = self.backend_combo.currentData()
+        tts_cfg = cfg.setdefault("tts", {})
+        tts_cfg["model"] = backend_key
 
-    def update_config(self):
-        config_file_path = Path('config.yaml')
-        if config_file_path.exists():
-            try:
-                with open(config_file_path, 'r') as f:
-                    config = yaml.safe_load(f)
-            except Exception as e:
-                QMessageBox.warning(
-                    self,
-                    "Configuration Error",
-                    f"Error updating configuration: {e}"
-                )
-                config = {}
-        else:
-            config = {}
+        # --------------- extras ------------------ #
+        if backend_key == "bark":
+            bark = cfg.setdefault("bark", {})
+            bark["size"] = self.widgets_for_backend["bark"]["size"][1].currentText()
+            bark["speaker"] = (
+                self.widgets_for_backend["bark"]["speaker"][1].currentText()
+            )
+        elif backend_key == "whisperspeech":
+            tts_cfg["s2a"] = WHISPER_SPEECH_MODELS["s2a"][
+                self.widgets_for_backend["whisperspeech"]["s2a"][1].currentText()
+            ][0]
+            tts_cfg["t2s"] = WHISPER_SPEECH_MODELS["t2s"][
+                self.widgets_for_backend["whisperspeech"]["t2s"][1].currentText()
+            ][0]
 
-        bark_config = config.get('bark', {})
-        bark_config['size'] = self.model_size_combo.currentText()
-        bark_config['speaker'] = self.speaker_combo.currentText()
-        config['bark'] = bark_config
+        with self._config_path().open("w") as f:
+            yaml.dump(cfg, f, sort_keys=False)
 
-        with open(config_file_path, 'w') as f:
-            yaml.dump(config, f, default_flow_style=False)
+    # ------------------------------------------------------------------ #
+    # 4. Helpers
+    # ------------------------------------------------------------------ #
+    def _try_read_yaml(self):
+        try:
+            with self._config_path().open() as f:
+                return yaml.safe_load(f) or {}
+        except FileNotFoundError:
+            return {}
+        except Exception as e:
+            QMessageBox.warning(self, "Configuration Error", str(e))
+            return {}
 
-    def update_widgets_state(self):
-        bark_enabled = self.use_bark_radio.isChecked()
-        whisper_enabled = self.use_whisper_radio.isChecked()
-        self.model_size_label.setEnabled(bark_enabled)
-        self.model_size_combo.setEnabled(bark_enabled)
-        self.speaker_label.setEnabled(bark_enabled)
-        self.speaker_combo.setEnabled(bark_enabled)
-        self.s2a_label.setEnabled(whisper_enabled)
-        self.s2a_combo.setEnabled(whisper_enabled)
-        self.t2s_label.setEnabled(whisper_enabled)
-        self.t2s_combo.setEnabled(whisper_enabled)
+    def _update_visible_extras(self):
+        # clear existing widgets from the extras container
+        while self._extras_layout.count():
+            item = self._extras_layout.takeAt(0)
+            if (w := item.widget()):
+                w.setParent(None)
 
-    def update_tts_model(self):
-        config_file_path = Path('config.yaml')
-        if config_file_path.exists():
-            try:
-                with open(config_file_path, 'r') as f:
-                    config = yaml.safe_load(f)
-            except Exception as e:
-                QMessageBox.warning(
-                    self,
-                    "Configuration Error",
-                    f"Error updating TTS model settings: {e}"
-                )
-                config = {}
-        else:
-            config = {}
+        # insert the widgets that correspond to the selected backend
+        chosen = self.backend_combo.currentData()
+        for lbl, cmb in self.widgets_for_backend[chosen].values():
+            self._extras_layout.addWidget(lbl)
+            self._extras_layout.addWidget(cmb)
+            lbl.show()
+            cmb.show()
 
-        tts_config = config.get('tts', {})
-        if self.use_bark_radio.isChecked():
-            tts_config['model'] = 'bark'
-        elif self.use_chattts_radio.isChecked():
-            tts_config['model'] = 'chattts'
-        elif self.use_googletts_radio.isChecked():
-            tts_config['model'] = 'googletts'
-        else:
-            tts_config['model'] = 'whisperspeech'
-        config['tts'] = tts_config
+        self._save_to_yaml()
 
-        with open(config_file_path, 'w') as f:
-            yaml.dump(config, f, default_flow_style=False)
-
-    def update_whisperspeech_config(self):
-        config_file_path = Path('config.yaml')
-        if config_file_path.exists():
-            try:
-                with open(config_file_path, 'r') as f:
-                    config = yaml.safe_load(f)
-            except Exception as e:
-                QMessageBox.warning(
-                    self,
-                    "Configuration Error",
-                    f"Error updating WhisperSpeech settings: {e}"
-                )
-                config = {}
-        else:
-            config = {}
-
-        tts_config = config.get('tts', {})
-        tts_config['model'] = 'whisperspeech'
-        tts_config['s2a'] = WHISPER_SPEECH_MODELS["s2a"][self.s2a_combo.currentText()][0]
-        tts_config['t2s'] = WHISPER_SPEECH_MODELS["t2s"][self.t2s_combo.currentText()][0]
-        config['tts'] = tts_config
-
-        with open(config_file_path, 'w') as f:
-            yaml.dump(config, f, default_flow_style=False)
+    @staticmethod
+    def _find_key_by_value(d: dict, value: str | None):
+        """Reverse lookup with fallback to first key."""
+        for k, v in d.items():
+            if v[0] == value:
+                return k
+        return next(iter(d))

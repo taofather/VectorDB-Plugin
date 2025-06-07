@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QVBoxLayout, QGroupBox, QPushButton, QHBoxLayout, 
 from gui_tabs_settings_server import ServerSettingsTab
 from gui_tabs_settings_database_create import ChunkSettingsTab
 from gui_tabs_settings_database_query import DatabaseSettingsTab
-from gui_tabs_settings_tts import BarkModelSettingsTab
+from gui_tabs_settings_tts import TTSSettingsTab
 from gui_tabs_settings_vision import VisionSettingsTab
 
 def update_all_configs(configs):
@@ -47,16 +47,16 @@ class GuiSettingsTab(QWidget):
             self.layout.addWidget(group, stretch)
             group.toggled.connect(partial(self.toggle_group, group))
 
-        # BarkModelSettingsTab - handled separately
-        ttsSettings = BarkModelSettingsTab()
+        # TTS
+        ttsSettings = TTSSettingsTab()
         ttsGroup = QGroupBox("Text to Speech")
         ttsLayout = QVBoxLayout()
         ttsLayout.addWidget(ttsSettings)
         ttsGroup.setLayout(ttsLayout)
         ttsGroup.setCheckable(True)
         ttsGroup.setChecked(True)
-        self.layout.addWidget(ttsGroup, 5)
-        self.groups[ttsGroup] = 4
+        self.layout.addWidget(ttsGroup, 3)
+        self.groups[ttsGroup] = 2
         ttsGroup.toggled.connect(partial(self.toggle_tts_group, ttsSettings))
 
         # VisionSettingsTab - handled separately

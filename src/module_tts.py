@@ -95,6 +95,172 @@ class BaseAudio:
         self.audio_queue.put(None)
 
 
+class ChatterboxAudio(BaseAudio):
+    """
+    Fully-featured Chatterbox backend with **all tuning knobs hard-coded
+    (but commented)** so you can flip them on/off while testing.
+
+    ── HOW TO USE ─────────────────────────────────────────────────────────────
+    1. Uncomment any knob under “USER-TUNABLE KNOBS”, tweak the value,
+       run, listen.  Re-comment (or move to YAML) when satisfied.
+    2. Nothing outside this subclass is required for the new features.
+    """
+
+    # ── USER-TUNABLE KNOBS ───────────────────────────────────────────────────
+    # DEVICE = "auto"            # "cpu" | "gpu"/"cuda" | "auto"
+    # GPU_STRICT = False         # True → raise if CUDA unavailable
+    #
+    # # Style presets ----------- #
+    # ACCENT_PRESET = "midwest"  # one of ACCENT_SETTINGS keys below
+    #
+    # # Or direct overrides ------#
+    # EXAGGERATION = 0.5         # 0.0-1.0 (higher = more expressive)
+    # CFG_WEIGHT   = 0.3         # 0.0-1.0 (lower = slower / deliberate)
+    #
+    # # Post-processing ----------#
+    PITCH_FACTOR = 0.93         # >1 pitch-up, <1 pitch-down
+    SPEED_FACTOR = 0.93         # >1 faster, <1 slower
+    # TONE         = "neutral"   # "neutral"|"happy"|"serious"|"calm"|"excited"
+    # NORMALISE    = True        # Peak-normalise to ±1
+    # INT16_OUTPUT = False       # Queue int16 instead of float32
+    # ─────────────────────────────────────────────────────────────────────────
+
+    # ACCENT_SETTINGS = {
+        # "midwest":    {"exaggeration": 0.4, "cfg_weight": 0.5},
+        # "southern":   {"exaggeration": 0.6, "cfg_weight": 0.4},
+        # "british":    {"exaggeration": 0.3, "cfg_weight": 0.6},
+        # "australian": {"exaggeration": 0.5, "cfg_weight": 0.4},
+        # "canadian":   {"exaggeration": 0.3, "cfg_weight": 0.5},
+        # "newyork":    {"exaggeration": 0.7, "cfg_weight": 0.3},
+        # "california": {"exaggeration": 0.4, "cfg_weight": 0.4},
+        # "texas":      {"exaggeration": 0.8, "cfg_weight": 0.3},
+    # }
+
+    def __init__(self):
+        super().__init__()
+
+        # Device selection
+        import torch, warnings
+        device_pref = getattr(self, "DEVICE", "auto")
+        self.device = self._select_device(device_pref)
+        if self.device != "cpu":
+            _orig_load = torch.load
+            torch.load = lambda *a, **k: _orig_load(
+                *a, **{**k, "map_location": k.get("map_location", self.device)}
+            )
+        if self.device == "cuda":
+            torch.backends.cudnn.benchmark = True
+
+        # Model load
+        from chatterbox.tts import ChatterboxTTS
+        print(f"Loading Chatterbox TTS on [{self.device}] …")
+        self.model = ChatterboxTTS.from_pretrained(device=self.device)
+        self.sr = self.model.sr
+        print("Model ready!")
+
+        # Style parameters
+        accent = getattr(self, "ACCENT_PRESET", None)
+        if accent and hasattr(self, "ACCENT_SETTINGS"):
+            style = self.ACCENT_SETTINGS.get(accent, {})
+            self.exaggeration = style.get("exaggeration", 0.5)
+            self.cfg_weight   = style.get("cfg_weight",   0.5)
+        else:
+            self.exaggeration = getattr(self, "EXAGGERATION", 0.5)
+            self.cfg_weight   = getattr(self, "CFG_WEIGHT",   0.5)
+
+        # Post-FX settings
+        self.pitch_factor = getattr(self, "PITCH_FACTOR", 1.0)
+        self.speed_factor = getattr(self, "SPEED_FACTOR", 1.0)
+        self.tone         = getattr(self, "TONE", "neutral")
+        self.normalise    = getattr(self, "NORMALISE", True)
+        self.int16_output = getattr(self, "INT16_OUTPUT", False)
+
+    def _select_device(self, pref):
+        import torch, warnings
+        pref = pref.lower()
+        if pref == "cpu":
+            return "cpu"
+        if pref in ("gpu", "cuda"):
+            if torch.cuda.is_available():
+                return "cuda"
+            if getattr(self, "GPU_STRICT", False):
+                raise RuntimeError("CUDA requested but unavailable.")
+            warnings.warn("CUDA not available – falling back to CPU.", RuntimeWarning)
+            return "cpu"
+        if torch.cuda.is_available():
+            return "cuda"
+        if torch.backends.mps.is_available():
+            return "mps"
+        return "cpu"
+
+    @staticmethod
+    def _apply_voice_modifications(wav, sr, pitch_factor=1.0, speed_factor=1.0, tone="neutral"):
+        try:
+            import torch, torchaudio.functional as F
+            if pitch_factor != 1.0:
+                tgt_sr = int(sr * pitch_factor)
+                wav = F.resample(wav, sr, tgt_sr)
+                wav = F.resample(wav, tgt_sr, sr)
+            if speed_factor != 1.0 and wav.numel():
+                tgt_len = int(wav.shape[-1] / speed_factor)
+                if tgt_len > 0:
+                    wav = torch.nn.functional.interpolate(
+                        wav.unsqueeze(0), size=tgt_len, mode="linear", align_corners=False
+                    ).squeeze(0)
+            if tone == "happy":
+                wav *= 1.1
+            elif tone == "serious":
+                wav *= 0.9
+            elif tone == "calm":
+                wav = torch.tanh(wav * 0.8)
+            elif tone == "excited":
+                wav *= 1.2
+            return torch.clamp(wav, -1.0, 1.0)
+        except Exception as e:
+            print(f"Voice-mod skipped: {e}")
+            return wav
+
+    @torch.inference_mode()
+    def process_text_to_audio(self, sentences):
+        import numpy as np, torch
+        for sentence in sentences:
+            if not sentence.strip() or self.stop_event.is_set():
+                continue
+            try:
+                wav = self.model.generate(
+                    sentence,
+                    exaggeration=self.exaggeration,
+                    cfg_weight=self.cfg_weight,
+                )
+            except Exception as e:
+                print(f"Generation failed: {e}")
+                self.audio_queue.put(None)
+                break
+
+            wav = self._apply_voice_modifications(
+                wav, self.sr,
+                pitch_factor=self.pitch_factor,
+                speed_factor=self.speed_factor,
+                tone=self.tone,
+            )
+
+            audio = wav.squeeze().cpu().numpy().astype(np.float32)
+            if self.normalise and audio.size:
+                peak = np.max(np.abs(audio))
+                if peak:
+                    audio /= peak
+            if self.int16_output:
+                audio = (audio * 32767).astype(np.int16)
+
+            self.audio_queue.put((audio, self.sr))
+
+            if torch.cuda.is_available():
+                del wav
+                torch.cuda.empty_cache()
+
+        self.audio_queue.put(None)
+
+
 class BarkAudio(BaseAudio):
     def __init__(self):
         super().__init__()
@@ -468,6 +634,8 @@ def run_tts(config_path, input_text_file):
         audio_class = GoogleTTSAudio()
     elif tts_model == 'kokoro':
         audio_class = KokoroAudio()
+    elif tts_model == 'chatterbox':
+        audio_class = ChatterboxAudio()
     else:
         raise ValueError(f"Invalid TTS model specified in config.yaml: {tts_model}")
 
