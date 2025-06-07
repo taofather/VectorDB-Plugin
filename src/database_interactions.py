@@ -677,6 +677,16 @@ class QueryVectorDB:
     def _init_once(self, selected_database):
         if not self._initialized:
             self.config = self.load_configuration()
+
+            # upfront validation of the request
+            if not selected_database:
+                raise ValueError("No vector database selected.")
+            if selected_database not in self.config["created_databases"]:
+                raise ValueError(f'Database “{selected_database}” not found in config.')
+            db_path = Path(__file__).resolve().parent / "Vector_DB" / selected_database
+            if not db_path.exists():
+                raise FileNotFoundError(f'Database folder “{selected_database}” is missing on disk.')
+
             self.selected_database = selected_database
             self.embeddings = None
             self.db = None
