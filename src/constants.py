@@ -1,4 +1,4 @@
-# ── constants.py ────────────────────────────────────────────────────────────────
+# constants.py
 
 GLM4Z1_CHAT_TEMPLATE = """[gMASK]<sop>
 {%- if tools -%}
@@ -386,6 +386,17 @@ CHAT_MODELS = {
         'cps': 152.61,
         'vram': 8390.24,
         'function': 'Qwen',
+        'precision': 'bfloat16',
+        'gated': False,
+        'max_new_tokens': 4096,
+    },
+    'Deepseek R1 - 8b': {
+        'model': 'Deepseek R1 - 8b',
+        'repo_id': 'deepseek-ai/DeepSeek-R1-0528-Qwen3-8B',
+        'cache_dir': 'deepseek-ai--DeepSeek-R1-0528-Qwen3-8B',
+        'cps': 171.55,
+        'vram': 8425.49,
+        'function': 'DeepseekR1',
         'precision': 'bfloat16',
         'gated': False,
         'max_new_tokens': 4096,

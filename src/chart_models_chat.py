@@ -28,6 +28,7 @@ def create_chat_models_comparison_plot():
                 "Qwen 3 - 1.7b",
                 "Qwen 3 - 4b",
                 "Qwen 3 - 8b",
+                "Deepseek R1 - 8b",
                 "GLM4-Z1 - 9b",
                 "Qwen 3 - 14b",
                 "Qwen 3 - 32b",
