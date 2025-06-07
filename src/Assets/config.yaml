@@ -17,6 +17,8 @@ bark:
   model_precision: float16
   size: small
   speaker: v2/en_speaker_6
+chatterbox:
+  device: auto
 created_databases: {}
 database:
   chunk_overlap: 250
