@@ -331,10 +331,56 @@ the same quality.  The ChatTTS backend is also a good option that can be run bot
 quality than Bark or WhisperSpeech.  Lastly, the Google TTS backend is the least compute intensive.  However, it does not require a
 GPU and will instead connect to a free online Google service that provides TTS.
 
+### What is the Bark text to speech?
+Bark TTS by Suno AI is a fully generative, open-source text-to-audio model that produces highly expressive and realistic speech,
+even capable of non-verbal vocalizations like laughter or sighs. Unlike traditional TTS systems that strictly follow input text,
+Bark can "freestyle," deviating for prosodic expressiveness or ambient cues, which makes it especially useful for creative
+applications like character dialogue, storytelling, and game development. It supports over 100 built-in speaker presets and
+auto-detects more than a dozen languages, although English remains the most polished. Bark uses EnCodec and a GPT-style transformer
+under the hood, trading speed for quality, and typically requires GPU acceleration. Despite its occasional unpredictability, its
+rich emotional output and open MIT license make it a standout for experimental and expressive use cases.
+
+### What is the WhisperSpeech text to speech?
+WhisperSpeech by Collabora is a cutting-edge open-source project that "reverses" OpenAI's Whisper speech-to-text model to synthesize
+speech from semantic audio tokens, offering an exciting glimpse into the future of modular, multilingual TTS. Inspired by Google’s
+SPEAR-TTS, WhisperSpeech leverages Whisper’s deep linguistic understanding and language-neutral token representations to build a
+multilingual, speaker-aware system that supports voice cloning and polyglot speech (e.g. the same voice speaking in multiple languages).
+Though still under heavy development, early results show surprisingly natural and expressive audio, particularly given the open
+model’s small size. It’s not yet plug-and-play like Bark or ChatTTS, but its transparency, voice customization potential, and strong
+multilingual foundation make it a compelling choice for developers interested in training their own flexible, high-quality TTS pipeline.
+
+### What is the ChatTTS text to speech?
+ChatTTS is an open-source conversational TTS model specifically designed for dialogue generation, with a focus on natural prosody,
+expressive timing, and multi-speaker interactions. Trained on over 100,000 hours of English and Chinese speech, it delivers highly
+realistic and emotionally resonant voices tailored for chatbots and AI companions. Unlike many TTS engines, ChatTTS includes
+conversational structure like speaker turns and can even insert interjections like laughter using special tokens. While it lacks a
+large preset voice library like Bark, it can produce distinct speakers and supports fine-tuning on custom data. It runs efficiently
+on consumer GPUs and offers Python bindings, making it one of the most practical and expressive TTS options for developers aiming to
+build natural, back-and-forth conversational agents in English or Mandarin.
+
+### What is the Google TTS text to speech?
+Google TTS (Free Tier) offers industry-leading neural speech synthesis via a cloud API, backed by WaveNet and Neural2 models that
+produce ultra-clear, stable, and emotionally nuanced voices across 380+ voices and 50+ languages. Although not open-source, it
+provides a generous free tier (up to 4 million characters/month for standard voices and 1 million for WaveNet), making it highly
+accessible for small-scale use. Developers can fine-tune pronunciation and pacing using SSML, and even select expressive “Newscaster”
+or “Lively” voice styles. With near real-time performance via a fast cloud API and seamless Python integration, Google TTS is the gold
+standard for high-quality, multilingual TTS — ideal for production-ready applications where speech quality, reliability, and global
+language support outweigh the need for open-source control.
+
+### What is the Chatterbox text to speech?
+Chatterbox, developed by Resemble AI, is a cutting-edge open-source text-to-speech (TTS) model that sets a new standard in voice
+synthesis. Released under the permissive MIT license, it offers developers and creators unparalleled freedom to use, modify, and
+distribute the software. Chatterbox's standout features include zero-shot voice cloning, allowing it to mimic any voice with just a
+few seconds of reference audio and emotion exaggeration control. Its alignment-informed inference ensures ultra-stable and
+natural-sounding speech, making it ideal for real-time applications like voice assistants and interactive media. In blind evaluations,
+Chatterbox has been consistently preferred over proprietary models like ElevenLabs, highlighting its superior performance in
+generating high-quality, expressive speech. With its combination of advanced features, open-source accessibility, and exceptional
+speech synthesis quality, Chatterbox stands out as a powerful tool for developers seeking a versatile and ethical TTS solution.
+
 ### Which text to speech backend or models should I use
 Generally it's recommended to experiment with each to your liking.  However, in general Bark and WhisperSpeech produce the highest
-quality results, Chat TTS is below them but can be run on GPU as well as CPU, and Google TTS is comparable to Chat TTS in terms of
-quality but requires an Internet connection.
+quality results, Chat TTS and Chatterbox are below them but can be run on GPU as well as CPU, and Google TTS is comparable to
+Chat TTS in terms of quality but requires an Internet connection.
 
 ### Can I back up or restore my databases and are they backed up automatically
 When you create a vector database it is automatically backed up.  However, if you want to manually backup all databases you can go
