@@ -128,6 +128,7 @@ class SnowflakeEmbedding(BaseEmbeddingModel):
         return snow_kwargs
 
 
+# deprecated
 class StellaEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
         # 1) inherit all kwargs from the base class
@@ -150,6 +151,7 @@ class StellaEmbedding(BaseEmbeddingModel):
         return encode_kwargs
 
 
+# deprecated
 class Stella400MEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
         # 1) inherit all kwargs from the base class
@@ -184,6 +186,7 @@ class Stella400MEmbedding(BaseEmbeddingModel):
         return encode_kwargs
 
 
+# deprecated, only needed for deprecated gte-large-en-v1.5 and gte-base-en-v1.5 models
 class AlibabaEmbedding(BaseEmbeddingModel):
     def prepare_kwargs(self):
         # 1) inherit all kwargs from the base class
@@ -211,8 +214,6 @@ class AlibabaEmbedding(BaseEmbeddingModel):
 
 
 class BgeCodeEmbedding(BaseEmbeddingModel):
-    DEFAULT_INSTRUCTION = ("Given a question in text, retrieve relevant code that is relevant.")
-
     def prepare_kwargs(self):
         # 1) inherit all kwargs from the base class
         bge_kwargs = super().prepare_kwargs()
@@ -224,17 +225,6 @@ class BgeCodeEmbedding(BaseEmbeddingModel):
         })
 
         return bge_kwargs
-
-    def prepare_encode_kwargs(self):
-        encode_kwargs = super().prepare_encode_kwargs()
-
-        # 1) add the custom prompt formatting if a query is being embedded
-        if self.is_query:
-            encode_kwargs["prompt"] = (
-                f"<instruct>{self.DEFAULT_INSTRUCTION} <query>"
-            )
-
-        return encode_kwargs
 
 
 class InflyAndAlibabaEmbedding(BaseEmbeddingModel):
@@ -249,6 +239,25 @@ class InflyAndAlibabaEmbedding(BaseEmbeddingModel):
         })
 
         return infly_kwargs
+
+
+class QwenEmbedding(BaseEmbeddingModel):
+    def prepare_kwargs(self):
+        q_kwargs = super().prepare_kwargs()
+
+        # 1) update model_kwargs
+        q_kwargs.setdefault("model_kwargs", {}).update({
+            "attn_implementation": "sdpa",
+        })
+
+        # 2) update tokenizer_kwargs
+        q_kwargs["tokenizer_kwargs"] = {
+            **q_kwargs.get("tokenizer_kwargs", {}),
+            "padding_side": "left",
+            "max_length": 8192,
+        }
+
+        return q_kwargs
 
 
 def create_vector_db_in_process(database_name):
@@ -315,21 +324,23 @@ class CreateVectorDB:
             encode_kwargs['batch_size'] = 2
         else:
             batch_size_mapping = {
-                'stella_en_1.5B': 4,
+                # 'bge-code': 2,
+                'inf-retriever-v1-7b': 2,
+                'Qwen3-Embedding-8B': 2,
+                'Qwen3-Embedding-4B': 3,
+                'inf-retriever-v1-1.5b': 3,
+                'stella_en_1.5B': 4, # deprecated
+                'e5-base': 6,
                 'e5-large': 7,
                 'arctic-embed-l': 7,
-                'e5-base': 6,
                 'e5-small': 10,
                 'gte-large': 12,
                 'Granite-30m-English': 12,
                 'bge-small': 12,
                 'gte-base': 14,
                 'arctic-embed-m': 14,
-                'stella_en_400M_v5': 20,
-                'bge-code': 2,
-                'inf-retriever-v1-1.5b': 4,
-                'inf-retriever-v1-7b': 2,
-                'stella_en_1.5b_v5': 4,
+                'stella_en_400M_v5': 20, # deprecated
+
             }
 
             for key, value in batch_size_mapping.items():
@@ -342,26 +353,36 @@ class CreateVectorDB:
                         encode_kwargs['batch_size'] = value
                         break
 
-        if "snowflake" in embedding_model_name.lower():
-            print("Matched Snowflake condition")
+        if "qwen3-embedding" in embedding_model_name.lower():
+            print("Using QwenEmbedding class.")
+            model = QwenEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
+
+        elif "snowflake" in embedding_model_name.lower():
+            print("Using SnowflakeEmbedding class.")
             model = SnowflakeEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
+
         elif "alibaba" in embedding_model_name.lower():
-            print("Matched Alibaba condition")
+            print("Using InflyAndAlibabaEmbedding class.")
             model = InflyAndAlibabaEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
+
         elif "400m" in embedding_model_name.lower():
-            print("Matched Stella 400m condition")
+            print("Using Stella400MEmbedding class.")
             model = Stella400MEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
+
         elif "stella_en_1.5b_v5" in embedding_model_name.lower():
-            print("Matched Stella 1.5B condition")
+            print("Using StellaEmbedding class.")
             model = StellaEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
-        elif "bge-code" in embedding_model_name.lower():
-            print("Matches bge-code condition")
-            model = BgeCodeEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
+
+        # elif "bge-code" in embedding_model_name.lower():
+            # print("Using BgeCodeEmbeddingModel class.")
+            # model = BgeCodeEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
+
         elif "infly" in embedding_model_name.lower():
-            print("Matches infly condition")
+            print("Using InflyAndAlibabaEmbedding class.")
             model = InflyAndAlibabaEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
+
         else:
-            print("No conditions matched - using base model")
+            print("Using BaseEmbeddingModel class.")
             model = BaseEmbeddingModel(embedding_model_name, model_kwargs, encode_kwargs).create()
 
         logger.debug("🛈 %s tokenizer_kwargs=%s",
@@ -407,7 +428,7 @@ class CreateVectorDB:
                 chunk_counters[file_hash] += 1
                 tiledb_id = str(random.randint(0, MAX_UINT64 - 1))
 
-                # ── ensure page_content is a clean string ──────────────────────
+                # ensure page_content is a clean string
                 if hasattr(doc, 'page_content'):
                     if doc.page_content is None:
                         text_str = ""
@@ -425,7 +446,7 @@ class CreateVectorDB:
                 else:
                     text_str = str(doc).strip()
 
-                if not text_str: # silently drop zero-length chunks
+                if not text_str:
                     continue
 
                 if not isinstance(text_str, str):
@@ -466,7 +487,7 @@ class CreateVectorDB:
 
             all_texts = validated_texts
 
-            # # ── Save chunks for testing ──────────────────────────────────────
+            # Save chunks for testing
             # test_chunks_dir = self.ROOT_DIRECTORY / "Test_Chunks"
             # if test_chunks_dir.exists():
                 # shutil.rmtree(test_chunks_dir)
@@ -488,7 +509,7 @@ class CreateVectorDB:
 
             # my_cprint(f"Chunks saved to: {chunks_file}", "green")
 
-            # ── embed documents ───────────────────────────────────────────────
+            # embed documents
             embedding_start_time = time.time()
             vectors = embeddings.embed_documents(all_texts)
             embedding_end_time = time.time()
@@ -501,7 +522,7 @@ class CreateVectorDB:
                 for txt, vec in zip(all_texts, vectors)
             ]
 
-            # ── create TileDB vector store ────────────────────────────────────
+            # create TileDB vector store
             TileDB.from_embeddings(
                 text_embeddings=text_embed_pairs,
                 embedding=embeddings,
@@ -522,7 +543,7 @@ class CreateVectorDB:
             return hash_id_mappings
 
         except Exception as e:
-            # ── NEW: show full traceback from child process ───────────────────
+            # show full traceback from child process
             traceback.print_exc()
             logging.error(f"Error creating database: {str(e)}")
             if self.PERSIST_DIRECTORY.exists():
@@ -614,7 +635,7 @@ class CreateVectorDB:
         config_data = self.load_config(self.ROOT_DIRECTORY)
         EMBEDDING_MODEL_NAME = config_data.get("EMBEDDING_MODEL_NAME")
 
-        # list to hold "document objects"        
+        # list to hold document objects
         documents = []
 
         # load text document objects
@@ -659,7 +680,7 @@ class CreateVectorDB:
         if isinstance(texts, list) and texts:
             embeddings, encode_kwargs = self.initialize_vector_model(EMBEDDING_MODEL_NAME, config_data)
 
-            # Get hash->ID mappings along with creating the vector database
+            # Get hash->ID mappings and create the vector database
             hash_id_mappings = self.create_database(texts, embeddings)
 
             del texts
@@ -733,7 +754,7 @@ class QueryVectorDB:
         self.model_name = os.path.basename(model_path)
         compute_device  = self.config['Compute_Device']['database_query']
 
-        # ── outer kwargs passed to SentenceTransformer ──────────────
+        # outer kwargs passed to SentenceTransformer
         model_kwargs = {
             "device": compute_device,
             "trust_remote_code": True,
@@ -750,36 +771,55 @@ class QueryVectorDB:
         encode_kwargs = {"batch_size": 1}
 
         mp_lower = model_path.lower()
-        if "snowflake" in mp_lower:
-            embeddings = SnowflakeEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
-        elif "alibaba" in mp_lower:
+
+        if "qwen3-embedding" in mp_lower:
+            encode_kwargs["prompt"] = (
+                "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: <query>"
+            )
+
+            embeddings = QwenEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
+        elif "snowflake" in mp_lower or "intfloat" in mp_lower:
+            # snowflake and intfloat prompt
+            encode_kwargs["prompt"] = "query: "
+            if "snowflake" in mp_lower:
+                embeddings = SnowflakeEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
+            else:
+                embeddings = BaseEmbeddingModel(model_path, model_kwargs, encode_kwargs, is_query=True).create()
+
+        elif "alibaba" in mp_lower or "infly" in mp_lower:
+            # alibaba and infly prompt
+            encode_kwargs["prompt"] = (
+                "Instruct: Given a web search query, retrieve relevant passages that answer the query\n"
+                "Query: <query>"
+            )
             embeddings = InflyAndAlibabaEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
-        elif "400m" in mp_lower:
-            embeddings = Stella400MEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
-        elif "stella_en_1.5b_v5" in mp_lower:
-            embeddings = StellaEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
-        elif "infly" in mp_lower:
-            embeddings = InflyAndAlibabaEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
-        elif "bge-code" in mp_lower:
-            embeddings = BgeCodeEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
+
+        # elif "bge-code" in mp_lower:
+            # #bge-code prompt, highly customizable
+            # code_instruction = "Given a question in text, retrieve relevant code that is relevant."
+            # encode_kwargs["prompt"] = f"<instruct>{code_instruction}\n<query>"
+            # embeddings = BgeCodeEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
+
+        elif "stella" in mp_lower:
+            # stella prompt
+            encode_kwargs["prompt"] = ("Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: ")
+            if "400m" in mp_lower:
+                embeddings = Stella400MEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
+            else:
+                embeddings = StellaEmbedding(model_path, model_kwargs, encode_kwargs, is_query=True).create()
+
         else:
             if "bge" in mp_lower:
-                encode_kwargs["prompt"] = (
-                    "Represent this sentence for searching relevant passages: "
-                )
+                # bge prompt
+                encode_kwargs["prompt"] = ("Represent this sentence for searching relevant passages: ")
             embeddings = BaseEmbeddingModel(model_path, model_kwargs, encode_kwargs, is_query=True).create()
 
         return embeddings
-
 
     def initialize_database(self):
         persist_directory = Path(__file__).resolve().parent / "Vector_DB" / self.selected_database
 
         return TileDB.load(index_uri=str(persist_directory), embedding=self.embeddings, allow_dangerous_deserialization=True)
-
-    def is_special_prefix_model(self):
-        model_path = self.config['created_databases'][self.selected_database]['model']
-        return "intfloat" in model_path.lower() or "snowflake" in model_path.lower()
 
     @torch.inference_mode()
     def search(self, query, k: Optional[int] = None, score_threshold: Optional[float] = None):
@@ -797,9 +837,6 @@ class QueryVectorDB:
         
         k = k if k is not None else int(self.config['database']['contexts'])
         score_threshold = score_threshold if score_threshold is not None else float(self.config['database']['similarity'])
-
-        if self.is_special_prefix_model():
-            query = f"query: {query}"
 
         relevant_contexts = self.db.similarity_search_with_score(
             query,

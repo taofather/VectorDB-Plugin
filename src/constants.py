@@ -62,7 +62,9 @@ priority_libs = {
             "nvidia-cuda-nvrtc-cu12==12.4.127",
             "nvidia-cuda-nvcc-cu12==12.4.131",
             "nvidia-cufft-cu12==11.2.1.3",
+            "nvidia-cusparse-cu12==12.3.1.170", # nvidia-cusparse-cu12 12.3.1.170 requires nvidia-nvjitlink-cu12
             "nvidia-cudnn-cu12==9.1.0.70",
+            # "nvidia-cusparselt-cu12 0.6.3",
             "nvidia-ml-py==12.575.51",
         ],
         "CPU": [
@@ -87,7 +89,9 @@ priority_libs = {
             "nvidia-cuda-nvrtc-cu12==12.4.127",
             "nvidia-cuda-nvcc-cu12==12.4.131",
             "nvidia-cufft-cu12==11.2.1.3",
+            "nvidia-cusparse-cu12==12.3.1.170", # nvidia-cusparse-cu12 12.3.1.170 requires nvidia-nvjitlink-cu12
             "nvidia-cudnn-cu12==9.1.0.70",
+            # "nvidia-cusparselt-cu12 0.6.3",
             "nvidia-ml-py==12.575.51",
         ],
         "CPU": [
@@ -103,7 +107,7 @@ libs = [
     "accelerate==1.7.0",
     "aiofiles==24.1.0",
     "aiohappyeyeballs==2.6.1",
-    "aiohttp==3.12.0", # langchain libraries require <4
+    "aiohttp==3.12.11", # langchain libraries require <4
     "aiosignal==1.3.2", # only required by aiohttp
     "anndata==0.11.4",
     "annotated-types==0.7.0",
@@ -127,7 +131,7 @@ libs = [
     "colorama==0.4.6",
     "coloredlogs==15.0.1",
     "contourpy==1.3.2", # only required by matplotlib
-    "cryptography==45.0.2", # only required by unstructured library
+    "cryptography==45.0.3", # only required by unstructured library
     "ctranslate2==4.6.0",
     "cycler==0.12.1",
     "dataclasses-json==0.6.7",
@@ -149,21 +153,21 @@ libs = [
     "fastprogress==1.0.3", # only required by whisperspeech
     "filetype==1.2.0",
     "filelock==3.18.0",
-    "fonttools==4.58.0", # only required by matplotlib
+    "fonttools==4.58.2", # only required by matplotlib
     "frozendict==2.4.6",
-    "frozenlist==1.5.0",
+    "frozenlist==1.6.2",
     "fsspec==2025.3.0", # datasets 3.6.0 requires <=2025.3.0
     "fsspec[http]==2025.3.0", # datasets 3.6.0 requires <=2025.3.0
-    "greenlet==3.2.2",
+    "greenlet==3.2.3",
     "gTTS==2.5.4",
-    "hf_xet==1.1.2",
+    "hf_xet==1.1.3",
     "h11==0.16.0",
-    "h5py==3.13.0",
+    "h5py==3.14.0",
     "html5lib==1.1", # only required by unstructured
     "httpcore==1.0.9",
     "httpx==0.28.1",
     "httpx-sse==0.4.0",
-    "huggingface-hub==0.32.0", # tokenizers 0.21.1 requires >=0.16.4,<1.0
+    "huggingface-hub==0.32.4", # tokenizers 0.21.1 requires >=0.16.4,<1.0
     "humanfriendly==10.0",
     "HyperPyYAML==1.2.2",
     "idna==3.10",
@@ -178,11 +182,11 @@ libs = [
     "kiwisolver==1.4.8",
     "langchain==0.3.25",
     "langchain-community==0.3.24",
-    "langchain-core==0.3.61",
+    "langchain-core==0.3.64",
     "langchain-huggingface==0.2.0",
     "langchain-text-splitters==0.3.8",
     "langdetect==1.0.9",
-    "langsmith==0.3.42",
+    "langsmith==0.3.45",
     "llvmlite==0.44.0", # only required by numba
     "lxml==5.4.0",
     "Markdown==3.8",
@@ -199,7 +203,7 @@ libs = [
     "mypy-extensions==1.1.0",
     "natsort==8.4.0",
     "nest-asyncio==1.6.0",
-    "networkx==3.4.2",
+    "networkx==3.5",
     "nltk==3.9.1", # not higher; gives unexplained error
     "numba==0.61.2", # only required by openai-whisper and chattts
     # langchain requires at least 1.26.2
@@ -207,10 +211,10 @@ libs = [
     # Scipy requires less than 2.5
     # "numpy==1.26.4",
     "numpy==2.2.2",
-    "ocrmypdf==16.10.1",
+    "ocrmypdf==16.10.2",
     "olefile==0.47",
     "onnx==1.18.0", # required by chatterbox-lite
-    "openai==1.82.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
+    "openai==1.84.0", # only required by chat_lm_studio.py script and whispers2t (if using openai vanilla backend)
     "openai-whisper==20240930", # only required by whisper_s2t (if using openai vanilla backend)
     "openpyxl==3.1.5",
     "optimum==1.25.3",
@@ -218,16 +222,16 @@ libs = [
     "orderly-set==5.4.1", # deepdiff 8.2.0 requires orderly-set>=5.3.0,<6
     "orjson==3.10.18",
     "packaging==24.2", # langchain-core==0.3.60 requires less than 25
-    "pandas==2.2.3",
+    "pandas==2.3.0",
     "pdfminer.six==20250506", # ocrmypdf 16.10.1 requires >=20220319
-    "pikepdf==9.7.0", # only needed by ocrmypdf
+    "pikepdf==9.8.1", # only needed by ocrmypdf
     "pillow==11.2.1",
     "pi-heif==0.22.0", # only needed by ocrmypdf, but not for my usage of ocrmypdf
     "pipdeptree",
     "platformdirs==4.3.8",
     "pluggy==1.6.0", # only needed by ocrmypdf
     "propcache==0.3.1",
-    "protobuf==6.31.0",
+    "protobuf==6.31.1",
     "psutil==7.0.0",
     "pyarrow==20.0.0",
     "pybase16384==0.3.8", # only required by chattts
@@ -240,7 +244,7 @@ libs = [
     "PyOpenGL-accelerate==3.1.9",
     "pypandoc==1.15",
     "pyparsing==3.2.3",
-    "pypdf==5.5.0",
+    "pypdf==5.6.0",
     "pyreadline3==3.5.4",
     "python-dateutil==2.9.0.post0",
     "python-docx==1.1.2",
@@ -255,11 +259,11 @@ libs = [
     "requests==2.32.3",
     "requests-toolbelt==1.0.0",
     "rich==14.0.0",
-    "ruamel.yaml==0.18.11",
+    "ruamel.yaml==0.18.13",
     "ruamel.yaml.clib==0.2.12",
     "s3tokenizer==0.1.7", # required by chatterbox-lite
     "safetensors==0.5.3",
-    "scikit-learn==1.6.1",
+    "scikit-learn==1.7.0",
     "scipy==1.15.3",
     "sentence-transformers==4.1.0",
     "sentencepiece==0.2.0",
@@ -288,8 +292,8 @@ libs = [
     "tqdm==4.67.1",
     "transformers==4.52.4",
     "typing-inspection==0.4.1", # required by pydantic and pydantic-settings
-    "typing_extensions==4.13.2",
-    "unstructured-client==0.35.0",
+    "typing_extensions==4.14.0",
+    "unstructured-client==0.36.0",
     "tzdata==2025.2",
     "urllib3==2.4.0", # requests 2.32.3 requires <3
     "vector-quantize-pytorch==1.22.16",
@@ -301,12 +305,12 @@ libs = [
     "xlrd==2.0.1",
     "xxhash==3.5.0",
     "yarl==1.20.0", # aiohttp requires <2
-    "zipp==3.21.0",
+    "zipp==3.22.0",
     "zstandard==0.23.0" # only required by langsmith 3+
 ]
 
 full_install_libs = [
-    "PySide6==6.9.0",
+    "PySide6==6.9.1",
     "pymupdf==1.26.0",
     "unstructured==0.17.2"
 ]
@@ -501,19 +505,19 @@ CHAT_MODELS = {
 }
 
 VECTOR_MODELS = {
-    'Alibaba-NLP': [
-        {
-            'name': 'gte-Qwen2-1.5B-instruct',
-            'dimensions': 1536,
-            'max_sequence': 8192,
-            'size_mb': 7100,
-            'repo_id': 'Alibaba-NLP/gte-Qwen2-1.5B-instruct',
-            'cache_dir': 'Alibaba-NLP--gte-Qwen2-1.5B-instruct',
-            'type': 'vector',
-            'parameters': '1780m',
-            'precision': 'float32'
-        },
-    ],
+    # 'Alibaba-NLP': [
+        # {
+            # 'name': 'gte-Qwen2-1.5B-instruct',
+            # 'dimensions': 1536,
+            # 'max_sequence': 8192,
+            # 'size_mb': 7100,
+            # 'repo_id': 'Alibaba-NLP/gte-Qwen2-1.5B-instruct',
+            # 'cache_dir': 'Alibaba-NLP--gte-Qwen2-1.5B-instruct',
+            # 'type': 'vector',
+            # 'parameters': '1780m',
+            # 'precision': 'float32'
+        # },
+    # ],
     'BAAI': [
         {
             'name': 'bge-small-en-v1.5',
@@ -667,6 +671,41 @@ VECTOR_MODELS = {
             # 'precision': 'float32'
         # },
     # ],
+    'Qwen': [
+        {
+            'name': 'Qwen3-Embedding-0.6B',
+            'dimensions': 1024,
+            'max_sequence':8192,
+            'size_mb': 1190,
+            'repo_id': 'Qwen/Qwen3-Embedding-0.6B',
+            'cache_dir': 'Qwen--Qwen3-Embedding-0.6B',
+            'type': 'vector',
+            'parameters': '596m',
+            'precision': 'bfloat16'
+        },
+        {
+            'name': 'Qwen3-Embedding-4B',
+            'dimensions': 2560,
+            'max_sequence':8192,
+            'size_mb': 4970,
+            'repo_id': 'Qwen/Qwen3-Embedding-4B',
+            'cache_dir': 'Qwen--Qwen3-Embedding-4B',
+            'type': 'vector',
+            'parameters': '4020m',
+            'precision': 'bfloat16'
+        },
+        {
+            'name': 'Qwen3-Embedding-8B',
+            'dimensions': 4096,
+            'max_sequence':8192,
+            'size_mb': 15136,
+            'repo_id': 'Qwen/Qwen3-Embedding-8B',
+            'cache_dir': 'Qwen--Qwen3-Embedding-8B',
+            'type': 'vector',
+            'parameters': '7570m',
+            'precision': 'bfloat16'
+        },
+    ],
     'Snowflake': [
         {
             'name': 'arctic-embed-m-v2.0',
@@ -2952,26 +2991,23 @@ system_message = "You are a helpful person who clearly and directly answers ques
 rag_string = "Here are the contexts to base your answer on.  However, I need to reiterate that I only want you to base your response on these contexts and do not use outside knowledge that you may have been trained with."
 
 
-"""
-*********************
-Torch Prebuilt Wheels
-*********************
+r"""
+****************************
+Torch and CUDA Compatibility
+****************************
 
-# Torch prebuilt wheels are named "cu121," "cu124" or "cu126"
+# Pytorch provides prebuilt wheels compatible with CUDA as follows.  You can still compile from source for additional compatibility.
 +---------------+----------------------------------
 | Wheel Name    | Torch Versions Supported
 +---------------+----------------------------------
-| cu126         | 2.6.0
-| cu124         | 2.6.0, 2.5.1, 2.5.0, 2.4.1, 2.4.0
+| cu128         | 2.7.0, 2.7.1
+| cu126         | 2.6.0, 2.7.0, 2.7.1
+| cu124         | 2.4.0, 2.4.1, 2.5.0, 2.5.1, 2.6.0
 
-************
-Torch & CUDA
-************
-
-# According to https://github.com/pytorch/pytorch/blob/main/.github/scripts/generate_binary_build_matrix.py
-# torch prebuilt wheels are compatible with the following Nvidia libraries:
+# "CUDA" consists of multiple libraries, each having its own version.  This table maps those versions to a particular Pytorch wheel.
+# Taken from https://github.com/pytorch/pytorch/blob/main/.github/scripts/generate_binary_build_matrix.py
 +--------------+------------+------------+------------+
-|              |   cu124    |   cu126    |   cu128    | * cu128 not officially released yet
+|              |   cu124    |   cu126    |   cu128    |
 +--------------+------------+------------+------------+
 | cuda-nvrtc   | 12.4.127   | 12.6.77    | 12.8.61    |
 | cuda-runtime | 12.4.127   | 12.6.77    | 12.8.57    |
@@ -2983,70 +3019,158 @@ Torch & CUDA
 | cusolver     | 11.6.1.9   | 11.7.1.2   | 11.7.2.55  |
 | cusparse     | 12.3.1.170 | 12.5.4.2   | 12.5.7.53  |
 | cusparselt   | 0.6.2      | 0.6.3      | 0.6.3      |
-| nccl         | 2.25.1     | 2.25.1     | 2.25.1     |
+| nccl         | 2.25.1     | 2.21.5     | 2.26.2     |
 | nvtx         | 12.4.127   | 12.6.77    | 12.8.55    |
 | nvjitlink    | 12.4.127   | 12.6.85    | 12.8.61    |
-| cufile       | -          | 1.11.1.6   | 1.13.0.11  |
+| cufile       | -          |            | 1.13.0.11  | # linux only
 +--------------+------------+------------+------------+
-* cuda-runtime 12.6.77 is from CUDA 12.6.2; otherwise, cu126 uses all CUDA 12.6.3 libraries
-* .json files here have all the info: https://developer.download.nvidia.com/compute/cuda/redist/
-* in short, torch is not 100% compatible with CUDA 12.1.0 or 12.4.0, for example, or any other version.
+* "CUDA" as a whole uses release numbers.  Pytorch does not always use individual CUDA libraries that were packaged in a CUDA release.
+* Moreover, "cu126" is ambiguous and could mean CUDA release 12.6.1 or 12.6.2, for example.
+* Trace back each: https://docs.nvidia.com/cuda/archive/12.6.3/cuda-toolkit-release-notes/index.html or https://developer.download.nvidia.com/compute/cuda/redist/
+
 
 ************************
-"Official Support Matrix
+"Official" Support Matrix
 ************************ 
 
+#Even though Pytorch may release wheels for a particular torch+CUDA combination, it still labels some as "experimental."
 # https://github.com/pytorch/pytorch/blob/main/RELEASE.md#release-compatibility-matrix
-+-------+----------------------------+---------------------------------------------------+----------------------------+
-| Torch | Python                     | Stable                                            | Experimental               |
-+-------+----------------------------+---------------------------------------------------+----------------------------+
-| 2.7   | >=3.9, <=3.13              | CUDA 11.8 (cudnn 9.1.0.70), 12.6 (cudnn 9.5.1.17) | CUDA 12.8 (CUDNN 9.7.1.26) | ***
-+-------+----------------------------+---------------------------------------------------+----------------------------+
-| 2.6   | >=3.9, <=3.13              | CUDA 11.8, 12.4 + CUDNN 9.1.0.70                  | CUDA 12.6 + CUDNN 9.5.1.17 | ***
-+-------+----------------------------+---------------------------------------------------+----------------------------+
-| 2.5   | >=3.9, <=3.12, (3.13 exp.) | CUDA 11.8, 12.1, 12.4 + CUDNN 9.1.0.70            | None                       |
-+-------+----------------------------+---------------------------------------------------+----------------------------+
-| 2.4   | >=3.8, <=3.12              | CUDA 11.8, 12.1 + CUDNN 9.1.0.70                  | CUDA 12.4 + CUDNN 9.1.0.70 |
-+-------+----------------------------+---------------------------------------------------+----------------------------+
-| 2.3   | >=3.8, <=3.11, (3.12 exp.) | CUDA 11.8 + CUDNN 8.7.0.84                        | CUDA 12.1 + CUDNN 8.9.2.26 |
-+-------+----------------------------+---------------------------------------------------+----------------------------+
-| 2.2   | >=3.8, <=3.11, (3.12 exp.) | CUDA 11.8 + CUDNN 8.7.0.84                        | CUDA 12.1 + CUDNN 8.9.2.26 |
-+-------+----------------------------+---------------------------------------------------+----------------------------+
++-------+----------------------------+-------------------------------------------+----------------------------+
+| Torch | Python                     | Stable                                    | Experimental               |
++-------+----------------------------+-------------------------------------------+----------------------------+
+| 2.7   | >=3.9, <=3.13              | CUDA 12.6 (cudnn 9.5.1.17)                | CUDA 12.8 (CUDNN 9.7.1.26) |
++-------+----------------------------+-------------------------------------------+----------------------------+
+| 2.6   | >=3.9, <=3.13              | CUDA 12.4 + CUDNN 9.1.0.70                | CUDA 12.6 + CUDNN 9.5.1.17 |
++-------+----------------------------+-------------------------------------------+----------------------------+
+| 2.5   | >=3.9, <=3.12, (3.13 exp.) | CUDA 12.1, 12.4 + CUDNN 9.1.0.70          | None                       |
++-------+----------------------------+-------------------------------------------+----------------------------+
+
 
 ***********************
 Torch & Python & Triton
 ***********************
 
-# examining the METADATA file for each torch wheel reveals the following compatibility
-# torch wheels are named after the torch, cuda, and python version supported - e.g. "2.6.0+cu126-cp312"
-+--------+-------+--------+--------+
-| Torch  | CUDA  | Python | Triton |
-+--------+-------+--------+--------+
-| 2.6.0  | cu126 |  3.13  |  3.2.0 |
-| 2.6.0  | cu126 |  3.12  |  3.2.0 |
-| 2.6.0  | cu126 |  3.11  |  3.2.0 |
-| 2.6.0  | cu124 |  3.13  |  3.2.0 |
-| 2.6.0  | cu124 |  3.12  |  3.2.0 |
-| 2.6.0  | cu124 |  3.11  |  3.2.0 |
-| 2.5.1  | cu124 |  3.12  |  3.1.0 |
-| 2.5.1  | cu124 |  3.11  |  3.1.0 |
-| 2.5.0  | cu124 |  3.12  |  3.1.0 |
-| 2.5.0  | cu124 |  3.11  |  3.1.0 |
-| 2.4.1  | cu124 |  3.12  |  3.0.0 |
-| 2.4.1  | cu124 |  3.11  |  3.0.0 |
-| 2.4.0  | cu124 |  3.12  |  3.0.0 |
-| 2.4.0  | cu124 |  3.11  |  3.0.0 |
-+--------+-------+--------+--------+
+# Triton generates custom CUDA kernels for GPU execution and can (but is not required) to be used with torch
+# The METADATA file for each torch wheel shows its compatibility with Python, Triton, and Sympy
++--------+-------+--------+--------+----------+
+| Torch  | CUDA  | Python | Triton |   Sympy  |
++--------+-------+--------+--------+----------+
+| 2.7.1  | cu128 |  3.13  |    ?   | >=1.13.3 |
+| 2.7.1  | cu128 |  3.12  |    ?   | >=1.13.3 |
+| 2.7.1  | cu128 |  3.11  |    ?   | >=1.13.3 |
+| 2.7.1  | cu126 |  3.13  |    ?   | >=1.13.3 |
+| 2.7.1  | cu126 |  3.12  |    ?   | >=1.13.3 |
+| 2.7.1  | cu126 |  3.11  |    ?   | >=1.13.3 |
+| 2.7.0  | cu128 |  3.13  |  3.3.0 | >=1.13.3 |
+| 2.7.0  | cu128 |  3.12  |  3.3.0 | >=1.13.3 |
+| 2.7.0  | cu128 |  3.11  |  3.3.0 | >=1.13.3 |
+| 2.7.0  | cu126 |  3.13  |  3.3.0 | >=1.13.3 |
+| 2.7.0  | cu126 |  3.12  |  3.3.0 | >=1.13.3 |
+| 2.7.0  | cu126 |  3.11  |  3.3.0 | >=1.13.3 |
+| 2.6.0  | cu126 |  3.13  |  3.2.0 | 1.13.1   |
+| 2.6.0  | cu126 |  3.12  |  3.2.0 | 1.13.1   |
+| 2.6.0  | cu126 |  3.11  |  3.2.0 | 1.13.1   |
+| 2.6.0  | cu124 |  3.13  |  3.2.0 | 1.13.1   |
+| 2.6.0  | cu124 |  3.12  |  3.2.0 | 1.13.1   |
+| 2.6.0  | cu124 |  3.11  |  3.2.0 | 1.13.1   |
+| 2.5.1  | cu124 |  3.12  |  3.1.0 | 1.13.1   |
+| 2.5.1  | cu124 |  3.11  |  3.1.0 | 1.13.1   |
+| 2.5.0  | cu124 |  3.12  |  3.1.0 | 1.13.1   |
+| 2.5.0  | cu124 |  3.11  |  3.1.0 | 1.13.1   |
+| 2.4.1  | cu124 |  3.12  |  3.0.0 | Sympy    |
+| 2.4.1  | cu124 |  3.11  |  3.0.0 | Sympy    |
+| 2.4.0  | cu124 |  3.12  |  3.0.0 | Sympy    |
+| 2.4.0  | cu124 |  3.11  |  3.0.0 | Sympy    |
++--------+-------+--------+--------+----------+
+* Excludes Python 3.10 wheels
+* Triton 3.0.0 and earlier wheels: https://github.com/jakaline-dev/Triton_win/releases (do not support Python 3.12)
+* Triton 3.1.0 and later wheels: https://github.com/woct0rdho/triton-windows/releases (supports Python 3.12)
+* Since the release triton-windows==3.2.0.post11, the wheels are published to https://pypi.org/project/triton-windows/
 
-*************
-Triton Wheels
-*************
+RTX 50xx (Blackwell)
+This only works with Triton >= 3.3, PyTorch >= 2.7, and CUDA 12.8 .
 
-* 3.0.0 and earlier wheels are located here: https://github.com/jakaline-dev/Triton_win/releases
-  * does NOT support Python 3.12
+RTX 40xx (Ada)
+This is officially supported by Triton.
 
-* 3.1.0 and later wheels located here: https://github.com/woct0rdho/triton-windows/releases
- * supports Python 3.12
+RTX 30xx (Ampere)
+fp8 only works on Nvidia GPUs with sm >= 89
+This is officially supported by Triton, but fp8 (also known as float8) will not work, see the known issue. I recommend to use GGUF instead of fp8 models in this case.
+
+RTX 20xx (Turing) or older
+This is not officially supported by Triton. It can run some simple AI models, but not always. fp8 (also known as float8) and bf16 (also known as bfloat16) will not work. I recommend to use GGUF instead of fp8 or bf16 models in this case.
+
+Triton 3.3 works with PyTorch >= 2.7 .
+
+Triton 3.2 works with PyTorch >= 2.6 .
+
+Triton 3.1 works with PyTorch >= 2.4 . PyTorch 2.3 and older are not supported.
+
+Since the release triton-windows==3.2.0.post13, TinyCC is bundled in the Triton wheels, so you don't need to manually install a C compiler to use Triton. Packages that directly call triton.jit, such as SageAttention, will just work.
+
+You still need to install a C++ compiler if you use torch.compile targeting CPU. This may happen when you use nodes like 'CompileModel' in ComfyUI. Triton does not affect how PyTorch configures the C++ compiler in this case.
+
+If you need to override the C compiler, you can set the environment variable CC. MSVC, GCC, and Clang are supported for the JIT compilation in Triton.
+
+
+Instructions for older or custom wheels without bundled TinyCC
+
+If you don't have a C compiler, I recommend to install MSVC and Windows SDK.
+
+    You can install them in Visual Studio
+        If you don't want to install the whole Visual Studio, you can just install Visual Studio Build Tools
+    Visual Studio >= 2017 is supported
+    Choose the latest version of MSVC and Windows SDK from the list
+
+Then you need to add the path containing cl.exe to the Windows PATH:
+
+    The path is like C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.43.34808\bin\Hostx64\x64
+    Change the version numbers according to your installation, and make sure this folder accually exists on your computer
+    If you open a new PowerShell, type cl, and it shows Microsoft (R) C/C++ Optimizing Compiler ..., then you're doing right
+
+vcredist is required (also known as 'Visual C++ Redistributable for Visual Studio 2015-2022', msvcp140.dll, vcruntime140.dll), because libtriton.pyd is compiled by MSVC. Install it from https://aka.ms/vs/17/release/vc_redist.x64.exe
+
+Now you can install triton-windows 3.3, or upgrade the already installed version. To prevent breaking with your installed PyTorch when a new version of Triton is released in future, you can limit the version to be < 3.4:
+
+pip install -U "triton-windows<3.4"
+
+For Triton 3.2, you need:
+
+pip install -U "triton-windows<3.3"
+
+Before using Triton in larger projects like ComfyUI, please run the following script to test if Triton itself works.
+
+    You need to save the code in a file, such as test_triton.py, then run python test_triton.py
+    When you open an issue, please show the command you use to run this test, and the full error log
+
+import torch
+import triton
+import triton.language as tl
+
+@triton.jit
+def add_kernel(x_ptr, y_ptr, output_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
+    pid = tl.program_id(axis=0)
+    block_start = pid * BLOCK_SIZE
+    offsets = block_start + tl.arange(0, BLOCK_SIZE)
+    mask = offsets < n_elements
+    x = tl.load(x_ptr + offsets, mask=mask)
+    y = tl.load(y_ptr + offsets, mask=mask)
+    output = x + y
+    tl.store(output_ptr + offsets, output, mask=mask)
+
+def add(x: torch.Tensor, y: torch.Tensor):
+    output = torch.empty_like(x)
+    n_elements = output.numel()
+    grid = lambda meta: (triton.cdiv(n_elements, meta["BLOCK_SIZE"]),)
+    add_kernel[grid](x, y, output, n_elements, BLOCK_SIZE=1024)
+    return output
+
+a = torch.rand(3, device="cuda")
+b = a + a
+b_compiled = add(a, a)
+print(b_compiled - b)
+print("If you see tensor([0., 0., 0.], device='cuda:0'), then it works")
+
 
 ************
 cuDNN & CUDA
@@ -3182,7 +3306,4 @@ Ctranslate2 3.24.0 - last to use cuDNN 8.1.1 with CUDA 11.2.2 by default
 Ctranslate2 4.0.0 - first to use cuDNN 8.8.0 with CUDA 12.2 by default
 Ctranslate2 4.5.0 - first to use cuDNN 9.1 with CUDA 12.2 by default
 
-# based on /blob/master/python/tools/prepare_build_environment_windows.sh
-
-
-"""
+# based on /blob/master/python/tools/prepare_build_environment_windows.sh"""
