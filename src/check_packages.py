@@ -38,7 +38,7 @@ class OutdatedPackagesWorker(QObject):
                 if response.status != 200:
                     raise Exception(f"PyPI returned status code {response.status}")
                 return json.load(response)['info']['version']
-        except urllib.error.URLError as e:
+        except urllib.error.URLError as e: 
             raise Exception(f"Network error: {str(e)}")
         except TimeoutError:
             raise Exception("Connection timed out")
@@ -523,7 +523,7 @@ class PackageChecker(QMainWindow):
 
     def show_reverse_dependencies(self, package_name):
         try:
-            command = ["pipdeptree", "--reverse", "--packages", package_name]
+            command = ["pipdeptree", "--reverse", "--packages", package_name, "--depth", "1"]
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             stdout, stderr = process.communicate()
             

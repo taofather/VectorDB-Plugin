@@ -45,7 +45,7 @@ def get_supported_quantizations(device_type):
 
 def update_config_file(**system_info):
     full_config_path = Path('config.yaml').resolve()
-    
+
     with open(full_config_path, 'r', encoding='utf-8') as stream:
         config_data = yaml.safe_load(stream)
 

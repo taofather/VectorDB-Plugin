@@ -15,8 +15,6 @@ def create_chat_models_comparison_plot():
     model_categories = {
         "coding": {
             "models": [
-                # "Qwen Coder - 1.5b",
-                # "Qwen Coder - 3b",
                 "Seed Coder - 8b"
             ],
             "color": "#DAA520",
@@ -40,8 +38,6 @@ def create_chat_models_comparison_plot():
         },
         "coding_and_thinking": {
             "models": [
-                # "Olympic Coder - 7b",
-                # "Olympic Coder - 32b"
             ],
             "color": "#8B0000",
 

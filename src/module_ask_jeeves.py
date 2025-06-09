@@ -22,7 +22,7 @@ import numpy as np
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QTextEdit, 
     QLineEdit, QMessageBox, QPushButton, QLabel,
-    QHBoxLayout, QSizePolicy, QComboBox, QApplication
+    QHBoxLayout, QSizePolicy, QComboBox, QApplication, QSpinBox
 )
 from PySide6.QtCore import QThread, Signal, Qt, QTimer, QObject
 from PySide6.QtGui import QTextCursor, QPixmap
@@ -37,6 +37,7 @@ from download_model import ModelDownloader, model_downloaded_signal
 from database_interactions import QueryVectorDB
 from module_kokoro import KokoroTTS
 from utilities import normalize_chat_text
+
 
 class GenerationWorker(QThread):
     token_signal = Signal(str)
@@ -129,6 +130,17 @@ class ChatWindow(QMainWindow):
         self.eject_button.clicked.connect(self.eject_model)
         self.eject_button.setEnabled(False)
         model_layout.addWidget(self.eject_button)
+
+        self.context_label = QLabel("Contexts:")
+        self.context_label.setFixedHeight(30)
+
+        self.context_spin = QSpinBox()
+        self.context_spin.setRange(1, 10)      # allow 1-20
+        self.context_spin.setValue(5)          # default 5
+        self.context_spin.setFixedHeight(30)
+
+        model_layout.addWidget(self.context_label)
+        model_layout.addWidget(self.context_spin)
 
         self.layout.addLayout(model_layout)
 
@@ -226,6 +238,16 @@ class ChatWindow(QMainWindow):
         self.tts_worker = None
         self.is_speaking = False
 
+    def _ensure_model(self) -> None:
+        """
+        Download or resume-download the model if *model.bin* is missing.
+        (Keeps everything else that is already in the cache.)
+        """
+        model_dir = Path(self.model_dir)
+        if not (model_dir / "model.bin").exists():
+            print("model.bin missing – redownloading just that file …")
+            self._download_model()
+
     def eject_model(self):
         if self.generator:
             del self.generator
@@ -294,6 +316,7 @@ class ChatWindow(QMainWindow):
         self._load_model()
 
     def _load_model(self):
+        self._ensure_model()
         physical_cores = max(1, psutil.cpu_count(logical=False) - 1)
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -361,6 +384,7 @@ class ChatWindow(QMainWindow):
         self.chat_display.clear()
 
         try:
+            k_value = self.context_spin.value()
             contexts, metadata = self.vector_db.search(user_message, k=5, score_threshold=0.9)
             if not contexts:
                 QMessageBox.warning(self, "No Contexts Found", "No relevant contexts were found for your query.")
