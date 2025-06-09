@@ -24,10 +24,11 @@ class VectorModelsTab(QWidget):
            'BAAI': 4,
            # 'NovaSearch': 3,
            'intfloat': 4,
-           'Alibaba-NLP': 2,
+           # 'Alibaba-NLP': 2,
            'IBM': 3,
            'infly': 3,
            'Snowflake': 3,
+           'Qwen': 4
        }
 
        models_dir = Path('Models')

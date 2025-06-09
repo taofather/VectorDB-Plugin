@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from chart_all_gpus import create_gpu_comparison_plot
 from chart_models_chat import create_chat_models_comparison_plot
 from chart_models_vision import create_vision_models_comparison_plot
+from chart_models_vector import create_vector_models_comparison_plot
+
 from constants import CustomButtonStyles
 
 class WorkerThread(QThread):
@@ -50,6 +52,10 @@ class MiscTab(QWidget):
        self.chart_vision_models_button.clicked.connect(self.chart_vision_models)
        self.chart_vision_models_button.setToolTip("Compare various vision models.")
 
+       self.chart_vector_models_button = QPushButton("Vector Models")
+       self.chart_vector_models_button.clicked.connect(self.chart_vector_models)
+       self.chart_vector_models_button.setToolTip("Compare various vector/embedding models.")
+
        self.gpu_count_combo = QComboBox()
        self.gpu_count_combo.addItems(["4-6", "8", "10-12", "16-32"])
        self.gpu_count_combo.setCurrentIndex(0)
@@ -60,7 +66,8 @@ class MiscTab(QWidget):
        self.chart_gpus_button.setStyleSheet(CustomButtonStyles.GREEN_BUTTON_STYLE)
        self.chart_chat_models_button.setStyleSheet(CustomButtonStyles.BLUE_BUTTON_STYLE)
        self.chart_vision_models_button.setStyleSheet(CustomButtonStyles.TEAL_BUTTON_STYLE)
-       
+       self.chart_vector_models_button.setStyleSheet(CustomButtonStyles.PURPLE_BUTTON_STYLE)
+
        center_button_layout = QHBoxLayout()
        center_button_layout.addStretch(1)
        center_button_layout.addWidget(self.backup_all_button)
@@ -69,6 +76,7 @@ class MiscTab(QWidget):
        center_button_layout.addWidget(self.gpu_count_combo)
        center_button_layout.addWidget(self.chart_chat_models_button)
        center_button_layout.addWidget(self.chart_vision_models_button)
+       center_button_layout.addWidget(self.chart_vector_models_button)
        center_button_layout.addStretch(1)
        
        self.layout.addLayout(center_button_layout)
@@ -190,3 +198,17 @@ class MiscTab(QWidget):
    def reset_chart_vision_models_button(self):
        self.set_button_text(self.chart_vision_models_button, "Vision Models")
        self.chart_vision_models_button.setEnabled(True)
+
+   def chart_vector_models(self):
+       self.chart_vector_models_button.setEnabled(False)
+       self.set_button_text(self.chart_vector_models_button, "Charting...")
+
+       fig = create_vector_models_comparison_plot()
+       plt.figure(fig.number)
+       plt.show(block=False)
+
+       QTimer.singleShot(500, self.reset_chart_vector_models_button)
+
+   def reset_chart_vector_models_button(self):
+       self.set_button_text(self.chart_vector_models_button, "Vector Models")
+       self.chart_vector_models_button.setEnabled(True)
