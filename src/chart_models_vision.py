@@ -7,8 +7,8 @@ def create_vision_models_comparison_plot():
     model_categories = {
         "florence": {
             "models": [
-                "Florence2-Large (cpu)",
-                "Florence2-Base (cpu)",
+                # "Florence2-Large (cpu)",
+                # "Florence2-Base (cpu)",
             ],
             "color": "#2E8B57",
             "label": "Can run on CPU"
@@ -16,17 +16,15 @@ def create_vision_models_comparison_plot():
     }
 
     data = [
-        {"model": "Florence2-Large (cpu)", "cps": 66.27, "memory": 9659.42},
-        {"model": "Florence2-Base (cpu)", "cps": 156.84, "memory": 4366.43},
-        {"model": "Florence2-Large - 772m", "cps": 665.95, "memory": 5274.93},
-        {"model": "Florence2-Base - 223m", "cps": 970.53, "memory": 2625.93},
         {"model": "THUDM glm4v - 9b", "cps": 200.96, "memory": 9802.12},
         {"model": "Molmo-D-0924 - 8b", "cps": 194.65, "memory": 7693.93},
         {"model": "Qwen VL - 3b", "cps": 178.31, "memory": 6306.30},
         {"model": "Qwen VL - 7b", "cps": 173.67, "memory": 9559.89},
         {"model": "Granite Vision - 2b", "cps": 217.64, "memory": 4094.18},
-        {"model": "InternVL2.5 - 4b", "cps": 199.29, "memory": 4548.99},
-        {"model": "InternVL2.5 - 1b", "cps": 288.64, "memory": 2292.93},
+        {"model": "InternVL3 - 1b", "cps": 274.25, "memory": 2318.05},
+        {"model": "InternVL3 - 2b", "cps": 244.36, "memory": 3153.87},
+        {"model": "InternVL3 - 8b", "cps": 255.95, "memory": 8153.30},
+        {"model": "InternVL3 - 14b", "cps": 162.58, "memory": 12998.80},
         {"model": "Ovis2 - 1b", "cps": 286.39, "memory": 4071.93},
         {"model": "Ovis2 - 2b", "cps": 312.08, "memory": 5846.49},
     ]

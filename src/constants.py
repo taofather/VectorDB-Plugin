@@ -62,10 +62,15 @@ priority_libs = {
             "nvidia-cuda-nvrtc-cu12==12.4.127",
             "nvidia-cuda-nvcc-cu12==12.4.131",
             "nvidia-cufft-cu12==11.2.1.3",
-            "nvidia-cusparse-cu12==12.3.1.170", # nvidia-cusparse-cu12 12.3.1.170 requires nvidia-nvjitlink-cu12
             "nvidia-cudnn-cu12==9.1.0.70",
-            # "nvidia-cusparselt-cu12 0.6.3",
             "nvidia-ml-py==12.575.51",
+            # "xformers==xformers==0.0.30",  # requires torch 2.7.0
+            # "nvidia-cuda-runtime-cu12==12.6.77",
+            # "nvidia-cublas-cu12==12.6.4.1",
+            # "nvidia-cuda-nvrtc-cu12==12.6.77",
+            # "nvidia-cuda-nvcc-cu12==12.6.85",
+            # "nvidia-cufft-cu12==11.3.0.4",
+            # "nvidia-cudnn-cu12==9.5.1.17",
         ],
         "CPU": [
             # CPU only libraries would go here
@@ -89,10 +94,15 @@ priority_libs = {
             "nvidia-cuda-nvrtc-cu12==12.4.127",
             "nvidia-cuda-nvcc-cu12==12.4.131",
             "nvidia-cufft-cu12==11.2.1.3",
-            "nvidia-cusparse-cu12==12.3.1.170", # nvidia-cusparse-cu12 12.3.1.170 requires nvidia-nvjitlink-cu12
             "nvidia-cudnn-cu12==9.1.0.70",
-            # "nvidia-cusparselt-cu12 0.6.3",
             "nvidia-ml-py==12.575.51",
+            # "xformers==xformers==0.0.30", # requires torch 2.7.0
+            # "nvidia-cuda-runtime-cu12==12.6.77",
+            # "nvidia-cublas-cu12==12.6.4.1",
+            # "nvidia-cuda-nvrtc-cu12==12.6.77",
+            # "nvidia-cuda-nvcc-cu12==12.6.85",
+            # "nvidia-cufft-cu12==11.3.0.4",
+            # "nvidia-cudnn-cu12==9.5.1.17",
         ],
         "CPU": [
             # CPU only libraries would go here
@@ -182,11 +192,11 @@ libs = [
     "kiwisolver==1.4.8",
     "langchain==0.3.25",
     "langchain-community==0.3.24",
-    "langchain-core==0.3.64",
+    "langchain-core==0.3.61",
     "langchain-huggingface==0.2.0",
     "langchain-text-splitters==0.3.8",
     "langdetect==1.0.9",
-    "langsmith==0.3.45",
+    "langsmith==0.3.42",
     "llvmlite==0.44.0", # only required by numba
     "lxml==5.4.0",
     "Markdown==3.8",
@@ -222,7 +232,7 @@ libs = [
     "orderly-set==5.4.1", # deepdiff 8.2.0 requires orderly-set>=5.3.0,<6
     "orjson==3.10.18",
     "packaging==24.2", # langchain-core==0.3.60 requires less than 25
-    "pandas==2.3.0",
+    "pandas==2.2.3",
     "pdfminer.six==20250506", # ocrmypdf 16.10.1 requires >=20220319
     "pikepdf==9.8.1", # only needed by ocrmypdf
     "pillow==11.2.1",
@@ -739,7 +749,7 @@ VISION_MODELS = {
         'size': '1b',
         'repo_id': 'OpenGVLab/InternVL3-1B',
         'cache_dir': 'OpenGVLab--InternVL3-1B',
-        'requires_cuda': True,
+        'requires_cuda': False,
         'vram': '2.4 GB',
         'loader': 'loader_internvl'
     },
@@ -749,7 +759,7 @@ VISION_MODELS = {
         'size': '1b',
         'repo_id': 'AIDC-AI/Ovis2-1B',
         'cache_dir': 'AIDC-AI--Ovis2-1B',
-        'requires_cuda': True,
+        'requires_cuda': False,
         'vram': '2.4 GB',
         'loader': 'loader_ovis'
     },
@@ -759,27 +769,7 @@ VISION_MODELS = {
         'size': '2b',
         'repo_id': 'OpenGVLab/InternVL3-2B',
         'cache_dir': 'OpenGVLab--InternVL3-2B',
-        'requires_cuda': True,
-        'vram': '3.2 GB',
-        'loader': 'loader_internvl'
-    },
-    'Florence-2-base': {
-        'precision': 'autoselect',
-        'quant': 'n/a',
-        'size': '232m',
-        'repo_id': 'microsoft/Florence-2-base',
-        'cache_dir': 'microsoft--Florence-2-base',
         'requires_cuda': False,
-        'vram': '2.6 GB',
-        'loader': 'loader_florence2'
-    },
-    'InternVL2.5 - 4b': {
-        'precision': 'bfloat16',
-        'quant': '4-bit',
-        'size': '4b',
-        'repo_id': 'ctranslate2-4you/InternVL2_5-4B',
-        'cache_dir': 'ctranslate2-4you--InternVL2_5-4B',
-        'requires_cuda': True,
         'vram': '3.2 GB',
         'loader': 'loader_internvl'
     },
@@ -789,19 +779,9 @@ VISION_MODELS = {
         'size': '2b',
         'repo_id': 'ibm-granite/granite-vision-3.2-2b',
         'cache_dir': 'ibm-granite--granite-vision-3.2-2b',
-        'requires_cuda': True,
+        'requires_cuda': False,
         'vram': '4.1 GB',
         'loader': 'loader_granite'
-    },
-    'Florence-2-large': {
-        'precision': 'autoselect',
-        'quant': 'n/a',
-        'size': '770m',
-        'repo_id': 'microsoft/Florence-2-large',
-        'cache_dir': 'microsoft--Florence-2-large',
-        'requires_cuda': False,
-        'vram': '5.3 GB',
-        'loader': 'loader_florence2'
     },
     'Ovis2 - 2b': {
         'precision': 'bfloat16',
@@ -809,7 +789,7 @@ VISION_MODELS = {
         'size': '2b',
         'repo_id': 'AIDC-AI/Ovis2-2B',
         'cache_dir': 'AIDC-AI--Ovis2-2B',
-        'requires_cuda': True,
+        'requires_cuda': False,
         'vram': '2.4 GB',
         'loader': 'loader_ovis'
     },
@@ -3022,7 +3002,6 @@ Torch and CUDA Compatibility
 | nccl         | 2.25.1     | 2.21.5     | 2.26.2     |
 | nvtx         | 12.4.127   | 12.6.77    | 12.8.55    |
 | nvjitlink    | 12.4.127   | 12.6.85    | 12.8.61    |
-| cufile       | -          |            | 1.13.0.11  | # linux only
 +--------------+------------+------------+------------+
 * "CUDA" as a whole uses release numbers.  Pytorch does not always use individual CUDA libraries that were packaged in a CUDA release.
 * Moreover, "cu126" is ambiguous and could mean CUDA release 12.6.1 or 12.6.2, for example.
@@ -3038,12 +3017,30 @@ Torch and CUDA Compatibility
 +-------+----------------------------+-------------------------------------------+----------------------------+
 | Torch | Python                     | Stable                                    | Experimental               |
 +-------+----------------------------+-------------------------------------------+----------------------------+
-| 2.7   | >=3.9, <=3.13              | CUDA 12.6 (cudnn 9.5.1.17)                | CUDA 12.8 (CUDNN 9.7.1.26) |
+| 2.7   | >=3.9, <=3.13              | CUDA 12.6 + cudnn 9.5.1.17                | CUDA 12.8 (CUDNN 9.7.1.26) |
 +-------+----------------------------+-------------------------------------------+----------------------------+
 | 2.6   | >=3.9, <=3.13              | CUDA 12.4 + CUDNN 9.1.0.70                | CUDA 12.6 + CUDNN 9.5.1.17 |
 +-------+----------------------------+-------------------------------------------+----------------------------+
 | 2.5   | >=3.9, <=3.12, (3.13 exp.) | CUDA 12.1, 12.4 + CUDNN 9.1.0.70          | None                       |
 +-------+----------------------------+-------------------------------------------+----------------------------+
+
+
+# https://github.com/woct0rdho/triton-windows/releases
++-----------------------+----------------------------------
+| Release               | Compatible Torch
++---------------+----------------------------------
+| v3.3.1-windows.post19 | 
+| v3.3.0-windows.post19 | torch>=2.7
+| v3.2.0-windows.post18 | torch>=2.6<2.7
+| v3.2.0-windows.post17 | torch>=2.6<2.7
+| v3.2.0-windows.post16 | torch>=2.6<2.7
+| v3.2.0-windows.post15 | torch>=2.6<2.7
+| v3.2.0-windows.post14 | torch>=2.6<2.7
+| v3.2.0-windows.post13 | torch>=2.6<2.7
+| v3.2.0-windows.post12 | torch>=2.6<2.7
+| v3.2.0-windows.post11 | torch>=2.6<2.7
+| v3.2.0-windows.post10 | torch>=2.6<2.7
+| v3.2.0-windows.post9  | torch>=2.6<2.7
 
 
 ***********************
@@ -3071,7 +3068,7 @@ Torch & Python & Triton
 | 2.6.0  | cu126 |  3.12  |  3.2.0 | 1.13.1   |
 | 2.6.0  | cu126 |  3.11  |  3.2.0 | 1.13.1   |
 | 2.6.0  | cu124 |  3.13  |  3.2.0 | 1.13.1   |
-| 2.6.0  | cu124 |  3.12  |  3.2.0 | 1.13.1   |
+| 2.6.0  | cu124 |  3.12  |  3.2.0 | 1.13.1   | * current
 | 2.6.0  | cu124 |  3.11  |  3.2.0 | 1.13.1   |
 | 2.5.1  | cu124 |  3.12  |  3.1.0 | 1.13.1   |
 | 2.5.1  | cu124 |  3.11  |  3.1.0 | 1.13.1   |
@@ -3085,7 +3082,7 @@ Torch & Python & Triton
 * Excludes Python 3.10 wheels
 * Triton 3.0.0 and earlier wheels: https://github.com/jakaline-dev/Triton_win/releases (do not support Python 3.12)
 * Triton 3.1.0 and later wheels: https://github.com/woct0rdho/triton-windows/releases (supports Python 3.12)
-* Since the release triton-windows==3.2.0.post11, the wheels are published to https://pypi.org/project/triton-windows/
+* Since triton-windows==3.2.0.post11, windows wheels are published to https://pypi.org/project/triton-windows/
 
 RTX 50xx (Blackwell)
 This only works with Triton >= 3.3, PyTorch >= 2.7, and CUDA 12.8 .
@@ -3186,28 +3183,29 @@ LINUX Flash Attention 2
 
 # Obtained from https://github.com/Dao-AILab/flash-attention/blob/main/.github/workflows/publish.yml
 # officially, FA2 only supports up to CUDA 12.4.1, but it seems to work with "cu126"..
-+--------------+-----------------------------------------------+-------------------+
-| FA2 Version  |                 Torch                         | CUDA (excl. 11.x) |
-+--------------+-----------------------------------------------+-------------------+
-| v2.7.4.post1 | 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0             | 12.4.1            |
-| v2.7.3       | 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241001 | 12.3.2            |
-| v2.7.2.post1 | 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241001 | 12.3.2            |
-| v2.7.2       | 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241001 | 12.3.2            |
-| v2.7.1.post4 | 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241001 | 12.3.2            |
-| v2.7.1.post3 | 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241001 | 12.3.2            |
-| v2.7.1.post2 | 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241001 | 12.3.2            |
-| v2.7.1.post1 | 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241010 | 12.4.1            |
-| v2.7.1       | 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241010 | 12.4.1            |
-| v2.7.0.post2 | 2.2.2, 2.3.1, 2.4.0, 2.5.1                    | 12.4.1            |
-| v2.7.0.post1 | 2.2.2, 2.3.1, 2.4.0, 2.5.1                    | 12.4.1            |
-| v2.7.0       | 2.2.2, 2.3.1, 2.4.0, 2.5.1                    | 12.3.2            |
-| v2.6.3       | 2.2.2, 2.3.1, 2.4.0                           | 12.3.2            |
-| v2.6.2       | 2.2.2, 2.3.1, 2.4.0.dev20240527               | 12.3.2            |
-| v2.6.1       | 2.2.2, 2.3.1, 2.4.0.dev20240514               | 12.3.2            |
-| v2.6.0.post1 | 2.2.2, 2.3.1, 2.4.0.dev20240514               | 12.2.2            |
-| v2.6.0       | 2.2.2, 2.3.1, 2.4.0.dev20240512               | 12.2.2            |
-| v2.5.9.post1 | 2.2.2, 2.3.0, 2.4.0.dev20240407               | 12.2.2            |
-+--------------+-----------------------------------------------+-------------------+
++--------------+------------------------------------------------------+--------+
+| FA2 Version  |                 Torch (exclud torch<2                |  CUDA  |
++--------------+------------------------------------------------------+--------+
+| v2.7.4.post1 | 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0                    | 12.4.1 |
+| v2.7.4       | 2.1.2, 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0             | 12.4.1 |
+| v2.7.3       | 2.1.2, 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241001 | 12.3.2 |
+| v2.7.2.post1 | 2.1.2, 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241001 | 12.3.2 |
+| v2.7.2       | 2.1.2, 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241001 | 12.3.2 |
+| v2.7.1.post4 | 2.1.2, 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241001 | 12.3.2 |
+| v2.7.1.post3 | 2.1.2, 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241001 | 12.3.2 |
+| v2.7.1.post2 | 2.1.2, 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241001 | 12.3.2 |
+| v2.7.1.post1 | 2.1.2, 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241010 | 12.4.1 |
+| v2.7.1       | 2.1.2, 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0.dev20241010 | 12.4.1 |
+| v2.7.0.post2 | 2.1.2, 2.2.2, 2.3.1, 2.4.0, 2.5.1                    | 12.4.1 |
+| v2.7.0.post1 | 2.1.2, 2.2.2, 2.3.1, 2.4.0, 2.5.1                    | 12.4.1 |
+| v2.7.0       | 2.1.2, 2.2.2, 2.3.1, 2.4.0, 2.5.1                    | 12.3.2 |
+| v2.6.3       | 2.0.1, 2.1.2, 2.2.2, 2.3.1, 2.4.0                    | 12.3.2 |
+| v2.6.2       | 2.0.1, 2.1.2, 2.2.2, 2.3.1, 2.4.0.dev20240527        | 12.3.2 |
+| v2.6.1       | 2.0.1, 2.1.2, 2.2.2, 2.3.1, 2.4.0.dev20240514        | 12.3.2 |
+| v2.6.0.post1 | 2.0.1, 2.1.2, 2.2.2, 2.3.1, 2.4.0.dev20240514        | 12.2.2 |
+| v2.6.0       | 2.0.1, 2.1.2, 2.2.2, 2.3.1, 2.4.0.dev20240512        | 12.2.2 |
+| v2.5.9.post1 | 2.0.1, 2.0.1, 2.2.2, 2.3.0, 2.4.0.dev20240407        | 12.2.2 |
++--------------+-----------------------------------------------+---------------+
 
 *************************
 WINDOWS Flash Attention 2
@@ -3215,11 +3213,11 @@ WINDOWS Flash Attention 2
 
 # Windows wheels are located here: https://github.com/kingbri1/flash-attention
  # Former name: https://github.com/bdashore3/flash-attention/releases/
-# Highly CUDA-specific
+# HIGHLY CUDA SPECIFIC
 +--------------+-----------------------------------+-------------------+
 | FA2          |              Torch                | CUDA (excl. 11.x) |
 +--------------+-----------------------------------+-------------------+
-| v2.7.4.post1 | 2.2.2, 2.3.1, 2.4.0, 2.5.1, 2.6.0 | 12.4.1            |
+| v2.7.4.post1 | 2.4.0, 2.5.1, 2.6.0               | 12.4.1            | * current
 | v2.7.1.post1 | 2.3.1, 2.4.0, 2.5.1               | 12.4.1            |
 | v2.7.0.post2 | 2.3.1, 2.4.0, 2.5.1               | 12.4.1            |
 | v2.6.3       | 2.2.2, 2.3.1, 2.4.0               | 12.3.2            |
@@ -3236,22 +3234,20 @@ WINDOWS Flash Attention 2
 Xformers & Flash Attention 2 & CUDA
 ***********************************
 
-# Highly Torch specific
+# HIGHLY TORCH SPECIFIC
 +------------------+-------+---------------+----------------+---------------+
 | Xformers Version | Torch |      FA2      |       CUDA (excl. 11.x)        |
 +------------------+-------+---------------+--------------------------------+
-| v0.0.29.post3    | 2.6.0 | 2.7.1 - 2.7.2 | 12.1.0, 12.4.1, 12.6.3, 12.8.0 | *pypi
+| v0.0.30          | 2.7.0 | 2.7.1 - 2.7.4 | 12.1.0, 12.4.1, 12.6.3, 12.8.1 | *pypi * needed
+| v0.0.29.post3    | 2.6.0 | 2.7.1 - 2.7.2 | 12.1.0, 12.4.1, 12.6.3, 12.8.0 | *pypi * current
 | v0.0.29.post2    | 2.6.0 | 2.7.1 - 2.7.2 | 12.1.0, 12.4.1, 12.6.3, 12.8.0 | *pypi
 | v0.0.29.post1    | 2.5.1 | 2.7.1 - 2.7.2 | 12.1.0, 12.4.1                 | *only from pytorch
 | v0.0.29 (BUG)    | 2.5.1 |               |                                | *only from pytorch
-| v0.0.28.post3    | 2.5.1 |               |                                | *only from pytorch
-| v0.0.28.post2    | 2.5.0 |               |                                | *only from pytorch
-| v0.0.28.post1    | 2.4.1 |               |                                | *only from pytorch
+| v0.0.28.post3    | 2.5.1 | 2.6.3         |                                | *only from pytorch
+| v0.0.28.post2    | 2.5.0 | 2.6.3         |                                | *only from pytorch
+| v0.0.28.post1    | 2.4.1 | 2.6.3         |                                | *only from pytorch
 | v0.0.27.post2    | 2.4.0 |               |                                | *pypi
 | v0.0.27.post1    | 2.4.0 |               |                                | *pypi
-| v0.0.27          | 2.3.0 |               |                                | *pypi
-| v0.0.26.post1    | 2.3.0 |               |                                | *pypi
-| v0.0.25.post1    | 2.2.2 |               |                                | *pypi
 +------------------+-------+---------------+--------------------------------+
 * Torch support determined by https://github.com/facebookresearch/xformers/blob/main/.github/workflows/wheels.yml
 * FA2 support determined by by https://github.com/facebookresearch/xformers/blob/main/xformers/ops/fmha/flash.py

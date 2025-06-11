@@ -52,9 +52,7 @@ def choose_image_loader():
     with open('config.yaml', 'r') as file:
         config = yaml.safe_load(file)
     chosen_model = config["vision"]["chosen_model"]
-    if chosen_model in ["Florence-2-large", "Florence-2-base"]:
-        loader_func = loader_florence2(config).process_images
-    elif chosen_model == 'Granite Vision - 2b':
+    if chosen_model == 'Granite Vision - 2b':
         loader_func = loader_granite(config).process_images
     elif chosen_model == 'THUDM glm4v - 9b':
         loader_func = loader_glmv4(config).process_images
@@ -62,7 +60,7 @@ def choose_image_loader():
         loader_func = loader_molmo(config).process_images
     elif chosen_model in ['Ovis2 - 1b', 'Ovis2 - 2b']:
         loader_func = loader_ovis(config).process_images
-    elif chosen_model in ['InternVL3 - 1b', 'InternVL3 - 2b', 'InternVL2.5 - 4b', 'InternVL3 - 8b', 'InternVL3 - 14b']:
+    elif chosen_model in ['InternVL3 - 1b', 'InternVL3 - 2b', 'InternVL3 - 8b', 'InternVL3 - 14b']:
         loader_func = loader_internvl(config).process_images
     elif chosen_model in ['Qwen VL - 3b', 'Qwen VL - 7b']:
         loader_func = loader_qwenvl(config).process_images
@@ -120,49 +118,6 @@ class BaseLoader:
         raise NotImplementedError
 
 
-class loader_florence2(BaseLoader):
-    def __init__(self, config):
-        super().__init__(config)
-        self.my_cprint = my_cprint
-
-    def initialize_model_and_tokenizer(self):
-        chosen_model = self.config['vision']['chosen_model']
-        repo_id = VISION_MODELS[chosen_model]["repo_id"]
-        save_dir = VISION_MODELS[chosen_model]["cache_dir"]
-        cache_dir = CACHE_DIR / save_dir
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        model = AutoModelForCausalLM.from_pretrained(repo_id, token=False, trust_remote_code=True, low_cpu_mem_usage=True, cache_dir=cache_dir).eval()
-        processor = AutoProcessor.from_pretrained(repo_id,  token=False, trust_remote_code=True, cache_dir=cache_dir)
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        if self.device.type == "cuda":
-            if torch.cuda.get_device_capability()[0] >= 8:
-                model = model.to(self.device).bfloat16()
-                self.model_dtype = torch.bfloat16
-            else:
-                model = model.to(self.device).half()
-                self.model_dtype = torch.float16
-        else:
-            model = model.to(self.device).float()
-            self.model_dtype = torch.float32
-        device_type = "CUDA" if self.device.type == "cuda" else "CPU"
-        self.my_cprint(f"Running {chosen_model} on {device_type} in precision {self.model_dtype}", "green")
-        return model, None, processor
-
-    @torch.inference_mode()
-    def process_single_image(self, raw_image):
-        prompt = "<MORE_DETAILED_CAPTION>"
-        inputs = self.processor(text=prompt, images=raw_image, return_tensors="pt")
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
-        inputs["pixel_values"] = inputs["pixel_values"].to(dtype=self.model_dtype)
-        generated_ids = self.model.generate(input_ids=inputs["input_ids"], pixel_values=inputs["pixel_values"], max_new_tokens=1024, num_beams=1, do_sample=False, early_stopping=False)
-        generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
-        parsed = self.processor.post_process_generation(
-            generated_text, task=prompt,
-            image_size=(raw_image.width, raw_image.height)
-        )
-        return parsed.get('<MORE_DETAILED_CAPTION>', generated_text)
-
-
 class loader_glmv4(BaseLoader):
     def initialize_model_and_tokenizer(self):
         chosen_model = self.config['vision']['chosen_model']
@@ -178,8 +133,9 @@ class loader_glmv4(BaseLoader):
         AutoConfig.from_pretrained(model_id, cache_dir=cache_dir, trust_remote_code=True).vision_config.update(image_size=448)
         model = AutoModelForCausalLM.from_pretrained(model_id, token=False, torch_dtype=dtype, low_cpu_mem_usage=True, trust_remote_code=True, quantization_config=quant_config, cache_dir=cache_dir).eval()
         tokenizer = AutoTokenizer.from_pretrained(model_id, token=False, trust_remote_code=True, cache_dir=cache_dir)
-        prec = "bfloat16" if use_bf16 else "float16"
-        my_cprint(f"Running {chosen_model} on CUDA in {prec}", "green")
+        precision_str = "bfloat16" if use_bf16 else "float16"
+        device_str = "CUDA" if self.device == "cuda" else "CPU"
+        my_cprint(f"{chosen_model} loaded into memory on {device_str} ({precision_str})", "green")
         return model, tokenizer, None
 
     @torch.inference_mode()
@@ -215,7 +171,8 @@ class loader_molmo(BaseLoader):
         self.model = AutoModelForCausalLM.from_pretrained(source, token=False, trust_remote_code=True, quantization_config=quant_config, torch_dtype=torch.bfloat16, device_map='auto', cache_dir=cache_dir)
         self.model.model.vision_backbone = self.model.model.vision_backbone.to(torch.float32)
         self.model.eval()
-        my_cprint(f"{chosen_model} vision model loaded into memory", "green")
+        device_str = "CUDA" if self.device == "cuda" else "CPU"
+        my_cprint(f"{chosen_model} loaded into memory on {device_str} (bfloat16)", "green")
         return self.model, None, self.processor
 
     @torch.inference_mode()
@@ -236,103 +193,10 @@ class loader_molmo(BaseLoader):
             return ""
 
 
-# class loader_ovis(BaseLoader):
-    # def __init__(self, config):
-        # super().__init__(config)
-        # native = VISION_MODELS[self.config["vision"]["chosen_model"]]["precision"]
-        # # Choose dtype on GPU: bfloat16 if supported, else float16; always float32 on CPU
-        # if self.device == "cuda":
-            # if native in ("float32", "bfloat16") and has_bfloat16_support():
-                # self.dtype = torch.bfloat16
-            # elif native == "float32":
-                # self.dtype = torch.float16
-            # else:
-                # self.dtype = torch.float16
-        # else:
-            # self.dtype = torch.float32
-
-    # def initialize_model_and_tokenizer(self):
-        # chosen_model = self.config["vision"]["chosen_model"]
-        # info = VISION_MODELS[chosen_model]
-
-        # cache_dir = CACHE_DIR / info["cache_dir"]
-        # cache_dir.mkdir(parents=True, exist_ok=True)
-
-        # model = AutoModelForCausalLM.from_pretrained(
-            # info["repo_id"],
-            # torch_dtype=self.dtype,
-            # trust_remote_code=True,
-            # multimodal_max_length=8192,
-            # cache_dir=cache_dir
-        # ).to(self.device)
-        # model.eval()
-
-        # text_tokenizer = model.get_text_tokenizer()
-        # visual_tokenizer = model.get_visual_tokenizer()
-
-        # for module in visual_tokenizer.modules():
-            # if isinstance(module, torch.nn.Linear):
-                # module.to(device=self.device, dtype=self.dtype)
-
-        # return model, text_tokenizer, visual_tokenizer
-
-    # @torch.inference_mode()
-    # def process_single_image(self, raw_image):
-        # prompt = (
-            # "Explain everything you see in this picture "
-            # "but your response should be no more than one paragraph."
-        # )
-        # query = f"<image>\n{prompt}"
-
-        # _, input_ids, pixel_values = self.model.preprocess_inputs(query, [raw_image])
-        # attention_mask = torch.ne(input_ids, self.tokenizer.pad_token_id)
-
-        # # Batchify and move to the correct device & dtype
-        # input_ids      = input_ids.unsqueeze(0).to(self.device)        # [1, seq_len]
-        # attention_mask = attention_mask.unsqueeze(0).to(self.device)  # [1, seq_len]
-        # pixel_values   = pixel_values.to(device=self.device, dtype=self.dtype)  # [num_patches,3,14,14]
-        # pixel_values   = [pixel_values]  # wrap in list for generate()
-
-        # gen_kwargs = {
-            # "max_new_tokens": 1024,
-            # "do_sample": False,
-            # "pad_token_id": self.tokenizer.pad_token_id,
-            # "eos_token_id": self.tokenizer.eos_token_id,
-            # "use_cache": True,
-        # }
-
-        # # **Pass input_ids positionally** so Ovis2’s generate() sees it as text_input_ids
-        # output_ids = self.model.generate(
-            # input_ids,
-            # pixel_values=pixel_values,
-            # attention_mask=attention_mask,
-            # **gen_kwargs
-        # )[0]
-
-        # description = self.tokenizer.decode(output_ids, skip_special_tokens=True)
-        # return " ".join(line.strip() for line in description.split("\n") if line.strip())
-
-
 class loader_ovis(BaseLoader):
     def __init__(self, config):
         super().__init__(config)
-        native = VISION_MODELS[self.config["vision"]["chosen_model"]]["precision"]
-        # Choose dtype on GPU: bfloat16 if supported, else float16; always float32 on CPU
-        if self.device == "cuda":
-            if native in ("float32", "bfloat16") and has_bfloat16_support():
-                self.dtype = torch.bfloat16
-                # print(f"OVIS: Selected bfloat16 precision based on native={native}")
-            elif native == "float32":
-                self.dtype = torch.float16
-                # print(f"OVIS: Selected float16 precision based on native={native}")
-            else:
-                self.dtype = torch.float16
-                # print(f"OVIS: Selected float16 precision based on native={native}")
-        else:
-            self.dtype = torch.float32
-            # print(f"OVIS: Selected float32 precision for CPU based on native={native}")
-        
-        # print(f"OVIS: Device={self.device}, Initial dtype selection={self.dtype}")
+        # Remove the dtype determination from __init__ since we'll do it in initialize_model_and_tokenizer
 
     def initialize_model_and_tokenizer(self):
         chosen_model = self.config["vision"]["chosen_model"]
@@ -341,65 +205,36 @@ class loader_ovis(BaseLoader):
         cache_dir = CACHE_DIR / info["cache_dir"]
         cache_dir.mkdir(parents=True, exist_ok=True)
 
-        print(f"OVIS: Loading model with dtype={self.dtype}")
-        
+        # Standardized dtype determination
+        if self.device == "cuda":
+            # Check for bfloat16 support
+            use_bf16 = torch.cuda.get_device_capability()[0] >= 8
+            dtype = torch.bfloat16 if use_bf16 else torch.float16
+        else:
+            dtype = torch.float32
+
+        # Store dtype for use in process_single_image
+        self.model_dtype = dtype
+
         model = AutoModelForCausalLM.from_pretrained(
             info["repo_id"],
-            torch_dtype=self.dtype,
+            torch_dtype=dtype,
             trust_remote_code=True,
             multimodal_max_length=8192,
             cache_dir=cache_dir,
             token=False
         ).to(self.device)
-        
-        # # Print model layers precision before eval
-        # print("OVIS: Model layer precisions after loading:")
-        # for name, module in model.named_modules():
-            # if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d, torch.nn.LayerNorm)):
-                # if hasattr(module, "weight") and module.weight is not None:
-                    # print(f"  Layer {name}: {module.weight.dtype}")
-        
+
         model.eval()
-        
-        # # Print model layers precision after eval
-        # print("OVIS: Model layer precisions after eval():")
-        # for name, module in model.named_modules():
-            # if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d, torch.nn.LayerNorm)):
-                # if hasattr(module, "weight") and module.weight is not None:
-                    # print(f"  Layer {name}: {module.weight.dtype}")
 
         text_tokenizer = model.get_text_tokenizer()
         visual_tokenizer = model.get_visual_tokenizer()
 
-        # # Print visual tokenizer layer info before conversion
-        # print("OVIS: Visual tokenizer layer precisions before conversion:")
-        # for name, module in visual_tokenizer.named_modules():
-            # if isinstance(module, torch.nn.Linear):
-                # if hasattr(module, "weight") and module.weight is not None:
-                    # print(f"  VT Layer {name}: {module.weight.dtype}")
-        
-        # # Count modules before conversion
-        # linear_count = sum(1 for module in visual_tokenizer.modules() 
-                          # if isinstance(module, torch.nn.Linear))
-        # print(f"OVIS: Found {linear_count} Linear modules in visual_tokenizer")
-
-        # for module in visual_tokenizer.modules():
-            # if isinstance(module, torch.nn.Linear):
-                # old_dtype = module.weight.dtype if hasattr(module, "weight") else "unknown"
-                # module.to(device=self.device, dtype=self.dtype)
-                # new_dtype = module.weight.dtype if hasattr(module, "weight") else "unknown"
-                # print(f"OVIS: Converting module from {old_dtype} to {self.dtype}, result={new_dtype}")
-        
-        # # Print visual tokenizer layer info after conversion
-        # print("OVIS: Visual tokenizer layer precisions after conversion:")
-        # for name, module in visual_tokenizer.named_modules():
-            # if isinstance(module, torch.nn.Linear):
-                # if hasattr(module, "weight") and module.weight is not None:
-                    # print(f"  VT Layer {name}: {module.weight.dtype}")
-
-        # Save model for process_single_image
         self.model = model
-        
+
+        precision_str = "bfloat16" if dtype == torch.bfloat16 else "float16" if dtype == torch.float16 else "float32"
+        device_str = "CUDA" if self.device == "cuda" else "CPU"
+        my_cprint(f"{chosen_model} loaded into memory on {device_str} ({precision_str})", "green")
         return model, text_tokenizer, visual_tokenizer
 
     @torch.inference_mode()
@@ -410,29 +245,16 @@ class loader_ovis(BaseLoader):
         )
         query = f"<image>\n{prompt}"
 
-        # print("OVIS: Starting image processing")
         _, input_ids, pixel_values = self.model.preprocess_inputs(query, [raw_image])
-        # print(f"OVIS: After preprocess_inputs - pixel_values dtype={pixel_values.dtype}")
-        
+
         attention_mask = torch.ne(input_ids, self.tokenizer.pad_token_id)
 
-        # Batchify and move to the correct device & dtype
         input_ids = input_ids.unsqueeze(0).to(self.device)
         attention_mask = attention_mask.unsqueeze(0).to(self.device)
-        
-        # print(f"OVIS: Before pixel_values conversion - dtype={pixel_values.dtype}")
-        pixel_values = pixel_values.to(device=self.device, dtype=self.dtype)
-        # print(f"OVIS: After pixel_values conversion - dtype={pixel_values.dtype}")
-        
-        pixel_values = [pixel_values]  # wrap in list for generate()
 
-        # # Check model precision during inference
-        # print("OVIS: Model layer precisions during inference:")
-        # for name, module in self.model.named_modules():
-            # if isinstance(module, (torch.nn.Linear, torch.nn.Conv2d)):
-                # if hasattr(module, "weight") and module.weight is not None:
-                    # if name.startswith("transformer") or name.startswith("lm_head"):
-                        # print(f"  Inference layer {name}: {module.weight.dtype}")
+        pixel_values = pixel_values.to(device=self.device, dtype=self.model_dtype)  # Use stored dtype
+
+        pixel_values = [pixel_values]  # wrap in list for generate()
 
         gen_kwargs = {
             "max_new_tokens": 1024,
@@ -460,35 +282,60 @@ class loader_internvl(BaseLoader):
         info = VISION_MODELS[chosen_model]
         cache_dir = CACHE_DIR / info["cache_dir"]
         cache_dir.mkdir(parents=True, exist_ok=True)
-        quant_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.bfloat16,
-            bnb_4bit_quant_type="nf4",
-            llm_int8_skip_modules=[
-                "vision_model",
-                "language_model.model.norm",
-                "language_model.output",
-                "language_model.model.rotary_emb",
-                "language_model.lm_head",
-                "mlp1"
-            ]
-        )
-        model = AutoModel.from_pretrained(
-            info['repo_id'],
-            quantization_config=quant_config,
-            torch_dtype=torch.bfloat16,
-            low_cpu_mem_usage=True,
-            trust_remote_code=True,
-            cache_dir=cache_dir,
-            token=False
-        ).eval()
+        
+        if self.device == "cuda":
+            # Check for bfloat16 support
+            use_bf16 = torch.cuda.get_device_capability()[0] >= 8
+            dtype = torch.bfloat16 if use_bf16 else torch.float16
+            precision_str = "bfloat16" if use_bf16 else "float16"
+
+            quant_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=dtype,  # Use determined dtype
+                bnb_4bit_quant_type="nf4",
+                llm_int8_skip_modules=[
+                    "vision_model",
+                    "language_model.model.norm", 
+                    "language_model.output",
+                    "language_model.model.rotary_emb",
+                    "language_model.lm_head",
+                    "mlp1"
+                ]
+            )
+            model = AutoModel.from_pretrained(
+                info['repo_id'],
+                quantization_config=quant_config,
+                torch_dtype=dtype,  # Use determined dtype
+                low_cpu_mem_usage=True,
+                trust_remote_code=True,
+                cache_dir=cache_dir,
+                token=False
+            ).eval()
+        else:
+            # CPU fallback
+            dtype = torch.float32
+            precision_str = "float32"
+            model = AutoModel.from_pretrained(
+                info['repo_id'],
+                torch_dtype=dtype,
+                low_cpu_mem_usage=True,
+                trust_remote_code=True,
+                cache_dir=cache_dir,
+                token=False,
+                device_map={"": "cpu"}
+            ).eval()
+
+        # Store dtype for use in process_single_image
+        self.model_dtype = dtype
+        device_str = "CUDA" if self.device == "cuda" else "CPU"
+
         tokenizer = AutoTokenizer.from_pretrained(
             info['repo_id'],
             trust_remote_code=True,
             cache_dir=cache_dir,
             token=False
         )
-        my_cprint("InternVL2.5 vision model loaded into memory", "green")
+        my_cprint(f"{chosen_model} loaded into memory on {device_str} ({precision_str})", "green")
         return model, tokenizer, None
 
     def find_closest_aspect_ratio(self, aspect_ratio, ratios, w, h, sz):
@@ -545,7 +392,7 @@ class loader_internvl(BaseLoader):
 
     @torch.inference_mode()
     def process_single_image(self, raw_image):
-        pv = self._prepare_image(raw_image).to(torch.bfloat16).to(self.device)
+        pv = self._prepare_image(raw_image).to(self.model_dtype).to(self.device)
         question = "<image>\nExplain everything you see in this picture but your response should be no more than one paragraph, but the paragraph can be as long as you want."
         gen_cfg = {
             'num_beams': 1,
@@ -573,10 +420,14 @@ class loader_granite(BaseLoader):
         )
 
         if self.device == "cuda" and torch.cuda.is_available():
-            # Use quantization on CUDA
+            # Check for bfloat16 support
+            use_bf16 = torch.cuda.get_device_capability()[0] >= 8
+            dtype = torch.bfloat16 if use_bf16 else torch.float16
+            precision_str = "bfloat16" if use_bf16 else "float16"
+            
             config = BitsAndBytesConfig(
                 load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.bfloat16,
+                bnb_4bit_compute_dtype=dtype,  # Use determined dtype
                 bnb_4bit_quant_type="nf4",
                 llm_int8_skip_modules=[
                     "vision_tower",
@@ -590,13 +441,14 @@ class loader_granite(BaseLoader):
             model = AutoModelForVision2Seq.from_pretrained(
                 model_id,
                 quantization_config=config,
-                torch_dtype=torch.bfloat16,
+                torch_dtype=dtype,  # Use determined dtype
                 low_cpu_mem_usage=True,
                 cache_dir=cache_dir,
                 token=False,
                 device_map="auto"
             )
-            my_cprint("Granite Vision model loaded with quantization on CUDA", "green")
+            precision_str = "bfloat16" if use_bf16 else "float16"
+            my_cprint(f"{chosen_model} loaded into memory on CUDA ({precision_str})", "green")
             
         else:
             # CPU mode - no quantization
@@ -608,7 +460,7 @@ class loader_granite(BaseLoader):
                 token=False,
                 device_map={"": "cpu"}
             )
-            my_cprint("Granite Vision model loaded on CPU (no quantization)", "yellow")
+            my_cprint(f"{chosen_model} loaded into memory on CPU (float32)", "green")
         
         model.eval()
         return model, None, processor
@@ -636,10 +488,17 @@ class loader_qwenvl(BaseLoader):
         save_dir = model_info['cache_dir']
         cache_dir = CACHE_DIR / save_dir
         cache_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Check for bfloat16 support
+        use_bf16 = torch.cuda.get_device_capability()[0] >= 8
+        dtype = torch.bfloat16 if use_bf16 else torch.float16
+        precision_str = "bfloat16" if use_bf16 else "float16"
+        device_str = "CUDA" if self.device == "cuda" else "CPU"
+        
         quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_compute_dtype=dtype,  # Use determined dtype
             bnb_4bit_use_double_quant=True,
             llm_int8_threshold=6.0,
             llm_int8_skip_modules=[
@@ -681,7 +540,7 @@ class loader_qwenvl(BaseLoader):
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             model_id,
             quantization_config=quantization_config,
-            torch_dtype=torch.bfloat16,
+            torch_dtype=dtype,  # Use determined dtype
             low_cpu_mem_usage=True,
             trust_remote_code=True,
             cache_dir=cache_dir,
@@ -689,7 +548,8 @@ class loader_qwenvl(BaseLoader):
         )
         model = model.to(self.device)
         model.eval()
-        my_cprint("Qwen2.5-VL model loaded into memory", "green")
+        precision_str = "bfloat16" if use_bf16 else "float16"
+        my_cprint(f"{chosen_model} loaded into memory on {device_str} ({precision_str})", "green")
         return model, None, processor
 
     @torch.inference_mode()
