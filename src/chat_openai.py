@@ -44,20 +44,19 @@ class ChatGPTChat:
 
     def connect_to_chatgpt(self, augmented_query):
         openai_config = self.config.get('openai', {})
-        model = openai_config.get('model', 'gpt-4.1-mini')
+        model = openai_config.get('model', 'gpt-4.1-nano')
         """
         +--------------+--------+--------+-------------+------------+
         |     Model    | Input  | Output | Max Context | Max Output |
         +--------------+--------+--------+-------------+------------+
-        | gpt-4o       | $5.00  | $15.00 | 128,000     | 16,384     |
+        | gpt-4.1-nano | $0.10  | $0.40  | 1,047,576   | 32,768     |
         | gpt-4o-mini  | $0.15  | $0.60  | 128,000     | 16,384     |
-        | o1           | $15.00 | $60.00 | 200,000     | 100,000    |
-        | o3-mini      | $1.10  | $4.40  | 200,000     | 100,000    |
-        | o1-mini      | $1.10  | $4.40  | 128,000     | 65,536     |
+        | gpt-4.1-mini | $0.40  | $1.60  | 1,047,576   | 32,768     |
         | 04-mini      | $1.10  | $4.40  | 200,000     | 100,000    |
         | gpt-4.1      | $2.00  | $8.00  | 1,047,576   | 32,768     |
-        | gpt-4.1-mini | $0.40  | $1.60  | 1,047,576   | 32,768     |
-        | gpt-4.1-nano | $0.10  | $0.40  | 1,047,576   | 32,768     |
+        | o3           | $2.00  | $8.00  | 200,000     | 100,000    |
+        | gpt-4o       | $2.50  | $10.00 | 128,000     | 16,384     |
+        | o3-pro       | $20.00 | $80.00 | 200,000     | 100,000    |
         +--------------+--------+--------+-------------+------------+
         """
         reasoning_effort = openai_config.get('reasoning_effort', 'medium')
@@ -82,7 +81,7 @@ class ChatGPTChat:
 
         # only for thinking models
         # see here before implementing: https://platform.openai.com/docs/guides/reasoning
-        if model in ["o1", "o3-mini", "o1-mini"]:
+        if model in ["o4-mini", "o3", "o3-pro"]:
             completion_params["reasoning_effort"] = reasoning_effort
 
         stream = client.chat.completions.create(**completion_params)

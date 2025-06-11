@@ -226,10 +226,31 @@ class DatabaseQueryTab(QWidget):
             "Local Model",
             "Kobold",
             "LM Studio",
-            "gpt-4.1-nano",
+            "gpt-4.1-nano", 
+            "gpt-4o-mini",
             "gpt-4.1-mini",
+            "o4-mini",
             "gpt-4.1",
+            "o3",
+            "gpt-4o",
+            "o3-pro"
         ])
+
+        """
+        +--------------+--------+--------+-------------+------------+
+        |     Model    | Input  | Output | Max Context | Max Output |
+        +--------------+--------+--------+-------------+------------+
+        | gpt-4.1-nano | $0.10  | $0.40  | 1,047,576   | 32,768     |
+        | gpt-4o-mini  | $0.15  | $0.60  | 128,000     | 16,384     |
+        | gpt-4.1-mini | $0.40  | $1.60  | 1,047,576   | 32,768     |
+        | 04-mini      | $1.10  | $4.40  | 200,000     | 100,000    |
+        | gpt-4.1      | $2.00  | $8.00  | 1,047,576   | 32,768     |
+        | o3           | $2.00  | $8.00  | 200,000     | 100,000    |
+        | gpt-4o       | $2.50  | $10.00 | 128,000     | 16,384     |
+        | o3-pro       | $20.00 | $80.00 | 200,000     | 100,000    |
+        +--------------+--------+--------+-------------+------------+
+        """
+
         self.model_source_combo.setCurrentText("Local Model")
         self.model_source_combo.currentTextChanged.connect(self.on_model_source_changed)
         hbox1_layout.addWidget(self.model_source_combo)
@@ -312,11 +333,16 @@ class DatabaseQueryTab(QWidget):
     def _strategy_for_source(self, source: str) -> SubmitStrategy:
         STRATEGIES = {
             "Local Model": LocalModelStrategy(self),
-            "LM Studio":   LMStudioStrategy(self),
-            "Kobold":      KoboldStrategy(self),
+            "LM Studio": LMStudioStrategy(self),
+            "Kobold": oboldStrategy(self),
             "gpt-4.1-nano": ChatGPTStrategy(self),
             "gpt-4.1-mini": ChatGPTStrategy(self),
-            "gpt-4.1":      ChatGPTStrategy(self),
+            "gpt-4.1": ChatGPTStrategy(self),
+            "gpt-4o", ChatGPTStrategy(self),
+            "gpt-4o-mini", ChatGPTStrategy(self),
+            "o4-mini", ChatGPTStrategy(self),
+            "o3", ChatGPTStrategy(self),
+            "o3-pro" ChatGPTStrategy(self),
         }
         try:
             return STRATEGIES[source]
