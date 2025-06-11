@@ -196,7 +196,6 @@ class loader_molmo(BaseLoader):
 class loader_ovis(BaseLoader):
     def __init__(self, config):
         super().__init__(config)
-        # Remove the dtype determination from __init__ since we'll do it in initialize_model_and_tokenizer
 
     def initialize_model_and_tokenizer(self):
         chosen_model = self.config["vision"]["chosen_model"]
@@ -205,15 +204,12 @@ class loader_ovis(BaseLoader):
         cache_dir = CACHE_DIR / info["cache_dir"]
         cache_dir.mkdir(parents=True, exist_ok=True)
 
-        # Standardized dtype determination
         if self.device == "cuda":
-            # Check for bfloat16 support
             use_bf16 = torch.cuda.get_device_capability()[0] >= 8
             dtype = torch.bfloat16 if use_bf16 else torch.float16
         else:
             dtype = torch.float32
 
-        # Store dtype for use in process_single_image
         self.model_dtype = dtype
 
         model = AutoModelForCausalLM.from_pretrained(
@@ -252,9 +248,9 @@ class loader_ovis(BaseLoader):
         input_ids = input_ids.unsqueeze(0).to(self.device)
         attention_mask = attention_mask.unsqueeze(0).to(self.device)
 
-        pixel_values = pixel_values.to(device=self.device, dtype=self.model_dtype)  # Use stored dtype
+        pixel_values = pixel_values.to(device=self.device, dtype=self.model_dtype)
 
-        pixel_values = [pixel_values]  # wrap in list for generate()
+        pixel_values = [pixel_values]
 
         gen_kwargs = {
             "max_new_tokens": 1024,
@@ -284,14 +280,13 @@ class loader_internvl(BaseLoader):
         cache_dir.mkdir(parents=True, exist_ok=True)
         
         if self.device == "cuda":
-            # Check for bfloat16 support
             use_bf16 = torch.cuda.get_device_capability()[0] >= 8
             dtype = torch.bfloat16 if use_bf16 else torch.float16
             precision_str = "bfloat16" if use_bf16 else "float16"
 
             quant_config = BitsAndBytesConfig(
                 load_in_4bit=True,
-                bnb_4bit_compute_dtype=dtype,  # Use determined dtype
+                bnb_4bit_compute_dtype=dtype,
                 bnb_4bit_quant_type="nf4",
                 llm_int8_skip_modules=[
                     "vision_model",
@@ -305,7 +300,7 @@ class loader_internvl(BaseLoader):
             model = AutoModel.from_pretrained(
                 info['repo_id'],
                 quantization_config=quant_config,
-                torch_dtype=dtype,  # Use determined dtype
+                torch_dtype=dtype,
                 low_cpu_mem_usage=True,
                 trust_remote_code=True,
                 cache_dir=cache_dir,
@@ -325,7 +320,6 @@ class loader_internvl(BaseLoader):
                 device_map={"": "cpu"}
             ).eval()
 
-        # Store dtype for use in process_single_image
         self.model_dtype = dtype
         device_str = "CUDA" if self.device == "cuda" else "CPU"
 
@@ -420,14 +414,13 @@ class loader_granite(BaseLoader):
         )
 
         if self.device == "cuda" and torch.cuda.is_available():
-            # Check for bfloat16 support
             use_bf16 = torch.cuda.get_device_capability()[0] >= 8
             dtype = torch.bfloat16 if use_bf16 else torch.float16
             precision_str = "bfloat16" if use_bf16 else "float16"
             
             config = BitsAndBytesConfig(
                 load_in_4bit=True,
-                bnb_4bit_compute_dtype=dtype,  # Use determined dtype
+                bnb_4bit_compute_dtype=dtype,
                 bnb_4bit_quant_type="nf4",
                 llm_int8_skip_modules=[
                     "vision_tower",
@@ -441,7 +434,7 @@ class loader_granite(BaseLoader):
             model = AutoModelForVision2Seq.from_pretrained(
                 model_id,
                 quantization_config=config,
-                torch_dtype=dtype,  # Use determined dtype
+                torch_dtype=dtype,
                 low_cpu_mem_usage=True,
                 cache_dir=cache_dir,
                 token=False,
@@ -488,8 +481,7 @@ class loader_qwenvl(BaseLoader):
         save_dir = model_info['cache_dir']
         cache_dir = CACHE_DIR / save_dir
         cache_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Check for bfloat16 support
+
         use_bf16 = torch.cuda.get_device_capability()[0] >= 8
         dtype = torch.bfloat16 if use_bf16 else torch.float16
         precision_str = "bfloat16" if use_bf16 else "float16"
@@ -498,7 +490,7 @@ class loader_qwenvl(BaseLoader):
         quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=dtype,  # Use determined dtype
+            bnb_4bit_compute_dtype=dtype,
             bnb_4bit_use_double_quant=True,
             llm_int8_threshold=6.0,
             llm_int8_skip_modules=[
@@ -540,7 +532,7 @@ class loader_qwenvl(BaseLoader):
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             model_id,
             quantization_config=quantization_config,
-            torch_dtype=dtype,  # Use determined dtype
+            torch_dtype=dtype,
             low_cpu_mem_usage=True,
             trust_remote_code=True,
             cache_dir=cache_dir,
