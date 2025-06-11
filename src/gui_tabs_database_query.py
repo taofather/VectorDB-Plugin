@@ -338,11 +338,11 @@ class DatabaseQueryTab(QWidget):
             "gpt-4.1-nano": ChatGPTStrategy(self),
             "gpt-4.1-mini": ChatGPTStrategy(self),
             "gpt-4.1": ChatGPTStrategy(self),
-            "gpt-4o", ChatGPTStrategy(self),
-            "gpt-4o-mini", ChatGPTStrategy(self),
-            "o4-mini", ChatGPTStrategy(self),
-            "o3", ChatGPTStrategy(self),
-            "o3-pro" ChatGPTStrategy(self),
+            "gpt-4o": ChatGPTStrategy(self),
+            "gpt-4o-mini": ChatGPTStrategy(self),
+            "o4-mini": ChatGPTStrategy(self),
+            "o3": ChatGPTStrategy(self),
+            "o3-pro": ChatGPTStrategy(self),
         }
         try:
             return STRATEGIES[source]
