@@ -49,66 +49,38 @@ GLM4Z1_CHAT_TEMPLATE = """[gMASK]<sop>
 priority_libs = {
     "cp311": {
         "GPU": [
-            "https://github.com/kingbri1/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu124torch2.6.0cxx11abiFALSE-cp311-cp311-win_amd64.whl",
-            "https://download.pytorch.org/whl/cu124/torch-2.6.0%2Bcu124-cp311-cp311-win_amd64.whl#sha256=6a1fb2714e9323f11edb6e8abf7aad5f79e45ad25c081cde87681a18d99c29eb",
-            "https://download.pytorch.org/whl/cu124/torchvision-0.21.0%2Bcu124-cp311-cp311-win_amd64.whl#sha256=000a013584ad2304ab30496318145f284ac364622addb5ee3a5abd2769ba146f",
-            "https://download.pytorch.org/whl/cu124/torchaudio-2.6.0%2Bcu124-cp311-cp311-win_amd64.whl#sha256=a25e146ce66ea9a6aed39008cc2001891bdf75253af479a4c32096678b2073b3",
-            "triton-windows==3.2.0.post12",
+            # Mac M2 specific packages
+            "torch",
+            "torchvision",
+            "torchaudio",
+            "flash-attn",
+            "xformers",
             "git+https://github.com/shashikg/WhisperS2T.git@e7f7e6dbfdc7f3a39454feb9dd262fd3653add8c",
             "git+https://github.com/BBC-Esq/WhisperSpeech.git@795f60157136b0052b9a1f576e88803f7783ab1f",
-            "xformers==0.0.29.post3",
-            "nvidia-cuda-runtime-cu12==12.4.127",
-            "nvidia-cublas-cu12==12.4.5.8",
-            "nvidia-cuda-nvrtc-cu12==12.4.127",
-            "nvidia-cuda-nvcc-cu12==12.4.131",
-            "nvidia-cufft-cu12==11.2.1.3",
-            "nvidia-cudnn-cu12==9.1.0.70",
-            "nvidia-ml-py==12.575.51",
-            # "xformers==xformers==0.0.30",  # requires torch 2.7.0
-            # "nvidia-cuda-runtime-cu12==12.6.77",
-            # "nvidia-cublas-cu12==12.6.4.1",
-            # "nvidia-cuda-nvrtc-cu12==12.6.77",
-            # "nvidia-cuda-nvcc-cu12==12.6.85",
-            # "nvidia-cufft-cu12==11.3.0.4",
-            # "nvidia-cudnn-cu12==9.5.1.17",
         ],
         "CPU": [
             # CPU only libraries would go here
         ],
         "COMMON": [
-            "https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.8.0-tesseract-5.5.0/tesserocr-2.8.0-cp311-cp311-win_amd64.whl",
-        ],
+            # Common libraries for all platforms
+        ]
     },
     "cp312": {
         "GPU": [
-            "https://github.com/kingbri1/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu124torch2.6.0cxx11abiFALSE-cp312-cp312-win_amd64.whl",
-            "https://download.pytorch.org/whl/cu124/torch-2.6.0%2Bcu124-cp312-cp312-win_amd64.whl#sha256=3313061c1fec4c7310cf47944e84513dcd27b6173b72a349bb7ca68d0ee6e9c0",
-            "https://download.pytorch.org/whl/cu124/torchvision-0.21.0%2Bcu124-cp312-cp312-win_amd64.whl#sha256=ec63c2ee792757492da40590e34b14f2fceda29050558c215f0c1f3b08149c0f",
-            "https://download.pytorch.org/whl/cu124/torchaudio-2.6.0%2Bcu124-cp312-cp312-win_amd64.whl#sha256=004ff6bcee0ac78747253c09db67d281add4308a9b87a7bf1769da5914998639",
-            "triton-windows==3.2.0.post12",
+            # Mac M2 specific packages
+            "torch",
+            "torchvision",
+            "torchaudio",
+            "flash-attn",
+            "xformers",
             "git+https://github.com/shashikg/WhisperS2T.git@e7f7e6dbfdc7f3a39454feb9dd262fd3653add8c",
             "git+https://github.com/BBC-Esq/WhisperSpeech.git@795f60157136b0052b9a1f576e88803f7783ab1f",
-            "xformers==0.0.29.post3",
-            "nvidia-cuda-runtime-cu12==12.4.127",
-            "nvidia-cublas-cu12==12.4.5.8",
-            "nvidia-cuda-nvrtc-cu12==12.4.127",
-            "nvidia-cuda-nvcc-cu12==12.4.131",
-            "nvidia-cufft-cu12==11.2.1.3",
-            "nvidia-cudnn-cu12==9.1.0.70",
-            "nvidia-ml-py==12.575.51",
-            # "xformers==xformers==0.0.30", # requires torch 2.7.0
-            # "nvidia-cuda-runtime-cu12==12.6.77",
-            # "nvidia-cublas-cu12==12.6.4.1",
-            # "nvidia-cuda-nvrtc-cu12==12.6.77",
-            # "nvidia-cuda-nvcc-cu12==12.6.85",
-            # "nvidia-cufft-cu12==11.3.0.4",
-            # "nvidia-cudnn-cu12==9.5.1.17",
         ],
         "CPU": [
             # CPU only libraries would go here
         ],
         "COMMON": [
-            "https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.8.0-tesseract-5.5.0/tesserocr-2.8.0-cp312-cp312-win_amd64.whl",
+            # Common libraries for all platforms
         ]
     }
 }
@@ -128,7 +100,7 @@ libs = [
     "av==14.3.0",
     "backoff==2.2.1",
     "beautifulsoup4==4.13.4",
-    "bitsandbytes==0.46.0",
+    "bitsandbytes==0.42.0",
     "braceexpand==0.1.7",
     "certifi==2025.4.26",
     "cffi==1.17.1",

@@ -9,8 +9,6 @@ set_cuda_paths()
 import yaml
 from utilities import ensure_theme_config, load_stylesheet
 
-from ctypes import windll, byref, sizeof, c_int
-from ctypes.wintypes import BOOL, HWND, DWORD
 import psutil
 import ctranslate2
 import gc
@@ -340,25 +338,31 @@ class ChatWindow(QMainWindow):
         self.apply_dark_mode_settings()
 
     def apply_dark_mode_settings(self):
-        DWMWA_USE_IMMERSIVE_DARK_MODE = DWORD(20)
-        set_window_attribute = windll.dwmapi.DwmSetWindowAttribute
-        hwnd = HWND(int(self.winId()))
-        true_bool = BOOL(True)
-        set_window_attribute(
-            hwnd,
-            DWMWA_USE_IMMERSIVE_DARK_MODE,
-            byref(true_bool),
-            sizeof(true_bool)
-        )
+        import platform
+        if platform.system() == 'Windows':
+            from ctypes import windll, byref, sizeof, c_int
+            from ctypes.wintypes import BOOL, HWND, DWORD
+            
+            DWMWA_USE_IMMERSIVE_DARK_MODE = DWORD(20)
+            set_window_attribute = windll.dwmapi.DwmSetWindowAttribute
+            hwnd = HWND(int(self.winId()))
+            true_bool = BOOL(True)
+            set_window_attribute(
+                hwnd,
+                DWMWA_USE_IMMERSIVE_DARK_MODE,
+                byref(true_bool),
+                sizeof(true_bool)
+            )
 
-        DWMWA_BORDER_COLOR = DWORD(34)
-        black_color = c_int(0xFF000000)
-        set_window_attribute(
-            hwnd,
-            DWMWA_BORDER_COLOR,
-            byref(black_color),
-            sizeof(black_color)
-        )
+            DWMWA_BORDER_COLOR = DWORD(34)
+            black_color = c_int(0xFF000000)
+            set_window_attribute(
+                hwnd,
+                DWMWA_BORDER_COLOR,
+                byref(black_color),
+                sizeof(black_color)
+            )
+        # For macOS, we don't need to do anything special as the system handles dark mode automatically
 
     def build_prompt(self, user_message):
         model_name = self.model_selector.currentText()
@@ -527,7 +531,7 @@ class ChatWindow(QMainWindow):
             self.tts_worker.stop()
 
     def handle_tts_error(self, error_message):
-        self.speak_button.setEnabled(True)
+        self.on_speech_finished()
         QMessageBox.warning(self, "TTS Error", 
             f"An error occurred while trying to speak: {error_message}")
 

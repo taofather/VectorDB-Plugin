@@ -20,8 +20,10 @@ from pathlib import Path
 from utilities import set_cuda_paths
 set_cuda_paths()
 
-from ctypes import windll, byref, sizeof, c_void_p, c_int
-from ctypes.wintypes import BOOL, HWND, DWORD
+import platform
+if platform.system() == 'Windows':
+    from ctypes import windll, byref, sizeof, c_void_p, c_int
+    from ctypes.wintypes import BOOL, HWND, DWORD
 
 from PySide6.QtCore import QTimer
 
@@ -62,26 +64,28 @@ class DocQA_GUI(QWidget):
         self.set_dark_titlebar()
 
     def set_dark_titlebar(self):
-        DWMWA_USE_IMMERSIVE_DARK_MODE = DWORD(20)
-        set_window_attribute = windll.dwmapi.DwmSetWindowAttribute
-        hwnd = HWND(int(self.winId()))
-        rendering_policy = BOOL(True)
-        set_window_attribute(
-            hwnd,
-            DWMWA_USE_IMMERSIVE_DARK_MODE,
-            byref(rendering_policy), 
-            sizeof(rendering_policy)
-        )
+        if platform.system() == 'Windows':
+            DWMWA_USE_IMMERSIVE_DARK_MODE = DWORD(20)
+            set_window_attribute = windll.dwmapi.DwmSetWindowAttribute
+            hwnd = HWND(int(self.winId()))
+            rendering_policy = BOOL(True)
+            set_window_attribute(
+                hwnd,
+                DWMWA_USE_IMMERSIVE_DARK_MODE,
+                byref(rendering_policy), 
+                sizeof(rendering_policy)
+            )
 
-        # Make window border black (Windows 11+)
-        DWMWA_BORDER_COLOR = DWORD(34)
-        black_color = c_int(0xFF000000)  # ABGR = 0xAARRGGBB => FF 00 00 00 = fully opaque black
-        set_window_attribute(
-            hwnd,
-            DWMWA_BORDER_COLOR,
-            byref(black_color),
-            sizeof(black_color)
-        )
+            # Make window border black (Windows 11+)
+            DWMWA_BORDER_COLOR = DWORD(34)
+            black_color = c_int(0xFF000000)  # ABGR = 0xAARRGGBB => FF 00 00 00 = fully opaque black
+            set_window_attribute(
+                hwnd,
+                DWMWA_BORDER_COLOR,
+                byref(black_color),
+                sizeof(black_color)
+            )
+        # For macOS, we don't need to do anything special as the system handles dark mode automatically
 
     def init_ui(self):
         self.setWindowTitle('VectorDB Plugin')

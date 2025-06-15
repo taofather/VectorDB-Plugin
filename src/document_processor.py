@@ -37,7 +37,7 @@ from typing import Optional, Any, Iterator, Union
 from langchain_community.document_loaders.blob_loaders import Blob
 
 from langchain_community.document_loaders.parsers import PyMuPDFParser
-import pymupdf
+import fitz  # Aquest és el nom correcte del mòdul dins de PyMuPDF
 
 from constants import DOCUMENT_LOADERS
 from extract_metadata import extract_document_metadata, add_pymupdf_page_metadata, compute_content_hash
@@ -61,7 +61,7 @@ class CustomPyMuPDFParser(PyMuPDFParser):
     def _lazy_parse(self, blob: Blob, text_kwargs: Optional[dict[str, Any]] = None) -> Iterator[Document]:
         with PyMuPDFParser._lock:
             with blob.as_bytes_io() as file_path:
-                doc = pymupdf.open(stream=file_path, filetype="pdf") if blob.data else pymupdf.open(file_path)
+                doc = fitz.open(stream=file_path, filetype="pdf") if blob.data else fitz.open(file_path)
 
                 full_content = []
                 for page in doc:
