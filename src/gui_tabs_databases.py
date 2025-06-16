@@ -13,6 +13,7 @@ from choose_documents_and_vector_model import choose_documents_directory
 from utilities import check_preconditions_for_db_creation, open_file, delete_file, backup_database_incremental, my_cprint
 from download_model import model_downloaded_signal
 from constants import TOOLTIPS
+from config_manager import ConfigManager
 
 
 class CreateDatabaseProcess:
@@ -74,22 +75,19 @@ class CreateDatabaseThread(QThread):
         backup_database_incremental(self.database_name)
 
     def update_config_with_database_name(self):
-        config_path = Path(__file__).resolve().parent / "config.yaml"
-        if config_path.exists():
-            with open(config_path, 'r', encoding='utf-8') as file:
-                config = yaml.safe_load(file) or {}
-            model = config.get('EMBEDDING_MODEL_NAME')
-            chunk_size = config.get('database', {}).get('chunk_size')
-            chunk_overlap = config.get('database', {}).get('chunk_overlap')
-            if 'created_databases' not in config or not isinstance(config['created_databases'], dict):
-                config['created_databases'] = {}
-            config['created_databases'][self.database_name] = {
-                'model': model,
-                'chunk_size': chunk_size,
-                'chunk_overlap': chunk_overlap
-            }
-            with open(config_path, 'w', encoding='utf-8') as file:
-                yaml.safe_dump(config, file, allow_unicode=True)
+        config_manager = ConfigManager()
+        config_data = config_manager.get_config()
+        model = config_data.get('EMBEDDING_MODEL_NAME')
+        chunk_size = config_data.get('database', {}).get('chunk_size')
+        chunk_overlap = config_data.get('database', {}).get('chunk_overlap')
+        if 'created_databases' not in config_data or not isinstance(config_data['created_databases'], dict):
+            config_data['created_databases'] = {}
+        config_data['created_databases'][self.database_name] = {
+            'model': model,
+            'chunk_size': chunk_size,
+            'chunk_overlap': chunk_overlap
+        }
+        config_manager.save_config(config_data)
 
 
 class CustomFileSystemModel(QFileSystemModel):

@@ -17,8 +17,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, QM
 import module_process_images
 from module_process_images import choose_image_loader
 from constants import VISION_MODELS
-
-CONFIG_FILE = 'config.yaml'
+from config_manager import ConfigManager
 
 class ModelSelectionDialog(QDialog):
     def __init__(self, models, parent=None):
@@ -69,6 +68,7 @@ class MultiModelProcessorThread(QThread):
         self.image_path = image_path
         self.selected_models = selected_models
         self.is_cancelled = False
+        self.config_manager = ConfigManager()
 
     def cancel(self):
         self.is_cancelled = True
@@ -86,11 +86,13 @@ class MultiModelProcessorThread(QThread):
 
                     try:
                         print(f"\nProcessing with {model_name}...")
-                        model_config = {"vision": {"chosen_model": model_name}}
+                        config = self.config_manager.get_config()
+                        config['vision'] = {'chosen_model': model_name}
+                        self.config_manager.save_config(config)
 
                         loader_name = VISION_MODELS[model_name]['loader']
                         loader_class = getattr(module_process_images, loader_name)
-                        loader = loader_class(model_config)
+                        loader = loader_class(config)
 
                         loader.model, loader.tokenizer, loader.processor = loader.initialize_model_and_tokenizer()
                         start_time = time.time()
@@ -131,6 +133,7 @@ class MultiModelProcessorThread(QThread):
 class VisionToolSettingsTab(QWidget):
     def __init__(self):
         super().__init__()
+        self.config_manager = ConfigManager()
 
         mainVLayout = QVBoxLayout()
         self.setLayout(mainVLayout)
@@ -198,158 +201,93 @@ class VisionToolSettingsTab(QWidget):
                          doc.get("metadata", {}).get('file_path',
                          doc.get("metadata", {}).get('file_name', 'Unknown filepath')))
             else:
-                content = "Document is missing 'page_content'."
-                filepath = 'Unknown filepath'
+                continue
 
-            content_length = len(content)
-            total_length += content_length
-            wrapped_content = textwrap.fill(content, width=100)
-            contents.append((filepath, wrapped_content, content_length))
+            total_length += len(content)
+            contents.append((filepath, content))
 
-        avg_length = total_length / len(documents) if documents else 0
-        return contents, avg_length
+        return contents
 
     def save_page_contents(self, contents):
-        contents, avg_length = contents
+        if not contents:
+            QMessageBox.warning(self, "No Content", "No content was extracted from the documents.")
+            return
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', encoding='utf-8', delete=False) as temp_file:
-            temp_file.write(f"Average Summary Length: {avg_length:.2f} characters\n")
-            temp_file.write("="*50 + "\n\n")
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as temp_file:
+                for filepath, content in contents:
+                    temp_file.write(f"File: {filepath}\n")
+                    temp_file.write(f"Content: {content}\n")
+                    temp_file.write("-" * 80 + "\n")
 
-            for filepath, content, length in contents:
-                temp_file.write(f"File Path: {filepath}\n")
-                temp_file.write(f"Summary Length: {length} characters\n")
-                temp_file.write("-"*50 + "\n")
-                temp_file.write(f"{content}\n\n")
-                temp_file.write("="*50 + "\n\n")
+            self.open_file(temp_file.name)
 
-            temp_name = temp_file.name
-
-        self.open_file(temp_name)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save contents: {str(e)}")
 
     def save_comparison_results(self, image_path, results):
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', encoding='utf-8', delete=False) as temp_file:
-            model_col_width = 23
-            count_col_width = 12
-            time_col_width = 12
-            speed_col_width = 12
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as temp_file:
+                temp_file.write(f"Image: {image_path}\n\n")
+                for model_name, description, process_time in results:
+                    temp_file.write(f"Model: {model_name}\n")
+                    temp_file.write(f"Processing Time: {process_time:.2f} seconds\n")
+                    temp_file.write("Description:\n")
+                    temp_file.write(f"{description}\n")
+                    temp_file.write("-" * 80 + "\n\n")
 
-            temp_file.write(f"Image Path: {image_path}\n")
-            temp_file.write(f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            self.open_file(temp_file.name)
 
-            chunk_advice = "Remember to adjust your 'chunk size' setting to exceed the longest image summary that you expect. For large bodies of text (e.g. from a .pdf) splitting/overlapping chunks of text is fine, but for image summaries you want any/all summaries to fit within a single chunk that will be put into the vector database."
-            temp_file.write(textwrap.fill(chunk_advice, width=100) + "\n\n")
-
-            temp_file.write("Model Performance Comparison Table:\n")
-            temp_file.write("+" + "-"*model_col_width + "+" + "-"*count_col_width + "+" + 
-                           "-"*time_col_width + "+" + "-"*speed_col_width + "+\n")
-            temp_file.write("|" + "Model Name".center(model_col_width) + "|" + 
-                           "Char Count".center(count_col_width) + "|" + 
-                           "Time (sec)".center(time_col_width) + "|" + 
-                           "Char/Sec".center(speed_col_width) + "|\n")
-            temp_file.write("+" + "-"*model_col_width + "+" + "-"*count_col_width + "+" + 
-                           "-"*time_col_width + "+" + "-"*speed_col_width + "+\n")
-
-            for model_name, description, process_time in results:
-                char_count = len(description)
-                chars_per_sec = char_count / process_time if process_time > 0 else 0
-                
-                temp_file.write("|" + model_name.ljust(model_col_width) + "|" + 
-                              str(char_count).center(count_col_width) + "|" + 
-                              f"{process_time:.2f}".center(time_col_width) + "|" +
-                              f"{chars_per_sec:.1f}".center(speed_col_width) + "|\n")
-
-            temp_file.write("+" + "-"*model_col_width + "+" + "-"*count_col_width + "+" + 
-                           "-"*time_col_width + "+" + "-"*speed_col_width + "+\n\n")
-
-            for model_name, description, process_time in results:
-                char_count = len(description)
-                chars_per_sec = char_count / process_time if process_time > 0 else 0
-                
-                temp_file.write(f"Model: {model_name}\n")
-                temp_file.write(f"Summary Length: {char_count}\n")
-                temp_file.write(f"Processing Time: {process_time:.2f} seconds\n")
-                temp_file.write(f"Characters per Second: {chars_per_sec:.1f}\n")
-                temp_file.write("="*50 + "\n")
-                if description.strip():
-                    temp_file.write(textwrap.fill(description, width=100) + "\n\n")
-                else:
-                    temp_file.write("[No output generated]\n\n")
-                temp_file.write("-"*50 + "\n\n")
-
-            temp_name = temp_file.name
-        
-        self.open_file(temp_name)
-        return temp_name
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save results: {str(e)}")
 
     def selectSingleImage(self):
-        file_path, _ = QFileDialog.getOpenFileName(
+        file_name, _ = QFileDialog.getOpenFileName(
             self,
             "Select Image File",
             "",
-            "Image Files (*.png *.jpg *.jpeg *.gif *.bmp *.tif *.tiff)"
+            "Image Files (*.png *.jpg *.jpeg *.bmp *.gif *.tiff);;All Files (*)"
         )
-        if file_path:
-            dialog = ModelSelectionDialog(VISION_MODELS, self)
-            if dialog.exec():
-                selected_models = dialog.get_selected_models()
-                if not selected_models:
-                    QMessageBox.warning(self, "Warning", "Please select at least one model.")
-                    return
-                    
-                msgBox = QMessageBox()
-                msgBox.setIcon(QMessageBox.Information)
-                msgBox.setText(
-                    "Process this image with the selected vision models?\n\n"
-                    "This will test each model sequentially and may take several minutes.\n"
-                    "Models will be loaded and unloaded to manage memory usage.\n\n"
-                    "Do you want to proceed?"
-                )
-                msgBox.setWindowTitle("Confirm Processing")
-                msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
-                returnValue = msgBox.exec()
+        if not file_name:
+            return
 
-                if returnValue == QMessageBox.Ok:
-                    self.progress = QProgressDialog("Processing image with multiple models...", "Cancel", 0, len(selected_models), self)
-                    self.progress.setWindowModality(Qt.WindowModal)
-                    self.progress.setWindowTitle("Processing")
-                    self.progress.canceled.connect(self.cancelProcessing)
-                    
-                    self.thread = MultiModelProcessorThread(file_path, selected_models)
-                    self.thread.finished.connect(self.onMultiModelProcessingFinished)
-                    self.thread.error.connect(self.onMultiModelProcessingError)
-                    self.thread.progress.connect(self.progress.setValue)
-                    self.thread.start()
+        dialog = ModelSelectionDialog(VISION_MODELS, self)
+        if dialog.exec() != QDialog.Accepted:
+            return
+
+        selected_models = dialog.get_selected_models()
+        if not selected_models:
+            QMessageBox.warning(self, "No Models Selected", "Please select at least one model.")
+            return
+
+        progress_dialog = QProgressDialog("Processing image with multiple models...", "Cancel", 0, len(selected_models), self)
+        progress_dialog.setWindowModality(Qt.WindowModal)
+        progress_dialog.setAutoClose(False)
+
+        self.thread = MultiModelProcessorThread(file_name, selected_models)
+        self.thread.progress.connect(progress_dialog.setValue)
+        self.thread.finished.connect(lambda results: self.onMultiModelProcessingFinished(file_name, results))
+        self.thread.error.connect(self.onMultiModelProcessingError)
+        progress_dialog.canceled.connect(self.cancelProcessing)
+        self.thread.start()
 
     def cancelProcessing(self):
-        if self.thread is not None:
+        if self.thread:
             self.thread.cancel()
 
-    def onMultiModelProcessingFinished(self, results):
-            self.progress.close()
-            try:
-                output_file = self.save_comparison_results(self.thread.image_path, results)
-                self.open_file(output_file)
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"An error occurred while saving results:\n\n{str(e)}")
-            self.thread = None
+    def onMultiModelProcessingFinished(self, image_path, results):
+        self.thread = None
+        if results:
+            self.save_comparison_results(image_path, results)
 
     def onMultiModelProcessingError(self, error_msg):
-        self.progress.close()
-        QMessageBox.critical(self, "Error", f"An error occurred during processing:\n\n{error_msg}")
         self.thread = None
+        QMessageBox.critical(self, "Processing Error", f"An error occurred during processing:\n\n{error_msg}")
 
     def open_file(self, file_path):
-        try:
-            if os.name == 'nt':
-                os.startfile(file_path)
-            elif sys.platform == 'darwin':
-                subprocess.Popen(['open', file_path])
-            elif sys.platform.startswith('linux'):
-                subprocess.Popen(['xdg-open', file_path])
-            else:
-                raise NotImplementedError("Unsupported operating system")
-        except Exception as e:
-            error_msg = f"Error opening file: {e}"
-            logging.error(error_msg)
-            QMessageBox.warning(self, "Error", error_msg)
+        if sys.platform == 'win32':
+            os.startfile(file_path)
+        elif sys.platform == 'darwin':
+            subprocess.run(['open', file_path])
+        else:
+            subprocess.run(['xdg-open', file_path])

@@ -3,6 +3,7 @@ import time
 import warnings
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+import os
 
 import torch
 import torchvision.transforms as T
@@ -19,12 +20,15 @@ from transformers import (
     Qwen2_5_VLForConditionalGeneration,
     GenerationConfig,
     AutoConfig,
-    AutoModelForVision2Seq
+    AutoModelForVision2Seq,
+    CLIPProcessor,
+    CLIPModel
 )
 from langchain_community.docstore.document import Document
 from extract_metadata import extract_image_metadata
 from utilities import my_cprint, has_bfloat16_support
 from constants import VISION_MODELS
+from config_manager import ConfigManager
 
 warnings.filterwarnings("ignore", message=".*Torch was not compiled with flash attention.*")
 
@@ -570,3 +574,30 @@ class loader_qwenvl(BaseLoader):
         response = self.processor.decode(output[0], skip_special_tokens=True)
         response = response.split('assistant')[-1].strip()
         return ' '.join(line.strip() for line in response.split('\n') if line.strip())
+
+
+def process_image(image_path):
+    try:
+        config_manager = ConfigManager()
+        config = config_manager.get_config()
+        
+        image_model = config.get('image_model', '')
+        if not image_model:
+            my_cprint("No valid image model specified in config.yaml", "red")
+            return None, None
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = CLIPModel.from_pretrained(image_model).to(device)
+        processor = CLIPProcessor.from_pretrained(image_model)
+
+        image = Image.open(image_path)
+        inputs = processor(images=image, return_tensors="pt", padding=True).to(device)
+
+        image_features = model.get_image_features(**inputs)
+        image_features = image_features.detach().cpu().numpy()
+
+        return image_features, image
+
+    except Exception as e:
+        my_cprint(f"Error processing image: {e}", "red")
+        return None, None

@@ -3,7 +3,7 @@ from functools import partial
 from PySide6.QtWidgets import QVBoxLayout, QGroupBox, QPushButton, QHBoxLayout, QWidget, QMessageBox
 from gui_tabs_settings_server import ServerSettingsTab
 from gui_tabs_settings_database_create import ChunkSettingsTab
-from gui_tabs_settings_database_query import DatabaseSettingsTab
+from gui_tabs_settings_database_query import QuerySettingsTab
 from gui_tabs_settings_tts import TTSSettingsTab
 from gui_tabs_settings_vision import VisionSettingsTab
 
@@ -29,7 +29,7 @@ class GuiSettingsTab(QWidget):
         self.layout = QVBoxLayout()
         classes = {
             "LM Studio Server": (ServerSettingsTab, 2),
-            "Database Query": (DatabaseSettingsTab, 4),
+            "Database Query": (QuerySettingsTab, 4),
             "Database Creation": (ChunkSettingsTab, 3),
         }
         self.groups = {}

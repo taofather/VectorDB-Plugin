@@ -1289,6 +1289,7 @@ TOOLTIPS = {
     "SHOW_THINKING_CHECKBOX": "If checked, show the model's internal thought process.  Only applies to models like Deepseek's R1 and it will be disregarded if not applicable.",
     "TRANSCRIBE_BUTTON": "Start transcription.",
     "TTS_MODEL": "Choose TTS model. Bark offers customization, Google requires internet.",
+    "TTS_DEVICE": "Choose 'cpu' or 'cuda' for text-to-speech processing. Use 'cuda' if available for faster processing.",
     "VECTOR_MODEL_DIMENSIONS": "Higher dimensions captures more nuance but requires more processing time.",
     "VECTOR_MODEL_DOWNLOADED": "Whether the model has been downloaded.",
     "VECTOR_MODEL_LINK": "Huggingface link.",
@@ -1296,8 +1297,7 @@ TOOLTIPS = {
     "VECTOR_MODEL_NAME": "The name of the vector model.",
     "VECTOR_MODEL_PARAMETERS": "The number of internal weights and biases that the model learns and adjusts during training.",
     "VECTOR_MODEL_PRECISION": (
-        "<html>"
-        "<body>"
+        "<html><body>"
         "<p style='font-size: 14px; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; margin-bottom: 10px;'>"
         "<b>The precision ultimately used depends on your setup:</b></p>"
         "<table style='border-collapse: collapse; width: 100%; font-size: 12px; color: #34495e;'>"
@@ -1351,9 +1351,12 @@ TOOLTIPS = {
     "VECTOR_MODEL_SELECT": "Choose a vector model to download.",
     "VECTOR_MODEL_SIZE": "Size on disk.",
     "VISION_MODEL": "Select vision model for image processing. Test before bulk processing.",
+    "VISION_DEVICE": "Choose 'cpu' or 'cuda' for vision model processing. Use 'cuda' if available for faster processing.",
     "VOICE_RECORDER": "Click to start recording, speak your question, then click again to stop recording.",
     "WHISPER_BATCH_SIZE": "Batch size for transcription. See the User Guid for optimal values.",
-    "WHISPER_MODEL_SELECT": "Distil models use ~ 70% VRAM of their non-Distil equivalents with little quality loss."
+    "WHISPER_MODEL_SELECT": "Distil models use ~ 70% VRAM of their non-Distil equivalents with little quality loss.",
+    "SERVER_HOST": "The host address for the server (e.g., localhost or 127.0.0.1)",
+    "SERVER_PORT": "The port number for the server (e.g., 5000)"
 }
 
 scrape_documentation = {

@@ -261,8 +261,25 @@ class QwenEmbedding(BaseEmbeddingModel):
 
 
 def create_vector_db_in_process(database_name):
-    create_vector_db = CreateVectorDB(database_name=database_name)
-    create_vector_db.run()
+    try:
+        # Load configuration
+        config_path = Path(__file__).resolve().parent.parent / "config.yaml"
+        with open(config_path, 'r', encoding='utf-8') as file:
+            config = yaml.safe_load(file)
+        
+        # Create database instance
+        from Vector_DB.factory import VectorDBFactory
+        db = VectorDBFactory.create_database(config)
+        
+        # Initialize database with configuration
+        db.initialize(config)
+        
+        # Create vector database
+        create_vector_db = CreateVectorDB(database_name=database_name)
+        create_vector_db.run()
+    except Exception as e:
+        logging.error(f"Error creating vector database: {str(e)}")
+        raise
 
 def process_chunks_only_query(database_name, query, result_queue):
     try:
@@ -291,14 +308,24 @@ def process_chunks_only_query(database_name, query, result_queue):
 
 
 class CreateVectorDB:
-    def __init__(self, database_name):
-        self.ROOT_DIRECTORY = Path(__file__).resolve().parent
-        self.SOURCE_DIRECTORY = self.ROOT_DIRECTORY / "Docs_for_DB"
-        self.PERSIST_DIRECTORY = self.ROOT_DIRECTORY / "Vector_DB" / database_name
+    def __init__(self, database_name: str):
+        self.database_name = database_name
+        self.root_dir = Path(__file__).resolve().parent
+        self.config = self.load_config(self.root_dir)
+        self.vector_model = None
 
     def load_config(self, root_directory):
-        with open(root_directory / "config.yaml", 'r', encoding='utf-8') as stream:
+        with open(root_directory.parent / "config.yaml", 'r', encoding='utf-8') as stream:
             return yaml.safe_load(stream)
+
+    def load_configuration(self):
+        config_path = Path(__file__).resolve().parent.parent / 'config.yaml'
+        try:
+            with open(config_path, 'r', encoding='utf-8') as file:
+                return yaml.safe_load(file)
+        except Exception as e:
+            logging.error(f"Error loading configuration: {e}")
+            raise
 
     @torch.inference_mode()
     def initialize_vector_model(self, embedding_model_name, config_data):
@@ -407,12 +434,12 @@ class CreateVectorDB:
         # atomically create the DB folder
         created_new_dir = False
         try:
-            self.PERSIST_DIRECTORY.mkdir(parents=True, exist_ok=False)
+            self.root_dir / "Vector_DB" / self.database_name.mkdir(parents=True, exist_ok=False)
             created_new_dir = True
-            my_cprint(f"Created directory: {self.PERSIST_DIRECTORY}", "green")
+            my_cprint(f"Created directory: {self.root_dir / 'Vector_DB' / self.database_name}", "green")
         except FileExistsError:
             raise FileExistsError(
-                f"Vector database '{self.PERSIST_DIRECTORY.name}' already exists. "
+                f"Vector database '{self.root_dir / 'Vector_DB' / self.database_name}' already exists. "
                 "Choose a different name or delete the existing DB first."
             )
 
@@ -470,7 +497,7 @@ class CreateVectorDB:
                     print(f"   #{idx}: {typ} → {preview!r}")
                 raise ValueError(f"Found {len(bad_chunks)} non-string chunks — fix loaders")
 
-            with open(self.ROOT_DIRECTORY / "config.yaml", 'r', encoding='utf-8') as config_file:
+            with open(self.root_dir / "config.yaml", 'r', encoding='utf-8') as config_file:
                 config_data = yaml.safe_load(config_file)
 
             # Final clean-up of texts
@@ -488,7 +515,7 @@ class CreateVectorDB:
             all_texts = validated_texts
 
             # Save chunks for testing
-            # test_chunks_dir = self.ROOT_DIRECTORY / "Test_Chunks"
+            # test_chunks_dir = self.root_dir / "Test_Chunks"
             # if test_chunks_dir.exists():
                 # shutil.rmtree(test_chunks_dir)
             # test_chunks_dir.mkdir(parents=True, exist_ok=True)
@@ -529,7 +556,7 @@ class CreateVectorDB:
                 metadatas=all_metadatas[:len(all_texts)],
                 ids=all_ids[:len(all_texts)],
                 metric="euclidean",
-                index_uri=str(self.PERSIST_DIRECTORY),
+                index_uri=str(self.root_dir / "Vector_DB" / self.database_name),
                 index_type="FLAT",
                 allow_dangerous_deserialization=True,
             )
@@ -546,19 +573,19 @@ class CreateVectorDB:
             # show full traceback from child process
             traceback.print_exc()
             logging.error(f"Error creating database: {str(e)}")
-            if self.PERSIST_DIRECTORY.exists():
+            if (self.root_dir / "Vector_DB" / self.database_name).exists():
                 try:
-                    shutil.rmtree(self.PERSIST_DIRECTORY)
-                    logging.info(f"Cleaned up failed database creation at: {self.PERSIST_DIRECTORY}")
+                    shutil.rmtree(self.root_dir / "Vector_DB" / self.database_name)
+                    logging.info(f"Cleaned up failed database creation at: {self.root_dir / 'Vector_DB' / self.database_name}")
                 except Exception as cleanup_error:
                     logging.error(f"Failed to clean up database directory: {cleanup_error}")
             raise
 
     def create_metadata_db(self, documents, hash_id_mappings):
-        if not self.PERSIST_DIRECTORY.exists():
-            self.PERSIST_DIRECTORY.mkdir(parents=True, exist_ok=True)
+        if not (self.root_dir / "Vector_DB" / self.database_name).exists():
+            (self.root_dir / "Vector_DB" / self.database_name).mkdir(parents=True, exist_ok=True)
 
-        sqlite_db_path = self.PERSIST_DIRECTORY / "metadata.db"
+        sqlite_db_path = self.root_dir / "Vector_DB" / self.database_name / "metadata.db"
         conn = sqlite3.connect(sqlite_db_path)
         cursor = conn.cursor()
 
@@ -607,7 +634,7 @@ class CreateVectorDB:
 
     def load_audio_documents(self, source_dir: Path = None) -> list:
         if source_dir is None:
-            source_dir = self.SOURCE_DIRECTORY
+            source_dir = self.root_dir / "Docs_for_DB"
         json_paths = [f for f in source_dir.iterdir() if f.suffix.lower() == '.json']
         docs = []
 
@@ -623,7 +650,7 @@ class CreateVectorDB:
         return docs
     
     def clear_docs_for_db_folder(self):
-        for item in self.SOURCE_DIRECTORY.iterdir():
+        for item in self.root_dir / "Docs_for_DB":
             if item.is_file() or item.is_symlink():
                 try:
                     item.unlink()
@@ -632,14 +659,14 @@ class CreateVectorDB:
 
     @torch.inference_mode()
     def run(self):
-        config_data = self.load_config(self.ROOT_DIRECTORY)
+        config_data = self.load_config(self.root_dir)
         EMBEDDING_MODEL_NAME = config_data.get("EMBEDDING_MODEL_NAME")
 
         # list to hold document objects
         documents = []
 
         # load text document objects
-        text_documents = load_documents(self.SOURCE_DIRECTORY)
+        text_documents = load_documents(self.root_dir / "Docs_for_DB")
         if isinstance(text_documents, list) and text_documents:
             documents.extend(text_documents)
 
@@ -709,10 +736,10 @@ class QueryVectorDB:
             if not selected_database:
                 raise ValueError("No vector database selected.")
             if selected_database not in self.config["created_databases"]:
-                raise ValueError(f'Database “{selected_database}” not found in config.')
+                raise ValueError(f'Database "{selected_database}" not found in config.')
             db_path = Path(__file__).resolve().parent / "Vector_DB" / selected_database
             if not db_path.exists():
-                raise FileNotFoundError(f'Database folder “{selected_database}” is missing on disk.')
+                raise FileNotFoundError(f'Database folder "{selected_database}" is missing on disk.')
 
             self.selected_database = selected_database
             self.embeddings = None
@@ -740,7 +767,7 @@ class QueryVectorDB:
             return cls._instance
 
     def load_configuration(self):
-        config_path = Path(__file__).resolve().parent / 'config.yaml'
+        config_path = Path(__file__).resolve().parent.parent / 'config.yaml'
         try:
             with open(config_path, 'r', encoding='utf-8') as file:
                 return yaml.safe_load(file)
@@ -891,7 +918,7 @@ class QueryVectorDB:
 ────────────────────────────────────────────────────────────────────────────
 1.  Which models can use xFormers memory-efficient attention?
 ────────────────────────────────────────────────────────────────────────────
-• Snowflake-GTE family   (all sizes except the “-large” variants)
+• Snowflake-GTE family   (all sizes except the "-large" variants)
 • Alibaba-GTE family
 • Stella-400 M           (v5)
 
@@ -962,7 +989,7 @@ outer  model_kwargs   (passed to SentenceTransformer)
 5.  Tokenization vs. encode_kwargs  (common pit-fall)
 ────────────────────────────────────────────────────────────────────────────
 • SentenceTransformer.encode() *never* forwards encode_kwargs into the
-  tokenizer. It tokenizes first, then passes encode_kwargs into the model’s
+  tokenizer. It tokenizes first, then passes encode_kwargs into the model's
   forward() call.
 
 • Therefore:

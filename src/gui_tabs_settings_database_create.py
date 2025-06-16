@@ -3,15 +3,19 @@ from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import QWidget, QLabel, QLineEdit, QGridLayout, QComboBox, QCheckBox, QMessageBox
 
 from constants import TOOLTIPS
+from config_manager import ConfigManager
 
 class ChunkSettingsTab(QWidget):
     def __init__(self):
         super(ChunkSettingsTab, self).__init__()
-        with open('config.yaml', 'r', encoding='utf-8') as f:
-            config_data = yaml.safe_load(f)
-            self.database_config = config_data['database']
-            self.compute_device_options = config_data['Compute_Device']['available']
-            self.database_creation_device = config_data['Compute_Device']['database_creation']
+        self.config_manager = ConfigManager()
+        config_data = self.config_manager.get_config()
+        
+        # Get configuration with defaults
+        self.database_config = config_data.get('database', {})
+        compute_device_config = config_data.get('Compute_Device', {})
+        self.compute_device_options = compute_device_config.get('available', ['cpu'])
+        self.database_creation_device = compute_device_config.get('database_creation', 'cpu')
         
         grid_layout = QGridLayout()
         
@@ -43,7 +47,7 @@ class ChunkSettingsTab(QWidget):
         self.chunk_size_edit.setToolTip(TOOLTIPS["CHUNK_SIZE"])
         grid_layout.addWidget(self.chunk_size_edit, 0, 5)
         
-        current_size = self.database_config.get('chunk_size', '')
+        current_size = self.database_config.get('chunk_size', 1000)  # Default to 1000
         self.current_size_label = QLabel(f"{current_size}")
         self.current_size_label.setToolTip(TOOLTIPS["CHUNK_SIZE"])
         grid_layout.addWidget(self.current_size_label, 0, 4)
@@ -59,7 +63,7 @@ class ChunkSettingsTab(QWidget):
         self.chunk_overlap_edit.setToolTip(TOOLTIPS["CHUNK_OVERLAP"])
         grid_layout.addWidget(self.chunk_overlap_edit, 0, 8)
         
-        current_overlap = self.database_config.get('chunk_overlap', '')
+        current_overlap = self.database_config.get('chunk_overlap', 200)  # Default to 200
         self.current_overlap_label = QLabel(f"{current_overlap}")
         self.current_overlap_label.setToolTip(TOOLTIPS["CHUNK_OVERLAP"])
         grid_layout.addWidget(self.current_overlap_label, 0, 7)
@@ -78,8 +82,7 @@ class ChunkSettingsTab(QWidget):
 
     def update_config(self):
         try:
-            with open('config.yaml', 'r', encoding='utf-8') as f:
-                config_data = yaml.safe_load(f)
+            config_data = self.config_manager.get_config()
         except Exception as e:
             QMessageBox.critical(
                 self, 
@@ -155,9 +158,7 @@ class ChunkSettingsTab(QWidget):
 
         if settings_changed:
             try:
-                with open('config.yaml', 'w', encoding='utf-8') as f:
-                    yaml.safe_dump(config_data, f)
-                
+                self.config_manager.save_config(config_data)
                 self.chunk_overlap_edit.clear()
                 self.chunk_size_edit.clear()
             except Exception as e:
@@ -167,7 +168,6 @@ class ChunkSettingsTab(QWidget):
                     f"An error occurred while saving the configuration: {e}"
                 )
                 return False
-
         else:
             return False
 

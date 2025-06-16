@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from utilities import open_file
+from config_manager import ConfigManager
 
 
 class SQLiteTableModel(QAbstractTableModel):
@@ -68,7 +69,7 @@ class RefreshingComboBox(QComboBox):
 class ManageDatabasesTab(QWidget):
     def __init__(self):
         super().__init__()
-        self.config_path = Path(__file__).resolve().parent / "config.yaml"
+        self.config_manager = ConfigManager()
         self.created_databases = self.load_created_databases()
 
         self.layout = QVBoxLayout(self)
@@ -92,12 +93,9 @@ class ManageDatabasesTab(QWidget):
         self.groups = {self.documents_group_box: 1}
 
     def load_created_databases(self):
-        if self.config_path.exists():
-            with open(self.config_path, 'r', encoding='utf-8') as file:
-                config = yaml.safe_load(file)
-                databases = list(config.get('created_databases', {}).keys())
-                return [db for db in databases if db != "user_manual"]
-        return []
+        config_data = self.config_manager.get_config()
+        databases = list(config_data.get('created_databases', {}).keys())
+        return [db for db in databases if db != "user_manual"]
 
     def display_no_databases_message(self):
         self.documents_group_box.hide()
@@ -130,7 +128,7 @@ class ManageDatabasesTab(QWidget):
 
         if selected_database:
             self.documents_group_box.show()
-            db_path = Path(__file__).resolve().parent / "Vector_DB" / selected_database / "metadata.db"
+            db_path = Path(__file__).resolve().parent.parent / "Vector_DB" / selected_database / "metadata.db"
             if db_path.exists():
                 try:
                     conn = sqlite3.connect(str(db_path))
@@ -142,24 +140,20 @@ class ManageDatabasesTab(QWidget):
                     self.model._data = [(row[0], row[1]) for row in data]
                     self.model.layoutChanged.emit()
 
-                    if self.config_path.exists():
-                        with open(self.config_path, 'r', encoding='utf-8') as file:
-                            config = yaml.safe_load(file)
-                            db_config = config.get('created_databases', {}).get(selected_database, {})
-                            model_path = db_config.get('model', '')
-                            model_name = Path(model_path).name
-                            chunk_size = db_config.get('chunk_size', '')
-                            chunk_overlap = db_config.get('chunk_overlap', '')
-                            info_text = (
-                                f'<span style="color: #4CAF50;"><b>Name:</b></span> "{selected_database}" '
-                                f'<span style="color: #888;">|</span> '
-                                f'<span style="color: #2196F3;"><b>Model:</b></span> "{model_name}" '
-                                f'<span style="color: #888;">|</span> '
-                                f'<span style="color: #FF9800;"><b>Chunk size/overlap:</b></span> {chunk_size} / {chunk_overlap}'
-                            )
-                            self.database_info_label.setText(info_text)
-                    else:
-                        self.database_info_label.setText("Configuration missing.")
+                    config_data = self.config_manager.get_config()
+                    db_config = config_data.get('created_databases', {}).get(selected_database, {})
+                    model_path = db_config.get('model', '')
+                    model_name = Path(model_path).name
+                    chunk_size = db_config.get('chunk_size', '')
+                    chunk_overlap = db_config.get('chunk_overlap', '')
+                    info_text = (
+                        f'<span style="color: #4CAF50;"><b>Name:</b></span> "{selected_database}" '
+                        f'<span style="color: #888;">|</span> '
+                        f'<span style="color: #2196F3;"><b>Model:</b></span> "{model_name}" '
+                        f'<span style="color: #888;">|</span> '
+                        f'<span style="color: #FF9800;"><b>Chunk size/overlap:</b></span> {chunk_size} / {chunk_overlap}'
+                    )
+                    self.database_info_label.setText(info_text)
                 except sqlite3.Error as e:
                     QMessageBox.warning(self, "Database Error", f"An error occurred while accessing the database: {e}")
                     self.display_no_databases_message()
@@ -201,44 +195,35 @@ class ManageDatabasesTab(QWidget):
             self.model._data = []
             self.model.endResetModel()
 
-            if self.config_path.exists():
-                try:
-                    with open(self.config_path, 'r', encoding='utf-8') as file:
-                        config = yaml.safe_load(file)
+            config_data = self.config_manager.get_config()
+            if 'created_databases' in config_data and selected_database in config_data['created_databases']:
+                del config_data['created_databases'][selected_database]
+                config_data.setdefault('database', {})['database_to_search'] = ''
+                self.config_manager.save_config(config_data)
 
-                    if 'created_databases' in config and selected_database in config['created_databases']:
-                        del config['created_databases'][selected_database]
-
-                    config.setdefault('database', {})['database_to_search'] = ''
-
-                    with open(self.config_path, 'w', encoding='utf-8') as file:
-                        yaml.safe_dump(config, file)
-
-                    base_dir = Path(__file__).resolve().parent
-                    deletion_failed = False
-                    for folder_name in ["Vector_DB", "Vector_DB_Backup"]:
-                        dir_path = base_dir / folder_name / selected_database
+                base_dir = Path(__file__).resolve().parent.parent
+                deletion_failed = False
+                for folder_name in ["Vector_DB", "Vector_DB_Backup"]:
+                    dir_path = base_dir / folder_name / selected_database
+                    if dir_path.exists():
+                        shutil.rmtree(dir_path, ignore_errors=True)
                         if dir_path.exists():
-                            shutil.rmtree(dir_path, ignore_errors=True)
-                            if dir_path.exists():
-                                deletion_failed = True
-                                print(f"Failed to delete: {dir_path}")
+                            deletion_failed = True
+                            print(f"Failed to delete: {dir_path}")
 
-                    if deletion_failed:
-                        QMessageBox.warning(
-                            self, "Delete Database",
-                            "Some files/folders could not be deleted. Please check manually."
-                        )
-                    else:
-                        QMessageBox.information(
-                            self, "Delete Database",
-                            f"Database '{selected_database}' and associated files have been deleted."
-                        )
+                if deletion_failed:
+                    QMessageBox.warning(
+                        self, "Delete Database",
+                        "Some files/folders could not be deleted. Please check manually."
+                    )
+                else:
+                    QMessageBox.information(
+                        self, "Delete Database",
+                        f"Database '{selected_database}' and associated files have been deleted."
+                    )
 
-                    self.refresh_pull_down_menu()
-                    self.update_table_view_and_info_label(-1)
-                except Exception as e:
-                    QMessageBox.warning(self, "Delete Database", f"An error occurred: {e}")
+                self.refresh_pull_down_menu()
+                self.update_table_view_and_info_label(-1)
             else:
                 QMessageBox.warning(self, "Delete Database", "Configuration file missing or corrupted.")
 

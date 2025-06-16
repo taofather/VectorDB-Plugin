@@ -1,63 +1,87 @@
+from constants import TOOLTIPS
 import yaml
 from pathlib import Path
 
 from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (QWidget, QLabel, QLineEdit, QGridLayout, QMessageBox, QSizePolicy, QCheckBox)
 
-from constants import TOOLTIPS
+from config_manager import ConfigManager
 
 class ServerSettingsTab(QWidget):
     def __init__(self):
         super(ServerSettingsTab, self).__init__()
+        self.config_manager = ConfigManager()
+        config_data = self.config_manager.get_config()
+        
+        self.server_config = config_data.get('server', {})
+        
+        grid_layout = QGridLayout()
+        
+        # Host settings
+        self.host_label = QLabel("Host:")
+        grid_layout.addWidget(self.host_label, 0, 0)
+        
+        self.host_edit = QLineEdit()
+        self.host_edit.setPlaceholderText("Enter host...")
+        self.host_edit.setText(self.server_config.get('host', 'localhost'))
+        grid_layout.addWidget(self.host_edit, 0, 1)
+        
+        # Port settings
+        self.port_label = QLabel("Port:")
+        grid_layout.addWidget(self.port_label, 1, 0)
+        
+        self.port_edit = QLineEdit()
+        self.port_edit.setPlaceholderText("Enter port...")
+        self.port_edit.setText(str(self.server_config.get('port', 5000)))
+        grid_layout.addWidget(self.port_edit, 1, 1)
+        
+        self.setLayout(grid_layout)
+        
+        # Set tooltips after widget creation
+        self.host_label.setToolTip(TOOLTIPS["SERVER_HOST"])
+        self.host_edit.setToolTip(TOOLTIPS["SERVER_HOST"])
+        self.port_label.setToolTip(TOOLTIPS["SERVER_PORT"])
+        self.port_edit.setToolTip(TOOLTIPS["SERVER_PORT"])
 
+    def update_config(self):
         try:
-            with open('config.yaml', 'r', encoding='utf-8') as file:
-                self.config_data = yaml.safe_load(file)
-                self.server_config = self.config_data.get('server', {})
-                self.connection_str = self.server_config.get('connection_str', '')
-                self.show_thinking = self.server_config.get('show_thinking', False)
-                if ':' in self.connection_str and '/' in self.connection_str:
-                    self.current_port = self.connection_str.split(":")[-1].split("/")[0]
-                else:
-                    self.current_port = ''
+            config_data = self.config_manager.get_config()
+            settings_changed = False
+            
+            # Update host
+            new_host = self.host_edit.text().strip()
+            if new_host and new_host != config_data['server'].get('host', 'localhost'):
+                config_data['server']['host'] = new_host
+                settings_changed = True
+            
+            # Update port
+            new_port = self.port_edit.text().strip()
+            if new_port:
+                try:
+                    port_num = int(new_port)
+                    if port_num != config_data['server'].get('port', 5000):
+                        config_data['server']['port'] = port_num
+                        settings_changed = True
+                except ValueError:
+                    QMessageBox.warning(
+                        self,
+                        "Invalid Port",
+                        "Port must be a valid number."
+                    )
+                    return False
+            
+            if settings_changed:
+                self.config_manager.save_config(config_data)
+            
+            return settings_changed
+            
         except Exception as e:
             QMessageBox.critical(
                 self,
-                "Error Loading Configuration",
-                f"An error occurred while loading the configuration: {e}"
+                "Error Updating Configuration",
+                f"An error occurred while updating the configuration: {e}"
             )
-            self.server_config = {}
-            self.connection_str = ''
-            self.current_port = ''
-            self.show_thinking = False
-
-        settings_dict = {
-            'port': {
-                "placeholder": "Port...",
-                "validator": QIntValidator(1, 65535),
-                "current": self.current_port
-            }
-        }
-
-        self.widgets = {}
-        layout = QGridLayout()
-
-        # port
-        port_label = self.create_label('port', settings_dict)
-        port_label.setToolTip(TOOLTIPS["PORT"])
-        layout.addWidget(port_label, 0, 0)
-        port_edit = self.create_edit('port', settings_dict)
-        port_edit.setToolTip(TOOLTIPS["PORT"])
-        layout.addWidget(port_edit, 0, 1)
-
-        # show Thinking Checkbox
-        self.thinking_checkbox = QCheckBox("Show thinking process?")
-        self.thinking_checkbox.setChecked(self.show_thinking)
-        self.thinking_checkbox.setToolTip(TOOLTIPS["SHOW_THINKING_CHECKBOX"])
-        self.thinking_checkbox.stateChanged.connect(self.update_show_thinking)
-        layout.addWidget(self.thinking_checkbox, 0, 2)
-
-        self.setLayout(layout)
+            return False
 
     def update_show_thinking(self, state):
         try:

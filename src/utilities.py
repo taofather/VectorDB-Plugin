@@ -19,6 +19,7 @@ from packaging import version
 from PySide6.QtCore import QRunnable, QObject, Signal, QThreadPool
 from PySide6.QtWidgets import QApplication, QMessageBox
 from termcolor import cprint
+from config_manager import ConfigManager
 
 def set_cuda_paths():
     import sys
@@ -621,55 +622,33 @@ def load_config(config_file):
         return yaml.safe_load(file)
 
 def list_theme_files():
-    script_dir = Path(__file__).parent
-    theme_dir = script_dir / 'CSS'
-    return [f.name for f in theme_dir.iterdir() if f.suffix == '.css']
+    """List available theme files"""
+    from config_manager import ConfigManager
+    config = ConfigManager()
+    if not config.themes_dir.exists():
+        return []
+    return [f.name for f in config.themes_dir.iterdir() if f.suffix == '.qss']
 
 def load_stylesheet(filename):
-    script_dir = Path(__file__).parent
-    stylesheet_path = script_dir / 'CSS' / filename
-    with stylesheet_path.open('r') as file:
-        stylesheet = file.read()
-    return stylesheet
+    """Load QSS stylesheet from file"""
+    from config_manager import ConfigManager
+    config = ConfigManager()
+    theme_path = config.themes_dir / filename
+    if not theme_path.exists():
+        return ""
+    
+    with open(theme_path, 'r', encoding='utf-8') as f:
+        return f.read()
 
 def ensure_theme_config():
-    try:
-        with open('config.yaml', 'r') as f:
-            config = yaml.safe_load(f)
-
-        if config is None:
-            config = {}
-
-        if 'appearance' not in config:
-            config['appearance'] = {}
-
-        if 'theme' not in config['appearance'] or not config['appearance']['theme']:
-            config['appearance']['theme'] = 'custom_stylesheet_default.css'
-
-        with open('config.yaml', 'w') as f:
-            yaml.safe_dump(config, f)
-
-        return config['appearance']['theme']
-    except Exception:
-        return 'custom_stylesheet_default.css'
+    """Ensure theme configuration exists and return current theme"""
+    config = ConfigManager()
+    return config.get_theme()
 
 def update_theme_in_config(new_theme):
-    try:
-        with open('config.yaml', 'r') as f:
-            config = yaml.safe_load(f)
-
-        if config is None:
-            config = {}
-
-        if 'appearance' not in config:
-            config['appearance'] = {}
-
-        config['appearance']['theme'] = new_theme
-
-        with open('config.yaml', 'w') as f:
-            yaml.safe_dump(config, f)
-    except Exception:
-        pass
+    """Update theme in config file"""
+    config = ConfigManager()
+    config.set_theme(new_theme)
 
 def make_theme_changer(theme_name):
     def change_theme():
@@ -757,78 +736,45 @@ def delete_file(file_path):
         QMessageBox.warning(None, "Unable to delete file(s), please delete manually.")
 
 def check_preconditions_for_db_creation(script_dir, database_name, skip_ocr=False):
-    # checks if the db name is valid
+    """Check preconditions for database creation"""
+    config = ConfigManager()
+    
     if not database_name or len(database_name) < 3 or database_name.lower() in ["null", "none"]:
         return False, "Name must be at least 3 characters long and not be 'null' or 'none.'"
-
-    # checks if the db name is already used
-    vector_db_path = script_dir / "Vector_DB" / database_name
+    
+    vector_db_path = config.vector_db_dir / database_name
     if vector_db_path.exists():
-        return False, (
-            f"A vector database called '{database_name}' already exists—"
-            "choose a different name or delete the old one first."
-        )
-
-    # checks if config.yaml exists
-    config_path = script_dir / 'config.yaml'
-    if not config_path.exists():
-        return False, "The configuration file (config.yaml) is missing."
-
-    with open(config_path, 'r') as file:
-        config = yaml.safe_load(file)
-
-    # checks if trying to process images on a mac
+        return False, f"A database named '{database_name}' already exists."
+    
+    # Create docs directory if it doesn't exist
+    config.ensure_directories()
+    
+    # Check for image files on MacOS
     image_extensions = ['.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tif', '.tiff']
-    documents_dir = script_dir / "Docs_for_DB"
-    if platform.system() == "Darwin" and any(file.suffix in image_extensions for file in documents_dir.iterdir() if file.is_file()):
+    if platform.system() == "Darwin" and any(file.suffix in image_extensions for file in config.docs_dir.iterdir() if file.is_file()):
         return False, "Image processing has been disabled for MacOS until a fix can be implemented. Please remove all image files and try again."
-
-    # checks if a vector model is selected
-    embedding_model_name = config.get('EMBEDDING_MODEL_NAME')
-    if not embedding_model_name:
-        return False, "You must first download an embedding model, select it, and choose documents before proceeding."
-
-    # checks if documents are selected
-    if not any(file.is_file() for file in documents_dir.iterdir()):
+    
+    # Check if documents are selected
+    if not any(file.is_file() for file in config.docs_dir.iterdir()):
         return False, "No documents are yet added to be processed."
-
-    # checks if gpu-acceleration selected
-    compute_device = config.get('Compute_Device', {}).get('available', [])
-    database_creation = config.get('Compute_Device', {}).get('database_creation')
-    if ("cuda" in compute_device or "mps" in compute_device) and database_creation == "cpu":
-        return False, ("GPU-acceleration is available and strongly recommended. "
-                       "Please switch the database creation device to 'cuda' or 'mps', "
-                       "or confirm your choice in the GUI.")
-
-    # checks if no cuda and half selected, inform user and exit early
-    if not torch.cuda.is_available():
-        if config.get('database', {}).get('half', False):
-            message = ("CUDA is not available on your system, but half-precision (FP16) "
-                       "is selected for database creation. Half-precision requires CUDA. "
-                       "Please disable half-precision in the configuration or use a CUDA-enabled GPU.")
-            return False, message
-
-    # optional check for PDFs that need OCR
+    
+    # Check OCR requirements if not skipped
     if not skip_ocr:
-        ocr_check, ocr_message = check_pdfs_for_ocr(script_dir)
-        if not ocr_check:
-            return False, ocr_message
-
-    # final confirmation
+        ocr_ok, message = check_pdfs_for_ocr(config.root_dir)
+        if not ocr_ok:
+            return False, message
+    
     return True, ""
 
 
 # gui.py
 def check_preconditions_for_submit_question(script_dir):
-    config_path = script_dir / 'config.yaml'
-
-    with open(config_path, 'r', encoding='utf-8') as file:
-        config = yaml.safe_load(file)
-
-    database_to_search = config.get('database', {}).get('database_to_search')
-
-    vector_db_subdir = script_dir / "Vector_DB" / str(database_to_search) if database_to_search else None
-
+    """Check preconditions for submitting a question"""
+    config = ConfigManager()
+    
+    if not config.get_config().get('created_databases'):
+        return False, "No databases have been created yet"
+    
     return True, ""
 
 def my_cprint(*args, **kwargs):

@@ -48,12 +48,14 @@ from utilities import (
 from gui_file_credentials import manage_credentials
 from module_ask_jeeves import ChatWindow, launch_jeeves_process
 from constants import JEEVES_MODELS
+from config_manager import ConfigManager
 
 script_dir = Path(__file__).parent.resolve()
 
 class DocQA_GUI(QWidget):
     def __init__(self):
         super().__init__()
+        self.config = ConfigManager()
         initialize_system()
         self.metrics_bar = MetricsBar()
         self.tab_widget = create_tabs()
@@ -126,7 +128,7 @@ class DocQA_GUI(QWidget):
         self.jeeves_action.setEnabled(False)
         QTimer.singleShot(5000, lambda: self.jeeves_action.setEnabled(True))
 
-        required_folder = script_dir / 'Models' / 'vector' / 'BAAI--bge-small-en-v1.5'
+        required_folder = self.config.models_dir / 'vector' / 'BAAI--bge-small-en-v1.5'
         if not required_folder.exists() or not required_folder.is_dir():
             QMessageBox.warning(
                 self,
@@ -135,7 +137,7 @@ class DocQA_GUI(QWidget):
             )
             return
 
-        tts_path = script_dir / "Models" / "tts" / "ctranslate2-4you--Kokoro-82M-light"
+        tts_path = self.config.models_dir / "tts" / "ctranslate2-4you--Kokoro-82M-light"
         if not tts_path.exists() or not tts_path.is_dir():
             ret = QMessageBox.question(
                 self,
@@ -184,7 +186,7 @@ class DocQA_GUI(QWidget):
             if self.jeeves_process.is_alive():
                 self.jeeves_process.kill()
 
-        docs_dir = Path(__file__).parent / 'Docs_for_DB'
+        docs_dir = self.config.docs_dir
         for item in docs_dir.glob('*'):
             if item.is_file():
                 item.unlink()

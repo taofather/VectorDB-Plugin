@@ -44,10 +44,32 @@ def get_supported_quantizations(device_type):
     return [q for q in desired_order if q in filtered_types]
 
 def update_config_file(**system_info):
-    full_config_path = Path('config.yaml').resolve()
+    # Get the root directory (one level up from src)
+    root_dir = Path(__file__).resolve().parent.parent
+    full_config_path = root_dir / 'config.yaml'
+
+    # Create config file if it doesn't exist
+    if not full_config_path.exists():
+        default_config = {
+            'database': {
+                'type': 'tiledb',
+                'chunk_size': 1000,
+                'chunk_overlap': 200
+            },
+            'EMBEDDING_MODEL_NAME': 'BAAI/bge-small-en-v1.5',
+            'created_databases': {}
+        }
+        with open(full_config_path, 'w', encoding='utf-8') as stream:
+            yaml.safe_dump(default_config, stream, default_flow_style=False)
 
     with open(full_config_path, 'r', encoding='utf-8') as stream:
         config_data = yaml.safe_load(stream)
+
+    # Update system information
+    if 'Compute_Device' in system_info:
+        config_data['Compute_Device'] = system_info['Compute_Device']
+    if 'Platform_Info' in system_info:
+        config_data['Platform_Info'] = system_info['Platform_Info']
 
     compute_device_info = system_info.get('Compute_Device', {})
     config_data['Compute_Device']['available'] = compute_device_info.get('available', ['cpu'])
@@ -66,8 +88,9 @@ def update_config_file(**system_info):
         if key not in ('Compute_Device', 'Supported_CTranslate2_Quantizations'):
             config_data[key] = value
 
+    # Write updated config
     with open(full_config_path, 'w', encoding='utf-8') as stream:
-        yaml.safe_dump(config_data, stream)
+        yaml.safe_dump(config_data, stream, default_flow_style=False)
 
 def check_for_necessary_folders():
     folders = [
@@ -125,9 +148,22 @@ def delete_chat_history():
     chat_history_path.unlink(missing_ok=True)
 
 def main():
+    # Get system information
     compute_device_info = get_compute_device_info()
     platform_info = get_platform_info()
+
+    # Update config file with system information
     update_config_file(Compute_Device=compute_device_info, Platform_Info=platform_info)
+
+    # Print system information
+    print("\nSystem Information:")
+    print(f"Platform: {platform_info['os']}")
+    print(f"Python Version: {platform.python_version()}")
+    print(f"Compute Device: {compute_device_info['available']}")
+    if 'cuda' in compute_device_info['available']:
+        print(f"CUDA Version: {torch.version.cuda}")
+        print(f"GPU: {compute_device_info['gpu_brand']}")
+
     check_for_necessary_folders()
     delete_chat_history()
     # restore_vector_db_backup()

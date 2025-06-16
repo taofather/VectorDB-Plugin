@@ -1,6 +1,6 @@
 import gc
 import logging
-
+import json
 import requests
 from pathlib import Path
 import torch
@@ -9,8 +9,9 @@ from openai import OpenAI
 from PySide6.QtCore import QThread, Signal, QObject
 
 from database_interactions import QueryVectorDB
-from utilities import format_citations, normalize_chat_text
+from utilities import format_citations, normalize_chat_text, my_cprint
 from constants import system_message, rag_string, THINKING_TAGS
+from config_manager import ConfigManager
 
 ROOT_DIRECTORY = Path(__file__).resolve().parent
 
@@ -26,58 +27,47 @@ class LMStudioSignals(QObject):
 class LMStudioChat:
     def __init__(self):
         self.signals = LMStudioSignals()
-        self.config = self.load_configuration()
+        self.config_manager = ConfigManager()
+        self.config = self.config_manager.get_config()
+        self.server_config = self.config.get('server', {})
+        self.host = self.server_config.get('host', 'localhost')
+        self.port = self.server_config.get('port', 5000)
+        self.show_thinking = self.server_config.get('show_thinking', False)
         self.query_vector_db = None
 
-    def load_configuration(self):
-        with open('config.yaml', 'r') as config_file:
-            return yaml.safe_load(config_file)
+    def send_message(self, message, database_name):
+        try:
+            url = f"http://{self.host}:{self.port}/v1/chat/completions"
+            headers = {"Content-Type": "application/json"}
+            data = {
+                "messages": [{"role": "user", "content": message}],
+                "temperature": 0.7,
+                "max_tokens": -1
+            }
 
-    def connect_to_local_chatgpt(self, prompt):
-        server_config = self.config.get('server', {})
-        base_url = server_config.get('connection_str')
-        show_thinking = server_config.get('show_thinking', False)
+            response = requests.post(url, headers=headers, json=data, stream=True)
+            response.raise_for_status()
 
-        client = OpenAI(base_url=base_url, api_key='lm-studio')
-        messages = [
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": prompt}
-        ]
-
-        stream = client.chat.completions.create(
-            model="local-model",
-            messages=messages,
-            stream=True
-        )
-
-        in_thinking_block = False
-        first_content = True
-        for chunk in stream:
-            if chunk.choices[0].delta.content is not None:
-                content = chunk.choices[0].delta.content
-
-                if not show_thinking:
-                    skip_chunk = False
-                    # Check each pair of thinking tags
-                    for start_tag, end_tag in THINKING_TAGS.values():
-                        if start_tag in content:
-                            in_thinking_block = True
-                            skip_chunk = True
-                            break
-                        if end_tag in content:
-                            in_thinking_block = False
-                            skip_chunk = True
-                            break
-                    if skip_chunk:
-                        continue
-                    if in_thinking_block:
+            full_response = ""
+            for line in response.iter_lines():
+                if line:
+                    try:
+                        json_response = json.loads(line.decode('utf-8').replace('data: ', ''))
+                        if 'choices' in json_response and json_response['choices']:
+                            content = json_response['choices'][0].get('delta', {}).get('content', '')
+                            if content:
+                                full_response += content
+                                self.signals.response_signal.emit(content)
+                    except json.JSONDecodeError:
                         continue
 
-                if first_content:
-                    content = content.lstrip()
-                    first_content = False
+            self.signals.finished_signal.emit()
 
-                yield content
+        except requests.exceptions.RequestException as e:
+            error_message = f"Error connecting to LM Studio server: {str(e)}"
+            my_cprint(error_message, "red")
+            self.signals.error_signal.emit(error_message)
+            self.signals.finished_signal.emit()
 
     def handle_response_and_cleanup(self, full_response, metadata_list):
         citations = format_citations(metadata_list)
@@ -128,18 +118,14 @@ class LMStudioChat:
         self.signals.finished_signal.emit()
 
 class LMStudioChatThread(QThread):
-    def __init__(self, query, selected_database):
+    def __init__(self, question, database_name):
         super().__init__()
-        self.query = query
-        self.selected_database = selected_database
+        self.question = question
+        self.database_name = database_name
         self.lm_studio_chat = LMStudioChat()
 
     def run(self):
-        try:
-            self.lm_studio_chat.ask_local_chatgpt(self.query, self.selected_database)
-        except Exception as e:
-            logging.error(f"Error in LMStudioChatThread: {str(e)}")
-            self.lm_studio_chat.signals.error_signal.emit(str(e))
+        self.lm_studio_chat.send_message(self.question, self.database_name)
 
 def is_lm_studio_available():
     try:
