@@ -1,0 +1,4 @@
+./src/Models
+./src/Docs_for_DB
+__pycache__
+config.yaml
