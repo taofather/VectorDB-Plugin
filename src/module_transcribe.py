@@ -12,11 +12,12 @@ import whisper_s2t
 from whisper_s2t.backends.ctranslate2.hf_utils import download_model
 from extract_metadata import extract_audio_metadata
 from constants import WHISPER_MODELS
+from config_manager import ConfigManager
 
 warnings.filterwarnings("ignore")
 
-current_directory = Path(__file__).parent
-CACHE_DIR = current_directory / "Models" / "whisper"
+config = ConfigManager()
+CACHE_DIR = config.models_dir / "whisper"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 class WhisperTranscriber:
@@ -27,8 +28,7 @@ class WhisperTranscriber:
         self.batch_size = batch_size
         self.cache_dir = str(CACHE_DIR)
 
-        script_dir = Path(__file__).parent
-        self.model_dir = script_dir / "Models" / "whisper"
+        self.model_dir = CACHE_DIR
         self.model_dir.mkdir(parents=True, exist_ok=True)
         
         self.model_kwargs = {
@@ -177,8 +177,7 @@ class WhisperTranscriber:
 
         doc = Document(page_content=transcription_text, metadata=metadata)
         
-        script_dir = Path(__file__).parent
-        docs_dir = script_dir / "Docs_for_DB"
+        docs_dir = config.docs_dir
         docs_dir.mkdir(exist_ok=True)
         
         audio_file_name = Path(audio_file_path).stem

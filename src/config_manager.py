@@ -96,6 +96,11 @@ class ConfigManager:
         """Get the themes directory path"""
         return self.get_path('themes')
     
+    @property
+    def tokenizer_dir(self) -> Path:
+        """Get the tokenizer directory path"""
+        return self.get_path('Tokenizer')
+    
     def get_database_type(self) -> str:
         """Get the current database type"""
         return self.config.get('database', {}).get('type', 'tiledb')
@@ -120,7 +125,8 @@ class ConfigManager:
             self.vector_db_dir,
             self.models_dir / 'vector',
             self.models_dir / 'tts',
-            self.themes_dir
+            self.themes_dir,
+            self.tokenizer_dir
         ]
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True) 

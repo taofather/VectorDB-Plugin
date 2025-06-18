@@ -8,6 +8,7 @@ import humanfriendly
 import atexit
 import yaml
 import functools
+from config_manager import ConfigManager
 
 class ModelDownloadedSignal(QObject):
    downloaded = Signal(str, str)
@@ -42,6 +43,7 @@ class ModelDownloader(QObject):
        self._model_directory = None
        
        self.hf_token = get_hf_token()
+       self.config = ConfigManager()
        
        self.api = HfApi(token=False)
        self.api.timeout = 60
@@ -93,7 +95,7 @@ class ModelDownloader(QObject):
            return self.model_info.replace("/", "--")
 
    def get_model_directory(self):
-       return Path("Models") / self.model_type / self.get_model_directory_name()
+       return self.config.models_dir / self.model_type / self.get_model_directory_name()
 
    def download_model(self, allow_patterns=None, ignore_patterns=None):
        repo_id = self.get_model_url()

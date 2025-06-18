@@ -154,8 +154,8 @@ class DatabasesTab(QWidget):
     def populate_model_combobox(self):
         self.model_combobox.clear()
         self.model_combobox.addItem("Select a model", None)
-        script_dir = Path(__file__).resolve().parent
-        vector_dir = script_dir / "Models" / "vector"
+        config = ConfigManager()
+        vector_dir = config.models_dir / "vector"
         if not vector_dir.exists():
             return
         for folder in vector_dir.iterdir():
@@ -165,7 +165,7 @@ class DatabasesTab(QWidget):
                 self.model_combobox.addItem(display_name, full_path)
 
     def sync_combobox_with_config(self):
-        config_path = Path(__file__).resolve().parent / "config.yaml"
+        config_path = Path(__file__).resolve().parent.parent / "config.yaml"
         if config_path.exists():
             with open(config_path, 'r', encoding='utf-8') as file:
                 config_data = yaml.safe_load(file) or {}
@@ -183,7 +183,7 @@ class DatabasesTab(QWidget):
 
     def on_model_selected(self, index):
         selected_path = self.model_combobox.itemData(index)
-        config_path = Path(__file__).resolve().parent / "config.yaml"
+        config_path = Path(__file__).resolve().parent.parent / "config.yaml"
         config_data = {}
         if config_path.exists():
             with open(config_path, 'r', encoding='utf-8') as file:
@@ -227,8 +227,8 @@ class DatabasesTab(QWidget):
         model = CustomFileSystemModel()
         tree_view.setModel(model)
         tree_view.setSelectionMode(QTreeView.ExtendedSelection)
-        script_dir = Path(__file__).resolve().parent
-        directory_path = script_dir / directory_name
+        config = ConfigManager()
+        directory_path = config.get_path(directory_name)
         model.setRootPath(str(directory_path))
         tree_view.setRootIndex(model.index(str(directory_path)))
         tree_view.hideColumn(1)
@@ -280,7 +280,7 @@ class DatabasesTab(QWidget):
         database_name = self.database_name_input.text().strip()
         model_name   = self.model_combobox.currentText()
 
-        docs_dir = Path(__file__).resolve().parent / "Docs_for_DB"
+        docs_dir = Path(__file__).resolve().parent.parent / "Docs_for_DB"
         has_pdfs = any(p.suffix.lower() == ".pdf" for p in docs_dir.iterdir() if p.is_file())
         skip_ocr = False
         if has_pdfs:

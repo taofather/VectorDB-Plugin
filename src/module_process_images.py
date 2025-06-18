@@ -4,6 +4,10 @@ import warnings
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 import os
+import io
+import json
+from typing import List, Dict, Any, Optional, Tuple
+from multiprocessing import Process, Queue
 
 import torch
 import torchvision.transforms as T
@@ -34,8 +38,8 @@ warnings.filterwarnings("ignore", message=".*Torch was not compiled with flash a
 
 ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tif', '.tiff']
 
-current_directory = Path(__file__).parent
-CACHE_DIR = current_directory / "models" / "vision"
+config = ConfigManager()
+CACHE_DIR = config.models_dir / "vision"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 def get_best_device():
@@ -53,8 +57,7 @@ def run_loader_in_process(loader_func):
         return []
 
 def choose_image_loader():
-    with open('config.yaml', 'r') as file:
-        config = yaml.safe_load(file)
+    config = ConfigManager().get_config()
     chosen_model = config["vision"]["chosen_model"]
     if chosen_model == 'Granite Vision - 2b':
         loader_func = loader_granite(config).process_images
@@ -71,7 +74,7 @@ def choose_image_loader():
     else:
         my_cprint("No valid image model specified in config.yaml", "red")
         return []
-    image_dir = Path(__file__).parent / "Docs_for_DB"
+    image_dir = Path(__file__).parent.parent / "Docs_for_DB"
     if not check_for_images(image_dir):
         return []
     with ProcessPoolExecutor(1) as executor:
@@ -96,7 +99,7 @@ class BaseLoader:
         raise NotImplementedError
 
     def process_images(self):
-        image_dir = Path(__file__).parent / "Docs_for_DB"
+        image_dir = Path(__file__).parent.parent / "Docs_for_DB"
         documents = []
         image_files = [file for file in image_dir.iterdir() if file.suffix.lower() in ALLOWED_EXTENSIONS]
         self.model, self.tokenizer, self.processor = self.initialize_model_and_tokenizer()

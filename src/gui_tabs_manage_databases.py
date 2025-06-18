@@ -1,7 +1,7 @@
 import shutil
 import sqlite3
 from pathlib import Path
-
+import psycopg2
 import yaml
 from PySide6.QtCore import Qt, QAbstractTableModel
 from PySide6.QtGui import QAction, QColor
@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 
 from utilities import open_file
 from config_manager import ConfigManager
+from database.factory import VectorDBFactory
 
 
 class SQLiteTableModel(QAbstractTableModel):
@@ -120,6 +121,55 @@ class ManageDatabasesTab(QWidget):
         group_box.setLayout(layout)
         return group_box
 
+    def get_database_type(self):
+        config_data = self.config_manager.get_config()
+        return config_data.get('database', {}).get('type', 'tiledb')
+
+    def get_pgvector_data(self, selected_database):
+        config_data = self.config_manager.get_config()
+        pg_config = config_data.get('postgresql', {})
+        
+        try:
+            conn = psycopg2.connect(
+                host=pg_config.get('host', 'localhost'),
+                port=pg_config.get('port', 5432),
+                user=pg_config.get('user', 'postgres'),
+                password=pg_config.get('password', ''),
+                database=pg_config.get('database', 'vectordb')
+            )
+            
+            with conn.cursor() as cur:
+                table_name = f"vectors_{selected_database}"
+                cur.execute(f"""
+                    SELECT DISTINCT 
+                        metadata->>'file_name' as file_name,
+                        metadata->>'file_path' as file_path
+                    FROM {table_name}
+                    WHERE metadata->>'file_name' IS NOT NULL
+                """)
+                data = cur.fetchall()
+            conn.close()
+            return data
+        except Exception as e:
+            QMessageBox.warning(self, "Database Error", f"An error occurred while accessing PostgreSQL: {e}")
+            return []
+
+    def get_tiledb_data(self, selected_database):
+        db_path = Path(__file__).resolve().parent.parent / "Vector_DB" / selected_database / "metadata.db"
+        if not db_path.exists():
+            return []
+            
+        try:
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            cursor.execute("SELECT file_name, file_path FROM document_metadata")
+            data = cursor.fetchall()
+            conn.close()
+            return data
+        except sqlite3.Error as e:
+            QMessageBox.warning(self, "Database Error", f"An error occurred while accessing SQLite: {e}")
+            return []
+
     def update_table_view_and_info_label(self, index):
         selected_database = self.pull_down_menu.currentText()
         if selected_database == "Select a database...":
@@ -128,37 +178,31 @@ class ManageDatabasesTab(QWidget):
 
         if selected_database:
             self.documents_group_box.show()
-            db_path = Path(__file__).resolve().parent.parent / "Vector_DB" / selected_database / "metadata.db"
-            if db_path.exists():
-                try:
-                    conn = sqlite3.connect(str(db_path))
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT file_name, file_path FROM document_metadata")
-                    data = cursor.fetchall()
-                    conn.close()
-
-                    self.model._data = [(row[0], row[1]) for row in data]
-                    self.model.layoutChanged.emit()
-
-                    config_data = self.config_manager.get_config()
-                    db_config = config_data.get('created_databases', {}).get(selected_database, {})
-                    model_path = db_config.get('model', '')
-                    model_name = Path(model_path).name
-                    chunk_size = db_config.get('chunk_size', '')
-                    chunk_overlap = db_config.get('chunk_overlap', '')
-                    info_text = (
-                        f'<span style="color: #4CAF50;"><b>Name:</b></span> "{selected_database}" '
-                        f'<span style="color: #888;">|</span> '
-                        f'<span style="color: #2196F3;"><b>Model:</b></span> "{model_name}" '
-                        f'<span style="color: #888;">|</span> '
-                        f'<span style="color: #FF9800;"><b>Chunk size/overlap:</b></span> {chunk_size} / {chunk_overlap}'
-                    )
-                    self.database_info_label.setText(info_text)
-                except sqlite3.Error as e:
-                    QMessageBox.warning(self, "Database Error", f"An error occurred while accessing the database: {e}")
-                    self.display_no_databases_message()
+            
+            # Get data based on database type
+            db_type = self.get_database_type()
+            if db_type == 'pgvector':
+                data = self.get_pgvector_data(selected_database)
             else:
-                self.display_no_databases_message()
+                data = self.get_tiledb_data(selected_database)
+
+            self.model._data = [(row[0], row[1]) for row in data]
+            self.model.layoutChanged.emit()
+
+            config_data = self.config_manager.get_config()
+            db_config = config_data.get('created_databases', {}).get(selected_database, {})
+            model_path = db_config.get('model', '')
+            model_name = Path(model_path).name
+            chunk_size = db_config.get('chunk_size', '')
+            chunk_overlap = db_config.get('chunk_overlap', '')
+            info_text = (
+                f'<span style="color: #4CAF50;"><b>Name:</b></span> "{selected_database}" '
+                f'<span style="color: #888;">|</span> '
+                f'<span style="color: #2196F3;"><b>Model:</b></span> "{model_name}" '
+                f'<span style="color: #888;">|</span> '
+                f'<span style="color: #FF9800;"><b>Chunk size/overlap:</b></span> {chunk_size} / {chunk_overlap}'
+            )
+            self.database_info_label.setText(info_text)
         else:
             self.display_no_databases_message()
 
@@ -195,60 +239,35 @@ class ManageDatabasesTab(QWidget):
             self.model._data = []
             self.model.endResetModel()
 
-            config_data = self.config_manager.get_config()
-            if 'created_databases' in config_data and selected_database in config_data['created_databases']:
-                del config_data['created_databases'][selected_database]
-                config_data.setdefault('database', {})['database_to_search'] = ''
-                self.config_manager.save_config(config_data)
-
-                base_dir = Path(__file__).resolve().parent.parent
-                deletion_failed = False
-                for folder_name in ["Vector_DB", "Vector_DB_Backup"]:
-                    dir_path = base_dir / folder_name / selected_database
-                    if dir_path.exists():
-                        shutil.rmtree(dir_path, ignore_errors=True)
-                        if dir_path.exists():
-                            deletion_failed = True
-                            print(f"Failed to delete: {dir_path}")
-
-                if deletion_failed:
-                    QMessageBox.warning(
-                        self, "Delete Database",
-                        "Some files/folders could not be deleted. Please check manually."
-                    )
-                else:
-                    QMessageBox.information(
-                        self, "Delete Database",
-                        f"Database '{selected_database}' and associated files have been deleted."
-                    )
-
-                self.refresh_pull_down_menu()
-                self.update_table_view_and_info_label(-1)
-            else:
-                QMessageBox.warning(self, "Delete Database", "Configuration file missing or corrupted.")
+            # Get database type and create appropriate instance
+            db_type = self.get_database_type()
+            config = self.config_manager.get_config()
+            db = VectorDBFactory.create_database(config)
+            db.initialize(config)
+            
+            try:
+                # Delete the database using the appropriate implementation
+                db.delete_database(selected_database)
+                self.pull_down_menu.setCurrentIndex(0)
+                self.display_no_databases_message()
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Failed to delete database: {e}")
+            finally:
+                db.cleanup()
 
     def refresh_pull_down_menu(self):
-        self.created_databases = self.load_created_databases()
-        self.pull_down_menu.blockSignals(True)
-        self.pull_down_menu.clear()
-        self.pull_down_menu.addItem("Select a database...")
-        self.pull_down_menu.setItemData(0, QColor('gray'), Qt.ForegroundRole)
-        self.pull_down_menu.addItems(self.created_databases)
-        if self.created_databases:
-            self.pull_down_menu.setCurrentIndex(0)
-        else:
-            self.display_no_databases_message()
-        self.pull_down_menu.blockSignals(False)
+        self.pull_down_menu.showPopup()
+        self.pull_down_menu.hidePopup()
 
     def show_context_menu(self, position):
-        context_menu = QMenu(self)
-        delete_action = QAction("Delete File", self)
-        delete_action.triggered.connect(self.delete_selected_file)
-        context_menu.addAction(delete_action)
-
-        context_menu.exec_(self.table_view.viewport().mapToGlobal(position))
+        selected_database = self.pull_down_menu.currentText()
+        if selected_database and selected_database != "Select a database...":
+            menu = QMenu()
+            delete_action = QAction("Delete File", self)
+            delete_action.triggered.connect(self.delete_selected_file)
+            menu.addAction(delete_action)
+            menu.exec_(self.table_view.viewport().mapToGlobal(position))
 
     def delete_selected_file(self):
         # Placeholder function for delete functionality
-        print("Delete file functionality will be implemented here.")
-        # TODO: Implement actual file deletion logic
+        pass

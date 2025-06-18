@@ -55,8 +55,7 @@ logging.basicConfig(
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-ROOT_DIRECTORY = Path(__file__).parent
-SOURCE_DIRECTORY = ROOT_DIRECTORY / "Docs_for_DB"
+SOURCE_DIRECTORY = ConfigManager().docs_dir
 INGEST_THREADS = max(4, os.cpu_count() - 4)
 
 class CustomPyMuPDFParser(PyMuPDFParser):
@@ -219,7 +218,8 @@ def load_documents(source_dir: Path) -> list:
 def split_documents(documents=None, text_documents_pdf=None):
     try:
         print("\nSplitting documents into chunks.")
-        with open("config.yaml", "r", encoding='utf-8') as config_file:
+        config_path = Path(__file__).resolve().parent.parent / "config.yaml"
+        with open(config_path, "r", encoding='utf-8') as config_file:
             config = yaml.safe_load(config_file)
             chunk_size = config["database"]["chunk_size"]
             chunk_overlap = config["database"]["chunk_overlap"]

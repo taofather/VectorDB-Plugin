@@ -6,6 +6,7 @@ import logging
 import torch
 import yaml
 import ctranslate2
+from config_manager import ConfigManager
 
 def get_compute_device_info():
     available_devices = ["cpu"]
@@ -93,22 +94,24 @@ def update_config_file(**system_info):
         yaml.safe_dump(config_data, stream, default_flow_style=False)
 
 def check_for_necessary_folders():
+    config = ConfigManager()
     folders = [
-        "Assets",
-        "Docs_for_DB",
-        "Vector_DB_Backup",
-        "Vector_DB",
-        "Models",
-        "Models/vector",
-        "Models/chat",
-        "Models/tts",
-        "Models/vision",
-        "Models/whisper",
-        "Scraped_Documentation",
+        config.get_path("Assets"),
+        config.docs_dir,
+        config.get_path("Vector_DB_Backup"),
+        config.vector_db_dir,
+        config.models_dir,
+        config.models_dir / "vector",
+        config.models_dir / "chat",
+        config.models_dir / "tts",
+        config.models_dir / "vision",
+        config.models_dir / "whisper",
+        config.get_path("Scraped_Documentation"),
+        config.tokenizer_dir,
     ]
     
     for folder in folders:
-        Path(folder).mkdir(exist_ok=True)
+        folder.mkdir(exist_ok=True)
 
 def restore_vector_db_backup():
     backup_folder = Path('Vector_DB_Backup')

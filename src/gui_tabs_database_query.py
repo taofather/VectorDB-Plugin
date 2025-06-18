@@ -172,7 +172,7 @@ class CustomTextBrowser(QTextBrowser):
 class DatabaseQueryTab(QWidget):
     def __init__(self):
         super(DatabaseQueryTab, self).__init__()
-        self.config_path = Path(__file__).resolve().parent / 'config.yaml'
+        self.config_path = Path(__file__).resolve().parent.parent / 'config.yaml'
         self.lm_studio_chat_thread = None
         self.local_model_chat = LocalModelChat()
         self.chatgpt_thread = None
@@ -334,7 +334,7 @@ class DatabaseQueryTab(QWidget):
         STRATEGIES = {
             "Local Model": LocalModelStrategy(self),
             "LM Studio": LMStudioStrategy(self),
-            "Kobold": oboldStrategy(self),
+            "Kobold": KoboldStrategy(self),
             "gpt-4.1-nano": ChatGPTStrategy(self),
             "gpt-4.1-mini": ChatGPTStrategy(self),
             "gpt-4.1": ChatGPTStrategy(self),

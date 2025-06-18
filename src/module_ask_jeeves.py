@@ -35,6 +35,7 @@ from download_model import ModelDownloader, model_downloaded_signal
 from database_interactions import QueryVectorDB
 from module_kokoro import KokoroTTS
 from utilities import normalize_chat_text
+from config_manager import ConfigManager
 
 
 class GenerationWorker(QThread):
@@ -105,7 +106,7 @@ class ChatWindow(QMainWindow):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(1)
 
-        image_path = Path(__file__).parent / "Assets" / "ask_jeeves_transparent.jpg"
+        image_path = self.load_image()
         if image_path.exists():
             pixmap = QPixmap(str(image_path))
             if not pixmap.isNull():
@@ -224,7 +225,7 @@ class ChatWindow(QMainWindow):
         self.input_field.textChanged.connect(self.debounce_update)
 
         try:
-            tts_path = Path(__file__).parent / "Models" / "tts" / "ctranslate2-4you--Kokoro-82M-light"
+            tts_path = self.load_tts_model()
             self.tts = KokoroTTS(repo_path=str(tts_path))
             self.speak_button.setEnabled(True)
             self.voice_select.setEnabled(True)
@@ -235,6 +236,21 @@ class ChatWindow(QMainWindow):
         self.tts_thread = None
         self.tts_worker = None
         self.is_speaking = False
+
+    def load_image(self):
+        config = ConfigManager()
+        image_path = config.get_path("Assets", "ask_jeeves_transparent.jpg")
+        return image_path
+
+    def load_tts_model(self):
+        config = ConfigManager()
+        tts_path = config.models_dir / "tts" / "ctranslate2-4you--Kokoro-82M-light"
+        return tts_path
+
+    def load_model(self):
+        config = ConfigManager()
+        model_info = JEEVES_MODELS[self.model_key]
+        self.model_dir = str(config.models_dir / "Jeeves" / model_info["folder_name"])
 
     def _ensure_model(self) -> None:
         """

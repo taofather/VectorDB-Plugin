@@ -17,6 +17,7 @@ import tesserocr
 from ocrmypdf.hocrtransform import HocrTransform
 import tqdm
 from typing import Union, List, Tuple
+from config_manager import ConfigManager
 
 thread_local = threading.local()
 
@@ -99,13 +100,13 @@ class TesseractOCR(OCRProcessor):
         self.show_progress = True
 
     def initialize(self):
-        script_dir = Path(__file__).resolve().parent
-        self.temp_dir = script_dir / "temp_ocr"
+        config = ConfigManager()
+        self.temp_dir = config.get_path("temp_ocr")
         self.temp_dir.mkdir(exist_ok=True)
         os.environ['TMP'] = str(self.temp_dir)
         os.environ['TEMP'] = str(self.temp_dir)
         tempfile.tempdir = str(self.temp_dir)
-        self.tessdata_path = script_dir / 'share' / 'tessdata'
+        self.tessdata_path = config.get_path('share', 'tessdata')
         os.environ['TESSDATA_PREFIX'] = str(self.tessdata_path)
 
     def clean_text(self, text: str) -> str:

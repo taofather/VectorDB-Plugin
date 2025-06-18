@@ -1,6 +1,5 @@
 from typing import Dict, Any
-import yaml
-from pathlib import Path
+from config_manager import ConfigManager
 
 from .base import VectorDatabase
 from .tiledb.implementation import TileDBVectorDB
@@ -20,10 +19,5 @@ class VectorDBFactory:
     @staticmethod
     def get_database_type() -> str:
         """Get the current database type from config"""
-        config_path = Path(__file__).resolve().parent.parent / "config.yaml"
-        if not config_path.exists():
-            return 'tiledb'  # default
-        
-        with open(config_path, 'r', encoding='utf-8') as file:
-            config = yaml.safe_load(file)
-            return config.get('database', {}).get('type', 'tiledb') 
+        config = ConfigManager().get_config()
+        return config.get('database', {}).get('type', 'tiledb') 

@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from create_symlinks import _create_single_symlink
+from config_manager import ConfigManager
 
 ALLOWED_EXTENSIONS = {
     ".pdf",
@@ -114,8 +115,8 @@ class SymlinkWorker(QThread):
 
 
 def choose_documents_directory():
-    current_dir = Path(__file__).parent.resolve()
-    target_dir = current_dir / DOCS_FOLDER
+    config = ConfigManager()
+    target_dir = config.docs_dir
     target_dir.mkdir(parents=True, exist_ok=True)
 
     msg_box = QMessageBox()
@@ -194,14 +195,14 @@ def choose_documents_directory():
         file_dialog.setFileMode(QFileDialog.Directory)
         file_dialog.setOption(QFileDialog.ShowDirsOnly, True)
         selected_dir = file_dialog.getExistingDirectory(
-            None, "Choose Directory for Database", str(current_dir)
+            None, "Choose Directory for Database", str(config.docs_dir)
         )
         if selected_dir:
             start_worker(Path(selected_dir))
     else:
         file_dialog.setFileMode(QFileDialog.ExistingFiles)
         file_paths = file_dialog.getOpenFileNames(
-            None, "Choose Documents and Images for Database", str(current_dir)
+            None, "Choose Documents and Images for Database", str(config.docs_dir)
         )[0]
         if file_paths:
             compatible_files = []
