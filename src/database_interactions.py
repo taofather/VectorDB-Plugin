@@ -31,9 +31,10 @@ from module_process_images import choose_image_loader
 from utilities import my_cprint, get_model_native_precision, get_appropriate_dtype, supports_flash_attention
 from constants import VECTOR_MODELS
 
-logging.basicConfig(level=logging.CRITICAL, force=True)
+# logging.basicConfig(level=logging.CRITICAL, force=True)
 # logging.basicConfig(level=logging.DEBUG, force=True)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 # DEBUG - implement later to potentially see the size of objects
@@ -639,9 +640,13 @@ class QueryVectorDB:
                 raise ValueError("No vector database selected.")
             if selected_database not in self.config["created_databases"]:
                 raise ValueError(f'Database "{selected_database}" not found in config.')
-            db_path = Path(__file__).resolve().parent.parent / "Vector_DB" / selected_database
-            if not db_path.exists():
-                raise FileNotFoundError(f'Database folder "{selected_database}" is missing on disk.')
+            
+            # Only check for database folder if using TileDB, not pgvector
+            db_type = self.config.get('database', {}).get('type', 'tiledb')
+            if db_type == 'tiledb':
+                db_path = Path(__file__).resolve().parent.parent / "Vector_DB" / selected_database
+                if not db_path.exists():
+                    raise FileNotFoundError(f'Database folder "{selected_database}" is missing on disk.')
 
             self.selected_database = selected_database
             self.embeddings = None
@@ -770,25 +775,33 @@ class QueryVectorDB:
 
         # Set default values if not provided
         if k is None:
-            k = 5
+            k = int(self.config.get('database', {}).get('contexts', 5))
         if score_threshold is None:
-            score_threshold = 0.8
+            score_threshold = float(self.config.get('database', {}).get('similarity', 0.8))
 
         # Handle different database types
         db_type = self.config.get('database', {}).get('type', 'tiledb')
         
         if db_type == 'pgvector':
-            # For pgvector, we need to set the embeddings
+            # For pgvector, we need to set the embeddings and database name
             self.db.embeddings = self.embeddings
+            self.db.database_name = self.selected_database
+            logging.info(f"Searching database '{self.selected_database}' with query: '{query[:50]}...', k={k}, threshold={score_threshold}")
             results = self.db.search(query, k=k, score_threshold=score_threshold)
+            
+            logging.info(f"Database search returned {len(results)} results")
             
             # Convert results to the expected format
             contexts = []
             metadata_list = []
             for result in results:
                 contexts.append(result['text'])
-                metadata_list.append(result['metadata'])
+                # Add similarity score to metadata
+                metadata = result['metadata']
+                metadata['similarity_score'] = result['similarity']
+                metadata_list.append(metadata)
             
+            logging.info(f"Prepared {len(contexts)} contexts for LM Studio")
             return contexts, metadata_list
         else:  # tiledb
             relevant_contexts = self.db.similarity_search_with_score(

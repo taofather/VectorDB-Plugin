@@ -712,6 +712,70 @@ VECTOR_MODELS = {
             'precision': 'float32'
         },
     ],
+    'sentence-transformers': [
+        {
+            'name': 'paraphrase-multilingual-MiniLM-L12-v2',
+            'dimensions': 384,
+            'max_sequence': 512,
+            'size_mb': 471,
+            'repo_id': 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
+            'cache_dir': 'sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2',
+            'type': 'vector',
+            'parameters': '118m',
+            'precision': 'float32',
+            'description': 'Multilingual (supports Spanish, Catalan, 50+ languages)'
+        },
+        {
+            'name': 'distiluse-base-multilingual-cased',
+            'dimensions': 512,
+            'max_sequence': 512,
+            'size_mb': 540,
+            'repo_id': 'sentence-transformers/distiluse-base-multilingual-cased',
+            'cache_dir': 'sentence-transformers--distiluse-base-multilingual-cased',
+            'type': 'vector',
+            'parameters': '135m',
+            'precision': 'float32',
+            'description': 'Multilingual (excellent for Spanish/Catalan)'
+        },
+        {
+            'name': 'all-MiniLM-L6-v2',
+            'dimensions': 384,
+            'max_sequence': 512,
+            'size_mb': 90,
+            'repo_id': 'sentence-transformers/all-MiniLM-L6-v2',
+            'cache_dir': 'sentence-transformers--all-MiniLM-L6-v2',
+            'type': 'vector',
+            'parameters': '22.7m',
+            'precision': 'float32',
+            'description': 'Fast, general purpose (some multilingual capability)'
+        },
+        {
+            'name': 'all-mpnet-base-v2',
+            'dimensions': 768,
+            'max_sequence': 512,
+            'size_mb': 438,
+            'repo_id': 'sentence-transformers/all-mpnet-base-v2',
+            'cache_dir': 'sentence-transformers--all-mpnet-base-v2',
+            'type': 'vector',
+            'parameters': '109m',
+            'precision': 'float32',
+            'description': 'High quality, best overall performance'
+        },
+    ],
+    'BSC-TeMU': [
+        {
+            'name': 'roberta-base-bne-capitel-sts',
+            'dimensions': 768,
+            'max_sequence': 512,
+            'size_mb': 498,
+            'repo_id': 'BSC-TeMU/roberta-base-bne-capitel-sts',
+            'cache_dir': 'BSC-TeMU--roberta-base-bne-capitel-sts',
+            'type': 'vector',
+            'parameters': '125m',
+            'precision': 'float32',
+            'description': 'Specialized for Spanish (Barcelona Supercomputing Center)'
+        },
+    ],
 }
 
 VISION_MODELS = {
@@ -2942,8 +3006,8 @@ master_questions = [
 ]
 
 jeeves_system_message = "You are a helpful British butler who clearly and directly answers questions in a succinct fashion based on contexts provided to you. If you cannot find the answer within the contexts simply tell me that the contexts do not provide an answer. However, if the contexts partially address a question you answer based on what the contexts say and then briefly summarize the parts of the question that the contexts didn't provide an answer to.  Also, you should be very respectful to the person asking the question and frequently offer traditional butler services like various fancy drinks, snacks, various butler services like shining of shoes, pressing of suites, and stuff like that. Also, if you can't answer the question at all based on the provided contexts, you should apologize profusely and beg to keep your job.  Lastly, it is essential that if there are no contexts actually provided it means that a user's question wasn't relevant and you should state that you can't answer based off of the contexts because there are none.  And it goes without saying you should refuse to answer any questions that are not directly answerable by the provided contexts.  Moreover, some of the contexts might not have relevant information and you should simply ignore them and focus on only answering a user's question.  I cannot emphasize enough that you must gear your answer towards using this program and based your response off of the contexts you receive.  Lastly, in addition to offering to perform stereotypical butler services in the midst of your response, you must always always always end your response with some kind of offering of butler services even they don't want it."
-system_message = "You are a helpful person who clearly and directly answers questions in a succinct fashion based on contexts provided to you. If you cannot find the answer within the contexts simply tell me that the contexts do not provide an answer. However, if the contexts partially address my question I still want you to answer based on what the contexts say and then briefly summarize the parts of my question that the contexts didn't provide an answer."
-rag_string = "Here are the contexts to base your answer on.  However, I need to reiterate that I only want you to base your response on these contexts and do not use outside knowledge that you may have been trained with."
+system_message = "You are a knowledgeable and friendly assistant who helps users understand information from provided contexts. CRITICAL RULES: 1) You MUST use ONLY information explicitly provided in the contexts - never add details from your training data. 2) If you mention components, ingredients, or specific details about spells/items, they MUST come directly from the provided contexts. 3) If contexts don't contain specific information, say so explicitly rather than guessing. 4) Elaborate and explain naturally, but stay strictly within the bounds of what is stated in the contexts. When dealing with RPG content, explain rules and mechanics engagingly, but only using information found in the provided contexts."
+rag_string = "Based EXCLUSIVELY on the following information from the documents, please provide a helpful and informative response. Use only the information provided below - do not add details from your general knowledge. You may explain, elaborate, and organize the information in a way that's easy to understand, but stay strictly within the bounds of what is explicitly stated in these contexts:"
 
 
 r"""

@@ -1,11 +1,11 @@
 import logging, sys
 
-# logging.basicConfig(
-    # level=logging.DEBUG,                       # or INFO/ERROR as you prefer
-    # format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    # handlers=[logging.StreamHandler(sys.stdout)],
-    # force=True                                 # clobber any accidental configs
-# )
+logging.basicConfig(
+    level=logging.INFO,                       # Using INFO level to avoid too much debug spam
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+    force=True                                 # clobber any accidental configs
+)
 
 import multiprocessing
 if __name__ == '__main__':

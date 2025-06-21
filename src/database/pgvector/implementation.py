@@ -6,16 +6,14 @@ import psycopg2
 from psycopg2.extras import execute_values
 import numpy as np
 import logging
+import re
 from config_manager import ConfigManager
 
 from ..base import VectorDatabase
 
 # Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class PGVectorDB(VectorDatabase):
     def __init__(self):
@@ -24,6 +22,18 @@ class PGVectorDB(VectorDatabase):
         self.conn = None
         self.embeddings = None
         self.config_manager = ConfigManager()
+        self.database_name = None
+    
+    def _sanitize_database_name(self, database_name: str) -> str:
+        """Sanitize database name for PostgreSQL table names by replacing invalid characters"""
+        # Replace hyphens and other invalid characters with underscores
+        sanitized = re.sub(r'[-\s\.]+', '_', database_name)
+        # Remove any other non-alphanumeric characters except underscores
+        sanitized = re.sub(r'[^a-zA-Z0-9_]', '', sanitized)
+        # Ensure it starts with a letter or underscore
+        if sanitized and not re.match(r'^[a-zA-Z_]', sanitized):
+            sanitized = f"db_{sanitized}"
+        return sanitized.lower()
     
     def initialize(self, config: Dict[str, Any]) -> None:
         """Initialize PostgreSQL connection"""
@@ -60,7 +70,8 @@ class PGVectorDB(VectorDatabase):
             logger.info(f"Created metadata directory at {metadata_dir}")
             
             # Create table for this database
-            table_name = f"vectors_{database_name}"
+            sanitized_db_name = self._sanitize_database_name(database_name)
+            table_name = f"vectors_{sanitized_db_name}"
             
             # Get embedding dimensions from config or actual embeddings
             embedding_dims = self.config.get('EMBEDDING_MODEL_DIMENSIONS', 384)
@@ -132,9 +143,11 @@ class PGVectorDB(VectorDatabase):
             # Clean up on failure
             try:
                 with self.conn.cursor() as cur:
-                    cur.execute(f"DROP TABLE IF EXISTS {table_name};")
+                    sanitized_db_name = self._sanitize_database_name(database_name)
+                    cleanup_table_name = f"vectors_{sanitized_db_name}"
+                    cur.execute(f"DROP TABLE IF EXISTS {cleanup_table_name};")
                     self.conn.commit()
-                    logger.info(f"Cleaned up table {table_name} after failure")
+                    logger.info(f"Cleaned up table {cleanup_table_name} after failure")
             except Exception as cleanup_error:
                 logger.error(f"Error during cleanup: {str(cleanup_error)}")
             
@@ -147,35 +160,123 @@ class PGVectorDB(VectorDatabase):
     
     def search(self, query: str, k: int = 5, score_threshold: float = 0.8, 
               filter_dict: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-        """Search the pgvector database"""
+        """Search the pgvector database using hybrid approach (vector + text search)"""
         if not self.conn:
             raise ValueError("Database not initialized")
         
         if not self.embeddings:
             raise ValueError("No embeddings available for search")
         
-        query_embedding = self.embeddings.encode([query])[0]
+        query_embedding = self.embeddings.embed_query(query)
         
-        # Get the current database name from config
-        config_data = self.config_manager.get_config()
-        database_name = config_data.get('database', {}).get('database_to_search', '')
-        if not database_name:
+        # Use the database name that was set by database_interactions.py
+        if not self.database_name:
             raise ValueError("No database selected for search")
         
-        table_name = f"vectors_{database_name}"
+        sanitized_db_name = self._sanitize_database_name(self.database_name)
+        table_name = f"vectors_{sanitized_db_name}"
+        logger.info(f"Searching in table: {table_name} with threshold: {score_threshold}, k: {k}")
         
         with self.conn.cursor() as cur:
-            # Search using cosine similarity
+            # Convert to list if it's a numpy array, otherwise use as is
+            if hasattr(query_embedding, 'tolist'):
+                embedding_list = query_embedding.tolist()
+            else:
+                embedding_list = query_embedding
+            
+            logger.info(f"Query embedding length: {len(embedding_list)}")
+            
+            # HYBRID SEARCH: Extract important terms automatically
+            text_results = []
+            
+            # Generic term extraction - look for important patterns
+            import re
+            
+            # Extract potential important terms (capitalized words, quoted terms, etc.)
+            potential_terms = []
+            
+            # Capitalized words (likely proper nouns, spell names, etc.)
+            capitalized_terms = re.findall(r'\b[A-ZÁÉÍÓÚÀÈÌÒÙÂÊÎÔÛ][a-záéíóúàèìòùâêîôû]{2,}(?:\s+[A-ZÁÉÍÓÚÀÈÌÒÙÂÊÎÔÛ][a-záéíóúàèìòùâêîôû]+)*\b', query)
+            potential_terms.extend(capitalized_terms)
+            
+            # Words in quotes (explicit important terms)
+            quoted_terms = re.findall(r'["\']([^"\']+)["\']', query)
+            potential_terms.extend(quoted_terms)
+            
+            # Remove duplicates and filter meaningful terms
+            exact_terms = []
+            for term in potential_terms:
+                term = term.strip()
+                if len(term) > 3 and not term.lower() in ['per', 'una', 'els', 'las', 'los', 'con', 'para', 'que', 'como', 'and', 'the', 'for', 'with']:
+                    exact_terms.append(term)
+            
+            exact_terms = list(set(exact_terms))
+            
+            if exact_terms:
+                logger.info(f"Trying text search for important terms: {exact_terms}")
+                
+                # Build text search conditions
+                text_conditions = []
+                text_params = []
+                for term in exact_terms:
+                    text_conditions.append("text ILIKE %s")
+                    text_params.append(f"%{term}%")
+                
+                if text_conditions:
+                    text_search_sql = f"""
+                        SELECT id, text, metadata, 1.0 as similarity
+                        FROM {table_name}
+                        WHERE {' OR '.join(text_conditions)}
+                        LIMIT {k}
+                    """
+                    
+                    cur.execute(text_search_sql, text_params)
+                    text_results = cur.fetchall()
+                    logger.info(f"Text search found {len(text_results)} exact matches")
+            
+            # Vector search with adaptive threshold
+            # If we have text matches, use higher threshold; if not, use lower threshold
+            if text_results:
+                vector_threshold = max(0.1, score_threshold * 0.7)  # Lower threshold when we have text matches
+                vector_limit = max(1, k - len(text_results))  # Fewer vector results needed
+            else:
+                vector_threshold = max(0.05, score_threshold * 0.5)  # Much lower threshold when no text matches
+                vector_limit = k
+            
+            logger.info(f"Vector search with adaptive threshold: {vector_threshold}, limit: {vector_limit}")
+            
             cur.execute(f"""
                 SELECT id, text, metadata, 1 - (embedding <=> %s::vector) as similarity
                 FROM {table_name}
                 WHERE 1 - (embedding <=> %s::vector) > %s
                 ORDER BY similarity DESC
                 LIMIT %s;
-            """, (query_embedding.tolist(), query_embedding.tolist(), score_threshold, k))
+            """, (embedding_list, embedding_list, vector_threshold, vector_limit))
             
+            vector_results = cur.fetchall()
+            logger.info(f"Vector search found {len(vector_results)} results")
+            
+            # Combine results, prioritizing text matches
+            combined_results = []
+            seen_ids = set()
+            
+            # Add text matches first (highest priority)
+            for result in text_results:
+                if result[0] not in seen_ids:
+                    combined_results.append(result)
+                    seen_ids.add(result[0])
+                    logger.info(f"🎯 Added text match (similarity 1.0)")
+            
+            # Add vector results if we need more
+            for result in vector_results:
+                if result[0] not in seen_ids and len(combined_results) < k:
+                    combined_results.append(result)
+                    seen_ids.add(result[0])
+                    logger.info(f"➕ Added vector match (similarity {result[3]:.4f})")
+            
+            # Convert to expected format
             results = []
-            for row in cur.fetchall():
+            for row in combined_results:
                 result = {
                     'id': row[0],
                     'text': row[1],
@@ -184,6 +285,7 @@ class PGVectorDB(VectorDatabase):
                 }
                 results.append(result)
             
+            logger.info(f"Returning {len(results)} hybrid results")
             return results
     
     def delete_database(self, database_name: str) -> None:
@@ -192,7 +294,8 @@ class PGVectorDB(VectorDatabase):
             raise ValueError("Database not initialized")
         
         # Delete the table
-        table_name = f"vectors_{database_name}"
+        sanitized_db_name = self._sanitize_database_name(database_name)
+        table_name = f"vectors_{sanitized_db_name}"
         with self.conn.cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {table_name};")
             self.conn.commit()
@@ -212,6 +315,7 @@ class PGVectorDB(VectorDatabase):
             raise ValueError("Database not initialized")
         
         tables = self._get_vector_tables()
+        # Note: This returns sanitized names, not original names
         return [table.replace('vectors_', '') for table in tables]
     
     def cleanup(self) -> None:
