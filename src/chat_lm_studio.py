@@ -2,6 +2,7 @@ import gc
 import logging
 import json
 import requests
+import re
 from pathlib import Path
 import torch
 import yaml
@@ -127,6 +128,33 @@ class LMStudioChat:
             for metadata in metadata_list:
                 output_file.write(f"{metadata}\n")
 
+    def extract_rag_content(self, query):
+        """
+        Extreu el contingut dels tags <rag></rag> per fer la cerca de contexts.
+        Si no hi ha tags, retorna la query completa per mantenir compatibilitat.
+        
+        Args:
+            query (str): La query original amb possibles tags <rag></rag>
+        
+        Returns:
+            tuple: (rag_content, original_query)
+                - rag_content: Text dins dels tags <rag></rag> o query completa si no hi ha tags
+                - original_query: Query original sense modificar
+        """
+        # Cerca el contingut dins dels tags <rag></rag>
+        rag_pattern = r'<rag>(.*?)</rag>'
+        matches = re.findall(rag_pattern, query, re.DOTALL | re.IGNORECASE)
+        
+        if matches:
+            # Si trobem tags <rag>, unem tot el contingut trobat
+            rag_content = ' '.join(match.strip() for match in matches)
+            logging.info(f"RAG tags found. Using content for search: '{rag_content[:100]}...'")
+            return rag_content, query
+        else:
+            # Si no hi ha tags <rag>, usem la query completa (comportament original)
+            logging.info("No RAG tags found. Using full query for search.")
+            return query, query
+
     def ask_local_chatgpt(self, query, selected_database):
         logging.info(f"Starting ask_local_chatgpt with query: '{query[:50]}...' and database: '{selected_database}'")
         
@@ -134,8 +162,18 @@ class LMStudioChat:
             logging.info(f"Getting QueryVectorDB instance for database: {selected_database}")
             self.query_vector_db = QueryVectorDB.get_instance(selected_database)
 
-        logging.info(f"About to search database...")
-        contexts, metadata_list = self.query_vector_db.search(query)
+        # Extreu el contingut dels tags <rag></rag> per la cerca
+        rag_content, original_query = self.extract_rag_content(query)
+        
+        # Log si estem usant contingut RAG específic o la query completa
+        if rag_content != original_query:
+            logging.info(f"Using RAG-specific content for search: '{rag_content[:100]}...'")
+            logging.info(f"Will send full original query to model: '{original_query[:100]}...'")
+        else:
+            logging.info(f"No RAG tags found, using full query for both search and model")
+        
+        logging.info(f"About to search database with RAG content...")
+        contexts, metadata_list = self.query_vector_db.search(rag_content)
         logging.info(f"Search returned {len(contexts)} contexts")
 
         self.save_metadata_to_file(metadata_list)
@@ -154,7 +192,7 @@ class LMStudioChat:
                 logging.info(f"Context {i+1}: {context[:200]}...")
             logging.info("=== END CONTEXTS ===")
 
-            augmented_query = f"{rag_string}\n\n---\n\n" + "\n\n---\n\n".join(contexts) + f"\n\n-----\n\n{query}"
+            augmented_query = f"{rag_string}\n\n---\n\n" + "\n\n---\n\n".join(contexts) + f"\n\n-----\n\n{original_query}"
             
             # DEBUG: Log the complete prompt being sent
             logging.info("=== COMPLETE PROMPT ===")
