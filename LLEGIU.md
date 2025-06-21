@@ -18,18 +18,42 @@ graph TD
 
 ```
 
+LMStudio NO rep vectors, només text pla. Els vectors només s'utilitzen internament per trobar els contextos més rellevants.
+
+Construcció del Prompt Final (chat_lm_studio.py)
+
+   # L'augmented_query que s'envia a LMStudio és:
+   augmented_query = f"{rag_string}\n\n---\n\n" + \
+                    "\n\n---\n\n".join(contexts) + \  # ← TEXTOS PLANS
+                    f"\n\n-----\n\n{original_query}"
+
+Exemple pràctic:
+Si l'usuari demana sobre "mecanismes de defensa", el sistema:
+1. Converteix "mecanismes de defensa" → [0.1, -0.3, 0.8, ...] (vector d'embedding)
+2. Cerca a pgvector documents similars usant aquest vector
+3. Troba documents amb texts com:
+"Els anticossos són proteïnes que neutralitzen patògens..."
+"El sistema immunitari té múltiples nivells de defensa..."
+4. Envia a LMStudio un prompt com:
+  ---
+   Els anticossos són proteïnes que neutralitzen patògens...
+   ---
+   El sistema immunitari té múltiples nivells de defensa...
+   -----
+   Explica'm els mecanismes de defensa del cos humà
+
+Resum:
+pgvector guarda: text + vector + metadata
+pgvector cerca amb: vectors (similaritat matemàtica)
+pgvector retorna: text + metadata + score
+LMStudio rep: només text pla dins del prompt
+
 ## Abstraient la bbdd vectioral: afegint suport per Postgres i pgsql
 
 Ara tenim una estructura que suporta tant TileDB com pgvector. Per utilitzar-la:
 Quan s'executa setup.py, l'usuari pot triar entre TileDB i pgvector
 La configuració es guarda a config.yaml
-El codi utilitza el factory per crear la implementació correcta de la base de dades
-Per provar-ho:
-Executa python setup.py i tria l'opció 2 per pgvector
-Assegura't que PostgreSQL està executant-se i que pgvector està instal·lat
-Configura les credencials de PostgreSQL a config.yaml si és necessari
-Executa l'aplicació normalment amb python gui.py
-
+El codi utilitza el factory per crear la implementació correcta de la base de 
 
 ##Changes done
 
