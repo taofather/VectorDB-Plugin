@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import torch
 from multiprocessing import Process, Pipe
-from multiprocessing.connection import PipeConnection
+from multiprocessing.connection import Connection as PipeConnection
 from PySide6.QtCore import QObject, Signal
 
 import module_chat

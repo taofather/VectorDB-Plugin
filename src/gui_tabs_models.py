@@ -9,12 +9,14 @@ from PySide6.QtWidgets import (
 
 from constants import VECTOR_MODELS, TOOLTIPS
 from download_model import ModelDownloader, model_downloaded_signal
+from config_manager import ConfigManager
 
 class VectorModelsTab(QWidget):
     def __init__(self, parent=None):
        super().__init__(parent)
        self.main_layout = QVBoxLayout()
        self.setLayout(self.main_layout)
+       self.config = ConfigManager()
 
        self.group_boxes = {}
        self.downloaded_labels = {}
@@ -31,11 +33,8 @@ class VectorModelsTab(QWidget):
            'Qwen': 4
        }
 
-       models_dir = Path('Models')
-       if not models_dir.exists():
-           models_dir.mkdir(parents=True)
-
-       vector_models_dir = models_dir / "vector"
+       vector_models_dir = self.config.models_dir / "vector"
+       vector_models_dir.mkdir(parents=True, exist_ok=True)
 
        existing_vector_directories = {d.name for d in vector_models_dir.iterdir() if d.is_dir()}
 
@@ -149,9 +148,7 @@ class VectorModelsTab(QWidget):
            download_thread.start()
 
     def update_model_downloaded_status(self, model_name, model_type):
-       models_dir = Path('Models')
-       vector_models_dir = models_dir / "Vector"
-
+       vector_models_dir = self.config.models_dir / "vector"
        existing_vector_directories = {d.name for d in vector_models_dir.iterdir() if d.is_dir()}
 
        for vendor, models in VECTOR_MODELS.items():

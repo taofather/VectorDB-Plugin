@@ -9,8 +9,6 @@ set_cuda_paths()
 import yaml
 from utilities import ensure_theme_config, load_stylesheet
 
-from ctypes import windll, byref, sizeof, c_int
-from ctypes.wintypes import BOOL, HWND, DWORD
 import psutil
 import ctranslate2
 import gc
@@ -37,6 +35,7 @@ from download_model import ModelDownloader, model_downloaded_signal
 from database_interactions import QueryVectorDB
 from module_kokoro import KokoroTTS
 from utilities import normalize_chat_text
+from config_manager import ConfigManager
 
 
 class GenerationWorker(QThread):
@@ -107,7 +106,7 @@ class ChatWindow(QMainWindow):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(1)
 
-        image_path = Path(__file__).parent / "Assets" / "ask_jeeves_transparent.jpg"
+        image_path = self.load_image()
         if image_path.exists():
             pixmap = QPixmap(str(image_path))
             if not pixmap.isNull():
@@ -226,7 +225,7 @@ class ChatWindow(QMainWindow):
         self.input_field.textChanged.connect(self.debounce_update)
 
         try:
-            tts_path = Path(__file__).parent / "Models" / "tts" / "ctranslate2-4you--Kokoro-82M-light"
+            tts_path = self.load_tts_model()
             self.tts = KokoroTTS(repo_path=str(tts_path))
             self.speak_button.setEnabled(True)
             self.voice_select.setEnabled(True)
@@ -237,6 +236,21 @@ class ChatWindow(QMainWindow):
         self.tts_thread = None
         self.tts_worker = None
         self.is_speaking = False
+
+    def load_image(self):
+        config = ConfigManager()
+        image_path = config.get_path("Assets", "ask_jeeves_transparent.jpg")
+        return image_path
+
+    def load_tts_model(self):
+        config = ConfigManager()
+        tts_path = config.models_dir / "tts" / "ctranslate2-4you--Kokoro-82M-light"
+        return tts_path
+
+    def load_model(self):
+        config = ConfigManager()
+        model_info = JEEVES_MODELS[self.model_key]
+        self.model_dir = str(config.models_dir / "Jeeves" / model_info["folder_name"])
 
     def _ensure_model(self) -> None:
         """
@@ -340,25 +354,31 @@ class ChatWindow(QMainWindow):
         self.apply_dark_mode_settings()
 
     def apply_dark_mode_settings(self):
-        DWMWA_USE_IMMERSIVE_DARK_MODE = DWORD(20)
-        set_window_attribute = windll.dwmapi.DwmSetWindowAttribute
-        hwnd = HWND(int(self.winId()))
-        true_bool = BOOL(True)
-        set_window_attribute(
-            hwnd,
-            DWMWA_USE_IMMERSIVE_DARK_MODE,
-            byref(true_bool),
-            sizeof(true_bool)
-        )
+        import platform
+        if platform.system() == 'Windows':
+            from ctypes import windll, byref, sizeof, c_int
+            from ctypes.wintypes import BOOL, HWND, DWORD
+            
+            DWMWA_USE_IMMERSIVE_DARK_MODE = DWORD(20)
+            set_window_attribute = windll.dwmapi.DwmSetWindowAttribute
+            hwnd = HWND(int(self.winId()))
+            true_bool = BOOL(True)
+            set_window_attribute(
+                hwnd,
+                DWMWA_USE_IMMERSIVE_DARK_MODE,
+                byref(true_bool),
+                sizeof(true_bool)
+            )
 
-        DWMWA_BORDER_COLOR = DWORD(34)
-        black_color = c_int(0xFF000000)
-        set_window_attribute(
-            hwnd,
-            DWMWA_BORDER_COLOR,
-            byref(black_color),
-            sizeof(black_color)
-        )
+            DWMWA_BORDER_COLOR = DWORD(34)
+            black_color = c_int(0xFF000000)
+            set_window_attribute(
+                hwnd,
+                DWMWA_BORDER_COLOR,
+                byref(black_color),
+                sizeof(black_color)
+            )
+        # For macOS, we don't need to do anything special as the system handles dark mode automatically
 
     def build_prompt(self, user_message):
         model_name = self.model_selector.currentText()
@@ -527,7 +547,7 @@ class ChatWindow(QMainWindow):
             self.tts_worker.stop()
 
     def handle_tts_error(self, error_message):
-        self.speak_button.setEnabled(True)
+        self.on_speech_finished()
         QMessageBox.warning(self, "TTS Error", 
             f"An error occurred while trying to speak: {error_message}")
 

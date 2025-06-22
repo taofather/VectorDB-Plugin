@@ -1,67 +1,52 @@
+from PySide6.QtWidgets import QWidget, QLabel, QComboBox, QGridLayout
 import yaml
-from PySide6.QtWidgets import QWidget, QLabel, QLineEdit, QGridLayout, QGroupBox, QVBoxLayout, QSizePolicy
+from constants import TOOLTIPS
+from config_manager import ConfigManager
 
-class ModelsSettingsTab(QWidget):
+class ModelSettingsTab(QWidget):
     def __init__(self):
-        super(ModelsSettingsTab, self).__init__()
-
-        with open('config.yaml', 'r') as f:
-            config_data = yaml.safe_load(f)
-
-        main_layout = QVBoxLayout()
-        self.field_data = {}
-
-        for category, sub_dict in config_data['embedding-models'].items():
-            if category in ['bge', 'instructor']:
-                group_box = QGroupBox(category)
-                layout = QGridLayout()
-
-                row = 0
-                for setting, current_value in sub_dict.items():
-                    full_key = f"{category}-{setting}"
-                    
-                    edit = QLineEdit()
-                    edit.setPlaceholderText(f"Enter new {setting.lower()}...")
-                    edit.textChanged.connect(self.validate_text_only)
-                    edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-
-                    label = QLabel(f"{setting}: {current_value}")
-                    label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-
-                    layout.addWidget(edit, row, 0)
-                    layout.addWidget(label, row + 1, 0)
-
-                    self.field_data[full_key] = edit
-                    row += 2
-
-                group_box.setLayout(layout)
-                group_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-                main_layout.addWidget(group_box)
-
-        self.setLayout(main_layout)
-
-    def validate_text_only(self, text):
-        if not text.isalpha():
-            sender = self.sender()
-            sender.setText(''.join(filter(str.isalpha, text)))
+        super(ModelSettingsTab, self).__init__()
+        self.config_manager = ConfigManager()
+        config_data = self.config_manager.get_config()
+        
+        self.embedding_model_name = config_data.get('EMBEDDING_MODEL_NAME', '')
+        self.vector_models = config_data.get('vector_models', {})
+        
+        grid_layout = QGridLayout()
+        
+        # Embedding model selection and current setting
+        self.model_label = QLabel("Embedding Model:")
+        self.model_label.setToolTip(TOOLTIPS["EMBEDDING_MODEL"])
+        grid_layout.addWidget(self.model_label, 0, 0)
+        
+        self.model_combo = QComboBox()
+        self.model_combo.addItems(list(self.vector_models.keys()))
+        self.model_combo.setToolTip(TOOLTIPS["EMBEDDING_MODEL"])
+        if self.embedding_model_name in self.vector_models:
+            self.model_combo.setCurrentIndex(list(self.vector_models.keys()).index(self.embedding_model_name))
+        self.model_combo.setMinimumWidth(100)
+        grid_layout.addWidget(self.model_combo, 0, 2)
+        
+        self.current_model_label = QLabel(f"{self.embedding_model_name}")
+        self.current_model_label.setToolTip(TOOLTIPS["EMBEDDING_MODEL"])
+        grid_layout.addWidget(self.current_model_label, 0, 1)
+        
+        self.setLayout(grid_layout)
 
     def update_config(self):
-        with open('config.yaml', 'r') as f:
-            config_data = yaml.safe_load(f)
-
-        settings_changed = False
-
-        for full_key, widget in self.field_data.items():
-            category, setting = full_key.split('-')
-            new_value = widget.text()
-
-            if new_value and new_value != config_data['embedding-models'][category][setting]:
-                settings_changed = True
-                config_data['embedding-models'][category][setting] = new_value
-                widget.clear()
-
-        if settings_changed:
-            with open('config.yaml', 'w') as f:
-                yaml.safe_dump(config_data, f)
-
-        return settings_changed
+        try:
+            config_data = self.config_manager.get_config()
+            
+            new_model = self.model_combo.currentText()
+            if new_model != self.embedding_model_name:
+                config_data['EMBEDDING_MODEL_NAME'] = new_model
+                self.embedding_model_name = new_model
+                self.current_model_label.setText(f"{new_model}")
+                self.config_manager.save_config(config_data)
+                return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"Error updating config: {e}")
+            return False

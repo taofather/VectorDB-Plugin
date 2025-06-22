@@ -6,11 +6,13 @@ import logging
 import traceback
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
+from config_manager import ConfigManager
 
 class CredentialManager(ABC):
     def __init__(self, parent_widget):
         self.parent_widget = parent_widget
-        self.config_file_path = Path(__file__).parent / 'config.yaml'
+        self.config = ConfigManager()
+        self.config_file_path = self.config.config_path
         self.config = self._load_config()
 
     def _load_config(self) -> dict:

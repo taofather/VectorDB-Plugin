@@ -3,6 +3,11 @@ import time
 import warnings
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+import os
+import io
+import json
+from typing import List, Dict, Any, Optional, Tuple
+from multiprocessing import Process, Queue
 
 import torch
 import torchvision.transforms as T
@@ -19,19 +24,22 @@ from transformers import (
     Qwen2_5_VLForConditionalGeneration,
     GenerationConfig,
     AutoConfig,
-    AutoModelForVision2Seq
+    AutoModelForVision2Seq,
+    CLIPProcessor,
+    CLIPModel
 )
 from langchain_community.docstore.document import Document
 from extract_metadata import extract_image_metadata
 from utilities import my_cprint, has_bfloat16_support
 from constants import VISION_MODELS
+from config_manager import ConfigManager
 
 warnings.filterwarnings("ignore", message=".*Torch was not compiled with flash attention.*")
 
 ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tif', '.tiff']
 
-current_directory = Path(__file__).parent
-CACHE_DIR = current_directory / "models" / "vision"
+config = ConfigManager()
+CACHE_DIR = config.models_dir / "vision"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 def get_best_device():
@@ -49,8 +57,7 @@ def run_loader_in_process(loader_func):
         return []
 
 def choose_image_loader():
-    with open('config.yaml', 'r') as file:
-        config = yaml.safe_load(file)
+    config = ConfigManager().get_config()
     chosen_model = config["vision"]["chosen_model"]
     if chosen_model == 'Granite Vision - 2b':
         loader_func = loader_granite(config).process_images
@@ -67,7 +74,7 @@ def choose_image_loader():
     else:
         my_cprint("No valid image model specified in config.yaml", "red")
         return []
-    image_dir = Path(__file__).parent / "Docs_for_DB"
+    image_dir = Path(__file__).parent.parent / "Docs_for_DB"
     if not check_for_images(image_dir):
         return []
     with ProcessPoolExecutor(1) as executor:
@@ -92,7 +99,7 @@ class BaseLoader:
         raise NotImplementedError
 
     def process_images(self):
-        image_dir = Path(__file__).parent / "Docs_for_DB"
+        image_dir = Path(__file__).parent.parent / "Docs_for_DB"
         documents = []
         image_files = [file for file in image_dir.iterdir() if file.suffix.lower() in ALLOWED_EXTENSIONS]
         self.model, self.tokenizer, self.processor = self.initialize_model_and_tokenizer()
@@ -570,3 +577,30 @@ class loader_qwenvl(BaseLoader):
         response = self.processor.decode(output[0], skip_special_tokens=True)
         response = response.split('assistant')[-1].strip()
         return ' '.join(line.strip() for line in response.split('\n') if line.strip())
+
+
+def process_image(image_path):
+    try:
+        config_manager = ConfigManager()
+        config = config_manager.get_config()
+        
+        image_model = config.get('image_model', '')
+        if not image_model:
+            my_cprint("No valid image model specified in config.yaml", "red")
+            return None, None
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = CLIPModel.from_pretrained(image_model).to(device)
+        processor = CLIPProcessor.from_pretrained(image_model)
+
+        image = Image.open(image_path)
+        inputs = processor(images=image, return_tensors="pt", padding=True).to(device)
+
+        image_features = model.get_image_features(**inputs)
+        image_features = image_features.detach().cpu().numpy()
+
+        return image_features, image
+
+    except Exception as e:
+        my_cprint(f"Error processing image: {e}", "red")
+        return None, None

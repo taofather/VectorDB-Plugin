@@ -31,9 +31,10 @@ from module_process_images import choose_image_loader
 from utilities import my_cprint, get_model_native_precision, get_appropriate_dtype, supports_flash_attention
 from constants import VECTOR_MODELS
 
-logging.basicConfig(level=logging.CRITICAL, force=True)
+# logging.basicConfig(level=logging.CRITICAL, force=True)
 # logging.basicConfig(level=logging.DEBUG, force=True)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 # DEBUG - implement later to potentially see the size of objects
@@ -261,8 +262,25 @@ class QwenEmbedding(BaseEmbeddingModel):
 
 
 def create_vector_db_in_process(database_name):
-    create_vector_db = CreateVectorDB(database_name=database_name)
-    create_vector_db.run()
+    try:
+        # Load configuration
+        config_path = Path(__file__).resolve().parent.parent / "config.yaml"
+        with open(config_path, 'r', encoding='utf-8') as file:
+            config = yaml.safe_load(file)
+        
+        # Create database instance
+        from database.factory import VectorDBFactory
+        db = VectorDBFactory.create_database(config)
+        
+        # Initialize database with configuration
+        db.initialize(config)
+        
+        # Create vector database
+        create_vector_db = CreateVectorDB(database_name=database_name, db_instance=db)
+        create_vector_db.run()
+    except Exception as e:
+        logging.error(f"Error creating vector database: {str(e)}")
+        raise
 
 def process_chunks_only_query(database_name, query, result_queue):
     try:
@@ -291,14 +309,25 @@ def process_chunks_only_query(database_name, query, result_queue):
 
 
 class CreateVectorDB:
-    def __init__(self, database_name):
-        self.ROOT_DIRECTORY = Path(__file__).resolve().parent
-        self.SOURCE_DIRECTORY = self.ROOT_DIRECTORY / "Docs_for_DB"
-        self.PERSIST_DIRECTORY = self.ROOT_DIRECTORY / "Vector_DB" / database_name
+    def __init__(self, database_name: str, db_instance=None):
+        self.database_name = database_name
+        self.root_dir = Path(__file__).resolve().parent.parent  # Point to project root, not src/
+        self.config = self.load_config(self.root_dir)
+        self.vector_model = None
+        self.db_instance = db_instance
 
     def load_config(self, root_directory):
         with open(root_directory / "config.yaml", 'r', encoding='utf-8') as stream:
             return yaml.safe_load(stream)
+
+    def load_configuration(self):
+        config_path = Path(__file__).resolve().parent.parent / 'config.yaml'
+        try:
+            with open(config_path, 'r', encoding='utf-8') as file:
+                return yaml.safe_load(file)
+        except Exception as e:
+            logging.error(f"Error loading configuration: {e}")
+            raise
 
     @torch.inference_mode()
     def initialize_vector_model(self, embedding_model_name, config_data):
@@ -316,105 +345,51 @@ class CreateVectorDB:
             }
         }
 
-        # encode_kwargs = {'normalize_embeddings': True, 'batch_size': 8}
-        # encode_kwargs = {'max_length': 512, 'batch_size': 8}
         encode_kwargs = {'batch_size': 8}
 
-        if compute_device.lower() == 'cpu':
-            encode_kwargs['batch_size'] = 2
-        else:
-            batch_size_mapping = {
-                # 'bge-code': 2,
-                'inf-retriever-v1-7b': 2,
-                'Qwen3-Embedding-8B': 2,
-                'Qwen3-Embedding-4B': 3,
-                'inf-retriever-v1-1.5b': 3,
-                'stella_en_1.5B': 4, # deprecated
-                'e5-base': 6,
-                'e5-large': 7,
-                'arctic-embed-l': 7,
-                'e5-small': 10,
-                'gte-large': 12,
-                'Granite-30m-English': 12,
-                'bge-small': 12,
-                'gte-base': 14,
-                'arctic-embed-m': 14,
-                'stella_en_400M_v5': 20, # deprecated
+        if "bge" in embedding_model_name.lower():
+            # bge prompt
+            encode_kwargs["prompt"] = ("Represent this sentence for searching relevant passages: ")
 
-            }
+        model = BaseEmbeddingModel(embedding_model_name, model_kwargs, encode_kwargs).create()
 
-            for key, value in batch_size_mapping.items():
-                if isinstance(key, tuple):
-                    if any(model_name_part in embedding_model_name for model_name_part in key):
-                        encode_kwargs['batch_size'] = value
-                        break
-                else:
-                    if key in embedding_model_name:
-                        encode_kwargs['batch_size'] = value
-                        break
-
-        if "qwen3-embedding" in embedding_model_name.lower():
-            print("Using QwenEmbedding class.")
-            model = QwenEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
-
-        elif "snowflake" in embedding_model_name.lower():
-            print("Using SnowflakeEmbedding class.")
-            model = SnowflakeEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
-
-        elif "alibaba" in embedding_model_name.lower():
-            print("Using InflyAndAlibabaEmbedding class.")
-            model = InflyAndAlibabaEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
-
-        elif "400m" in embedding_model_name.lower():
-            print("Using Stella400MEmbedding class.")
-            model = Stella400MEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
-
-        elif "stella_en_1.5b_v5" in embedding_model_name.lower():
-            print("Using StellaEmbedding class.")
-            model = StellaEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
-
-        # elif "bge-code" in embedding_model_name.lower():
-            # print("Using BgeCodeEmbeddingModel class.")
-            # model = BgeCodeEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
-
-        elif "infly" in embedding_model_name.lower():
-            print("Using InflyAndAlibabaEmbedding class.")
-            model = InflyAndAlibabaEmbedding(embedding_model_name, model_kwargs, encode_kwargs).create()
-
-        else:
-            print("Using BaseEmbeddingModel class.")
-            model = BaseEmbeddingModel(embedding_model_name, model_kwargs, encode_kwargs).create()
-
-        logger.debug("🛈 %s tokenizer_kwargs=%s",
-                     embedding_model_name,
-                     model_kwargs.get("tokenizer_kwargs"))
+        # Get model precision
+        try:
+            # Access dtype through the underlying client model
+            if hasattr(model, 'client') and hasattr(model.client, 'dtype'):
+                model_dtype = model.client.dtype
+            elif hasattr(model, '_client') and hasattr(model._client, 'dtype'):
+                model_dtype = model._client.dtype
+            elif hasattr(model, 'model') and hasattr(model.model, 'dtype'):
+                model_dtype = model.model.dtype
+            else:
+                # Fallback to a default precision if we can't determine dtype
+                model_dtype = torch.float32
+                
+            if model_dtype == torch.float32:
+                precision = "fp32"
+            elif model_dtype == torch.float16:
+                precision = "fp16"
+            elif model_dtype == torch.bfloat16:
+                precision = "bf16"
+            else:
+                precision = str(model_dtype)
+        except Exception as e:
+            # If we can't determine precision, use a default
+            precision = "unknown"
 
         model_name = os.path.basename(embedding_model_name)
-        precision = "float32" if torch_dtype is None else str(torch_dtype).split('.')[-1]
         my_cprint(f"{model_name} ({precision}) loaded using a batch size of {encode_kwargs['batch_size']}.", "green")
 
         return model, encode_kwargs
 
     @torch.inference_mode()
     def create_database(self, texts, embeddings):
-
         my_cprint("\nComputing vectors...", "yellow")
         start_time = time.time()
 
         hash_id_mappings = []
         MAX_UINT64 = 18446744073709551615
-
-        # atomically create the DB folder
-        created_new_dir = False
-        try:
-            self.PERSIST_DIRECTORY.mkdir(parents=True, exist_ok=False)
-            created_new_dir = True
-            my_cprint(f"Created directory: {self.PERSIST_DIRECTORY}", "green")
-        except FileExistsError:
-            raise FileExistsError(
-                f"Vector database '{self.PERSIST_DIRECTORY.name}' already exists. "
-                "Choose a different name or delete the existing DB first."
-            )
 
         try:
             all_texts = []
@@ -464,74 +439,29 @@ class CreateVectorDB:
                 for idx, txt in enumerate(all_texts)
                 if not isinstance(txt, str)
             ]
+
             if bad_chunks:
-                print("\n>>> NON-STRING CHUNKS DETECTED:")
-                for idx, typ, preview in bad_chunks[:10]:
-                    print(f"   #{idx}: {typ} → {preview!r}")
-                raise ValueError(f"Found {len(bad_chunks)} non-string chunks — fix loaders")
+                logging.error("Found non-string chunks:")
+                for idx, type_, preview in bad_chunks:
+                    logging.error(f"  {idx}: {type_} - {preview}")
+                raise ValueError("Found non-string chunks in text data")
 
-            with open(self.ROOT_DIRECTORY / "config.yaml", 'r', encoding='utf-8') as config_file:
-                config_data = yaml.safe_load(config_file)
-
-            # Final clean-up of texts
-            validated_texts = []
-            for i, text in enumerate(all_texts):
-                if isinstance(text, str):
-                    cleaned_text = text.replace('\x00', '').strip()
-                    if cleaned_text:
-                        validated_texts.append(cleaned_text)
-                    else:
-                        logging.warning(f"Skipping empty text at index {i}")
-                else:
-                    logging.error(f"Non-string found at index {i}: {type(text)}")
-
-            all_texts = validated_texts
-
-            # Save chunks for testing
-            # test_chunks_dir = self.ROOT_DIRECTORY / "Test_Chunks"
-            # if test_chunks_dir.exists():
-                # shutil.rmtree(test_chunks_dir)
-            # test_chunks_dir.mkdir(parents=True, exist_ok=True)
-
-            # import json
-            # chunks_file = test_chunks_dir / "chunks.jsonl"
-
-            # my_cprint(f"Saving {len(all_texts)} chunks to JSONL format...", "yellow")
-
-            # # Save chunks as JSONL
-            # with open(chunks_file, 'w', encoding='utf-8') as f:
-                # for i, text in enumerate(all_texts):
-                    # chunk_data = {
-                        # "chunk_id": i,
-                        # "text": text
-                    # }
-                    # f.write(json.dumps(chunk_data, ensure_ascii=False) + '\n')
-
-            # my_cprint(f"Chunks saved to: {chunks_file}", "green")
-
-            # embed documents
+            # Compute embeddings
             embedding_start_time = time.time()
+            my_cprint("Computing embeddings...", "yellow")
+
             vectors = embeddings.embed_documents(all_texts)
             embedding_end_time = time.time()
             embedding_elapsed = embedding_end_time - embedding_start_time
             my_cprint(f"Embedding computation completed in {embedding_elapsed:.2f} seconds.", "cyan")
 
-            # Build (text, embedding) tuples in correct order
-            text_embed_pairs = [
-                (txt, np.asarray(vec, dtype=np.float32))
-                for txt, vec in zip(all_texts, vectors)
-            ]
-
-            # create TileDB vector store
-            TileDB.from_embeddings(
-                text_embeddings=text_embed_pairs,
-                embedding=embeddings,
-                metadatas=all_metadatas[:len(all_texts)],
-                ids=all_ids[:len(all_texts)],
-                metric="euclidean",
-                index_uri=str(self.PERSIST_DIRECTORY),
-                index_type="FLAT",
-                allow_dangerous_deserialization=True,
+            # Create the database using the appropriate implementation
+            self.db_instance.create_database(
+                database_name=self.database_name,
+                texts=all_texts,
+                embeddings=vectors,
+                metadatas=all_metadatas,
+                ids=all_ids
             )
 
             my_cprint("Processed all chunks", "yellow")
@@ -546,19 +476,13 @@ class CreateVectorDB:
             # show full traceback from child process
             traceback.print_exc()
             logging.error(f"Error creating database: {str(e)}")
-            if self.PERSIST_DIRECTORY.exists():
-                try:
-                    shutil.rmtree(self.PERSIST_DIRECTORY)
-                    logging.info(f"Cleaned up failed database creation at: {self.PERSIST_DIRECTORY}")
-                except Exception as cleanup_error:
-                    logging.error(f"Failed to clean up database directory: {cleanup_error}")
             raise
 
     def create_metadata_db(self, documents, hash_id_mappings):
-        if not self.PERSIST_DIRECTORY.exists():
-            self.PERSIST_DIRECTORY.mkdir(parents=True, exist_ok=True)
+        if not (self.root_dir / "Vector_DB" / self.database_name).exists():
+            (self.root_dir / "Vector_DB" / self.database_name).mkdir(parents=True, exist_ok=True)
 
-        sqlite_db_path = self.PERSIST_DIRECTORY / "metadata.db"
+        sqlite_db_path = self.root_dir / "Vector_DB" / self.database_name / "metadata.db"
         conn = sqlite3.connect(sqlite_db_path)
         cursor = conn.cursor()
 
@@ -607,7 +531,7 @@ class CreateVectorDB:
 
     def load_audio_documents(self, source_dir: Path = None) -> list:
         if source_dir is None:
-            source_dir = self.SOURCE_DIRECTORY
+            source_dir = self.root_dir / "Docs_for_DB"
         json_paths = [f for f in source_dir.iterdir() if f.suffix.lower() == '.json']
         docs = []
 
@@ -623,23 +547,26 @@ class CreateVectorDB:
         return docs
     
     def clear_docs_for_db_folder(self):
-        for item in self.SOURCE_DIRECTORY.iterdir():
-            if item.is_file() or item.is_symlink():
-                try:
-                    item.unlink()
-                except Exception as e:
-                    print(f"Failed to delete {item}: {e}")
+        docs_dir = self.root_dir / "Docs_for_DB"
+        if docs_dir.exists():
+            for item in docs_dir.iterdir():
+                if item.is_file() or item.is_symlink():
+                    try:
+                        item.unlink()
+                    except Exception as e:
+                        print(f"Failed to delete {item}: {e}")
 
     @torch.inference_mode()
     def run(self):
-        config_data = self.load_config(self.ROOT_DIRECTORY)
+        config_data = self.load_config(self.root_dir)
         EMBEDDING_MODEL_NAME = config_data.get("EMBEDDING_MODEL_NAME")
+        db_type = config_data.get('database', {}).get('type', 'tiledb')
 
         # list to hold document objects
         documents = []
 
         # load text document objects
-        text_documents = load_documents(self.SOURCE_DIRECTORY)
+        text_documents = load_documents(self.root_dir / "Docs_for_DB")
         if isinstance(text_documents, list) and text_documents:
             documents.extend(text_documents)
 
@@ -686,8 +613,11 @@ class CreateVectorDB:
             del texts
             gc.collect()
 
-            # Pass mappings to metadata db creation
-            self.create_metadata_db(json_docs_to_save, hash_id_mappings)
+            # For pgvector, we don't need to create a metadata db since metadata is stored in the table
+            if db_type != 'pgvector':
+                # Pass mappings to metadata db creation
+                self.create_metadata_db(json_docs_to_save, hash_id_mappings)
+            
             del json_docs_to_save
             gc.collect()
             self.clear_docs_for_db_folder()
@@ -709,10 +639,14 @@ class QueryVectorDB:
             if not selected_database:
                 raise ValueError("No vector database selected.")
             if selected_database not in self.config["created_databases"]:
-                raise ValueError(f'Database “{selected_database}” not found in config.')
-            db_path = Path(__file__).resolve().parent / "Vector_DB" / selected_database
-            if not db_path.exists():
-                raise FileNotFoundError(f'Database folder “{selected_database}” is missing on disk.')
+                raise ValueError(f'Database "{selected_database}" not found in config.')
+            
+            # Only check for database folder if using TileDB, not pgvector
+            db_type = self.config.get('database', {}).get('type', 'tiledb')
+            if db_type == 'tiledb':
+                db_path = Path(__file__).resolve().parent.parent / "Vector_DB" / selected_database
+                if not db_path.exists():
+                    raise FileNotFoundError(f'Database folder "{selected_database}" is missing on disk.')
 
             self.selected_database = selected_database
             self.embeddings = None
@@ -740,7 +674,7 @@ class QueryVectorDB:
             return cls._instance
 
     def load_configuration(self):
-        config_path = Path(__file__).resolve().parent / 'config.yaml'
+        config_path = Path(__file__).resolve().parent.parent / 'config.yaml'
         try:
             with open(config_path, 'r', encoding='utf-8') as file:
                 return yaml.safe_load(file)
@@ -817,9 +751,17 @@ class QueryVectorDB:
         return embeddings
 
     def initialize_database(self):
-        persist_directory = Path(__file__).resolve().parent / "Vector_DB" / self.selected_database
-
-        return TileDB.load(index_uri=str(persist_directory), embedding=self.embeddings, allow_dangerous_deserialization=True)
+        config_data = self.config
+        db_type = config_data.get('database', {}).get('type', 'tiledb')
+        
+        if db_type == 'pgvector':
+            from database.factory import VectorDBFactory
+            db = VectorDBFactory.create_database(config_data)
+            db.initialize(config_data)
+            return db
+        else:  # tiledb
+            persist_directory = Path(__file__).resolve().parent.parent / "Vector_DB" / self.selected_database
+            return TileDB.load(index_uri=str(persist_directory), embedding=self.embeddings, allow_dangerous_deserialization=True)
 
     @torch.inference_mode()
     def search(self, query, k: Optional[int] = None, score_threshold: Optional[float] = None):
@@ -831,37 +773,51 @@ class QueryVectorDB:
             logging.info(f"Initializing database connection for {self.selected_database}")
             self.db = self.initialize_database()
 
-        self.config = self.load_configuration()
-        document_types = self.config['database'].get('document_types', '')
-        search_filter = {'document_type': document_types} if document_types else {}
+        # Set default values if not provided
+        if k is None:
+            k = int(self.config.get('database', {}).get('contexts', 5))
+        if score_threshold is None:
+            score_threshold = float(self.config.get('database', {}).get('similarity', 0.8))
+
+        # Handle different database types
+        db_type = self.config.get('database', {}).get('type', 'tiledb')
         
-        k = k if k is not None else int(self.config['database']['contexts'])
-        score_threshold = score_threshold if score_threshold is not None else float(self.config['database']['similarity'])
-
-        relevant_contexts = self.db.similarity_search_with_score(
-            query,
-            k=k,
-            filter=search_filter,
-            score_threshold=score_threshold
-        )
-
-        search_term = self.config['database'].get('search_term', '').lower()
-        if search_term:
-            filtered_contexts = [
-                (doc, score) for doc, score in relevant_contexts
-                if search_term in doc.page_content.lower()
-            ]
-        else:
-            filtered_contexts = relevant_contexts
-
-        contexts = [document.page_content for document, _ in filtered_contexts]
-        metadata_list = [document.metadata for document, _ in filtered_contexts]
-        scores = [score for _, score in filtered_contexts]
-
-        for metadata, score in zip(metadata_list, scores):
-            metadata['similarity_score'] = score
-
-        return contexts, metadata_list
+        if db_type == 'pgvector':
+            # For pgvector, we need to set the embeddings and database name
+            self.db.embeddings = self.embeddings
+            self.db.database_name = self.selected_database
+            logging.info(f"Searching database '{self.selected_database}' with query: '{query[:50]}...', k={k}, threshold={score_threshold}")
+            results = self.db.search(query, k=k, score_threshold=score_threshold)
+            
+            logging.info(f"Database search returned {len(results)} results")
+            
+            # Convert results to the expected format
+            contexts = []
+            metadata_list = []
+            for result in results:
+                contexts.append(result['text'])
+                # Add similarity score to metadata
+                metadata = result['metadata']
+                metadata['similarity_score'] = result['similarity']
+                metadata_list.append(metadata)
+            
+            logging.info(f"Prepared {len(contexts)} contexts for LM Studio")
+            return contexts, metadata_list
+        else:  # tiledb
+            relevant_contexts = self.db.similarity_search_with_score(
+                query,
+                k=k,
+                score_threshold=score_threshold
+            )
+            
+            contexts = [document.page_content for document, _ in relevant_contexts]
+            metadata_list = [document.metadata for document, _ in relevant_contexts]
+            scores = [score for _, score in relevant_contexts]
+            
+            for metadata, score in zip(metadata_list, scores):
+                metadata['similarity_score'] = score
+            
+            return contexts, metadata_list
 
     def cleanup(self):
         logging.info(f"Cleaning up QueryVectorDB instance {self._debug_id} for database {self.selected_database}")
@@ -891,7 +847,7 @@ class QueryVectorDB:
 ────────────────────────────────────────────────────────────────────────────
 1.  Which models can use xFormers memory-efficient attention?
 ────────────────────────────────────────────────────────────────────────────
-• Snowflake-GTE family   (all sizes except the “-large” variants)
+• Snowflake-GTE family   (all sizes except the "-large" variants)
 • Alibaba-GTE family
 • Stella-400 M           (v5)
 
@@ -962,7 +918,7 @@ outer  model_kwargs   (passed to SentenceTransformer)
 5.  Tokenization vs. encode_kwargs  (common pit-fall)
 ────────────────────────────────────────────────────────────────────────────
 • SentenceTransformer.encode() *never* forwards encode_kwargs into the
-  tokenizer. It tokenizes first, then passes encode_kwargs into the model’s
+  tokenizer. It tokenizes first, then passes encode_kwargs into the model's
   forward() call.
 
 • Therefore:

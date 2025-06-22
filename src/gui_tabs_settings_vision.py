@@ -2,8 +2,9 @@ import yaml
 from pathlib import Path
 import torch
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QLabel, QGridLayout, QVBoxLayout, QComboBox, QWidget
-from constants import VISION_MODELS
+from PySide6.QtWidgets import QLabel, QGridLayout, QVBoxLayout, QComboBox, QWidget, QSpinBox, QCheckBox
+from constants import VISION_MODELS, TOOLTIPS
+from config_manager import ConfigManager
 
 def is_cuda_available():
     return torch.cuda.is_available()
@@ -15,52 +16,72 @@ def get_cuda_capability():
 
 class VisionSettingsTab(QWidget):
     def __init__(self):
-        super().__init__()
-        mainVLayout = QVBoxLayout()
-        self.setLayout(mainVLayout)
-        gridLayout = QGridLayout()
-        mainVLayout.addLayout(gridLayout)
+        super(VisionSettingsTab, self).__init__()
+        self.config_manager = ConfigManager()
+        config_data = self.config_manager.get_config()
+        
+        self.vision_config = config_data.get('vision', {})
+        self.compute_device_options = config_data.get('Compute_Device', {}).get('available', [])
+        self.vision_device = config_data.get('Compute_Device', {}).get('vision', '')
+        
+        grid_layout = QGridLayout()
+        
+        # Device selection and current setting
+        self.device_label = QLabel("Device:")
+        self.device_label.setToolTip(TOOLTIPS["VISION_DEVICE"])
+        grid_layout.addWidget(self.device_label, 0, 0)
+        
+        self.device_combo = QComboBox()
+        self.device_combo.addItems(self.compute_device_options)
+        self.device_combo.setToolTip(TOOLTIPS["VISION_DEVICE"])
+        if self.vision_device in self.compute_device_options:
+            self.device_combo.setCurrentIndex(self.compute_device_options.index(self.vision_device))
+        self.device_combo.setMinimumWidth(100)
+        grid_layout.addWidget(self.device_combo, 0, 2)
+        
+        self.current_device_label = QLabel(f"{self.vision_device}")
+        self.current_device_label.setToolTip(TOOLTIPS["VISION_DEVICE"])
+        grid_layout.addWidget(self.current_device_label, 0, 1)
+        
+        # Half precision checkbox
+        self.half_precision_label = QLabel("Half-Precision (2x speedup - GPU only):")
+        self.half_precision_label.setToolTip(TOOLTIPS["HALF_PRECISION"])
+        grid_layout.addWidget(self.half_precision_label, 1, 0)
+        
+        self.half_precision_checkbox = QCheckBox()
+        self.half_precision_checkbox.setChecked(self.vision_config.get('half', False))
+        self.half_precision_checkbox.setToolTip(TOOLTIPS["HALF_PRECISION"])
+        grid_layout.addWidget(self.half_precision_checkbox, 1, 2)
+        
+        self.setLayout(grid_layout)
 
-        label_model = QLabel("Model")
-        gridLayout.addWidget(label_model, 0, 1)
-        gridLayout.setAlignment(label_model, Qt.AlignCenter)
-
-        label_size = QLabel("Size")
-        gridLayout.addWidget(label_size, 0, 3)
-        gridLayout.setAlignment(label_size, Qt.AlignCenter)
-
-        label_precision = QLabel("Precision")
-        gridLayout.addWidget(label_precision, 0, 5)
-        gridLayout.setAlignment(label_precision, Qt.AlignCenter)
-
-        label_vram = QLabel("VRAM")
-        gridLayout.addWidget(label_vram, 0, 7)
-        gridLayout.setAlignment(label_vram, Qt.AlignCenter)
-
-        label_quant = QLabel("Quant")
-        gridLayout.addWidget(label_quant, 0, 9)
-        gridLayout.setAlignment(label_quant, Qt.AlignCenter)
-
-        self.modelComboBox = QComboBox()
-        self.populate_model_combobox()
-        self.modelComboBox.setMinimumWidth(175)
-        gridLayout.addWidget(self.modelComboBox, 0, 2)
-
-        self.sizeLabel = QLabel()
-        gridLayout.addWidget(self.sizeLabel, 0, 4)
-
-        self.precisionLabel = QLabel()
-        gridLayout.addWidget(self.precisionLabel, 0, 6)
-
-        self.vramLabel = QLabel()
-        gridLayout.addWidget(self.vramLabel, 0, 8)
-
-        self.quantLabel = QLabel()
-        gridLayout.addWidget(self.quantLabel, 0, 10)
-
-        self.modelComboBox.currentIndexChanged.connect(self.updateModelInfo)
-
-        self.set_initial_model()
+    def update_config(self):
+        try:
+            config_data = self.config_manager.get_config()
+            settings_changed = False
+            
+            # Update device selection
+            new_device = self.device_combo.currentText()
+            if new_device != self.vision_device:
+                config_data['Compute_Device']['vision'] = new_device
+                self.vision_device = new_device
+                self.current_device_label.setText(f"{new_device}")
+                settings_changed = True
+            
+            # Update half precision
+            new_half_precision = self.half_precision_checkbox.isChecked()
+            if new_half_precision != self.vision_config.get('half', False):
+                config_data['vision']['half'] = new_half_precision
+                settings_changed = True
+            
+            if settings_changed:
+                self.config_manager.save_config(config_data)
+            
+            return settings_changed
+            
+        except Exception as e:
+            print(f"Error updating config: {e}")
+            return False
 
     def populate_model_combobox(self):
         cuda_available = is_cuda_available()

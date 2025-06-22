@@ -2,10 +2,11 @@
 import yaml
 from pathlib import Path
 from PySide6.QtWidgets import (
-    QLabel, QComboBox, QWidget, QGridLayout, QMessageBox, QHBoxLayout
+    QLabel, QComboBox, QWidget, QGridLayout, QMessageBox, QHBoxLayout, QSpinBox, QCheckBox
 )
 
-from constants import WHISPER_SPEECH_MODELS
+from constants import WHISPER_SPEECH_MODELS, TOOLTIPS
+from config_manager import ConfigManager
 
 
 class TTSSettingsTab(QWidget):
@@ -66,6 +67,13 @@ class TTSSettingsTab(QWidget):
     def __init__(self):
         super().__init__()
         self.widgets_for_backend: dict[str, dict[str, QWidget]] = {}
+        self.config_manager = ConfigManager()
+        config_data = self.config_manager.get_config()
+        
+        self.tts_config = config_data.get('tts', {})
+        self.compute_device_options = config_data.get('Compute_Device', {}).get('available', [])
+        self.tts_device = config_data.get('Compute_Device', {}).get('tts', '')
+        
         self._build_ui()
         self._load_from_yaml()
         self._update_visible_extras()
@@ -91,7 +99,7 @@ class TTSSettingsTab(QWidget):
         self._extras_layout.setSpacing(10)
         layout.addWidget(self._extras_box, 0, 2)
 
-        # build, but don’t place, every backend’s extra widgets
+        # build, but don't place, every backend's extra widgets
         self.widgets_for_backend: dict[str, dict[str, tuple[QLabel, QComboBox]]] = {}
         for key, spec in self.BACKENDS.items():
             wdict = {}
@@ -105,23 +113,50 @@ class TTSSettingsTab(QWidget):
 
         self.backend_combo.currentIndexChanged.connect(self._update_visible_extras)
 
+        # Device selection and current setting
+        self.device_label = QLabel("Device:")
+        self.device_label.setToolTip(TOOLTIPS["TTS_DEVICE"])
+        layout.addWidget(self.device_label, 1, 0)
+        
+        self.device_combo = QComboBox()
+        self.device_combo.addItems(self.compute_device_options)
+        self.device_combo.setToolTip(TOOLTIPS["TTS_DEVICE"])
+        if self.tts_device in self.compute_device_options:
+            self.device_combo.setCurrentIndex(self.compute_device_options.index(self.tts_device))
+        self.device_combo.setMinimumWidth(100)
+        layout.addWidget(self.device_combo, 1, 1)
+        
+        self.current_device_label = QLabel(f"{self.tts_device}")
+        self.current_device_label.setToolTip(TOOLTIPS["TTS_DEVICE"])
+        layout.addWidget(self.current_device_label, 1, 2)
+        
+        # Half precision checkbox
+        self.half_precision_label = QLabel("Half-Precision (2x speedup - GPU only):")
+        self.half_precision_label.setToolTip(TOOLTIPS["HALF_PRECISION"])
+        layout.addWidget(self.half_precision_label, 2, 0)
+        
+        self.half_precision_checkbox = QCheckBox()
+        self.half_precision_checkbox.setChecked(self.tts_config.get('half', False))
+        self.half_precision_checkbox.setToolTip(TOOLTIPS["HALF_PRECISION"])
+        layout.addWidget(self.half_precision_checkbox, 2, 2)
+
     # 3. YAML helpers
     def _config_path(self) -> Path:
         return Path("config.yaml")
 
     def _load_from_yaml(self):
         """Read config.yaml and populate widgets."""
-        cfg = self._try_read_yaml()
+        config_data = self.config_manager.get_config()
 
         # ---------------- backend ---------------- #
-        tts_cfg = cfg.get("tts", {}) if cfg else {}
+        tts_cfg = config_data.get("tts", {})
         backend = tts_cfg.get("model", "whisperspeech")
         idx = self.backend_combo.findData(backend)
         self.backend_combo.setCurrentIndex(idx if idx != -1 else 0)
 
         # --------------- extras ------------------ #
         # Bark
-        bark_cfg = cfg.get("bark", {}) if cfg else {}
+        bark_cfg = config_data.get("bark", {})
         for (lbl, cmb) in self.widgets_for_backend["bark"].values():
             if cmb.objectName() == "size":
                 cmb.setCurrentText(bark_cfg.get("size", "small"))
@@ -142,16 +177,16 @@ class TTSSettingsTab(QWidget):
             )
 
     def _save_to_yaml(self):
-        cfg = self._try_read_yaml()
+        config_data = self.config_manager.get_config()
 
         # ---------------- backend ---------------- #
         backend_key = self.backend_combo.currentData()
-        tts_cfg = cfg.setdefault("tts", {})
+        tts_cfg = config_data.setdefault("tts", {})
         tts_cfg["model"] = backend_key
 
         # --------------- extras ------------------ #
         if backend_key == "bark":
-            bark = cfg.setdefault("bark", {})
+            bark = config_data.setdefault("bark", {})
             bark["size"] = self.widgets_for_backend["bark"]["size"][1].currentText()
             bark["speaker"] = (
                 self.widgets_for_backend["bark"]["speaker"][1].currentText()
@@ -164,22 +199,11 @@ class TTSSettingsTab(QWidget):
                 self.widgets_for_backend["whisperspeech"]["t2s"][1].currentText()
             ][0]
 
-        with self._config_path().open("w") as f:
-            yaml.dump(cfg, f, sort_keys=False)
+        self.config_manager.save_config(config_data)
 
     # ------------------------------------------------------------------ #
     # 4. Helpers
     # ------------------------------------------------------------------ #
-    def _try_read_yaml(self):
-        try:
-            with self._config_path().open() as f:
-                return yaml.safe_load(f) or {}
-        except FileNotFoundError:
-            return {}
-        except Exception as e:
-            QMessageBox.warning(self, "Configuration Error", str(e))
-            return {}
-
     def _update_visible_extras(self):
         # clear existing widgets from the extras container
         while self._extras_layout.count():
@@ -204,3 +228,31 @@ class TTSSettingsTab(QWidget):
             if v[0] == value:
                 return k
         return next(iter(d))
+
+    def update_config(self):
+        try:
+            config_data = self.config_manager.get_config()
+            settings_changed = False
+            
+            # Update device selection
+            new_device = self.device_combo.currentText()
+            if new_device != self.tts_device:
+                config_data['Compute_Device']['tts'] = new_device
+                self.tts_device = new_device
+                self.current_device_label.setText(f"{new_device}")
+                settings_changed = True
+            
+            # Update half precision
+            new_half_precision = self.half_precision_checkbox.isChecked()
+            if new_half_precision != self.tts_config.get('half', False):
+                config_data['tts']['half'] = new_half_precision
+                settings_changed = True
+            
+            if settings_changed:
+                self.config_manager.save_config(config_data)
+            
+            return settings_changed
+            
+        except Exception as e:
+            print(f"Error updating config: {e}")
+            return False

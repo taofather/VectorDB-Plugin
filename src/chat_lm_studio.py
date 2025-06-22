@@ -1,7 +1,8 @@
 import gc
 import logging
-
+import json
 import requests
+import re
 from pathlib import Path
 import torch
 import yaml
@@ -9,8 +10,9 @@ from openai import OpenAI
 from PySide6.QtCore import QThread, Signal, QObject
 
 from database_interactions import QueryVectorDB
-from utilities import format_citations, normalize_chat_text
+from utilities import format_citations, normalize_chat_text, my_cprint
 from constants import system_message, rag_string, THINKING_TAGS
+from config_manager import ConfigManager
 
 ROOT_DIRECTORY = Path(__file__).resolve().parent
 
@@ -26,58 +28,88 @@ class LMStudioSignals(QObject):
 class LMStudioChat:
     def __init__(self):
         self.signals = LMStudioSignals()
-        self.config = self.load_configuration()
+        self.config_manager = ConfigManager()
+        self.config = self.config_manager.get_config()
+        self.server_config = self.config.get('server', {})
+        self.host = self.server_config.get('host', 'localhost')
+        self.port = self.server_config.get('port', 5000)
+        self.show_thinking = self.server_config.get('show_thinking', False)
         self.query_vector_db = None
 
-    def load_configuration(self):
-        with open('config.yaml', 'r') as config_file:
-            return yaml.safe_load(config_file)
+    def send_message(self, message, database_name):
+        try:
+            url = f"http://{self.host}:{self.port}/v1/chat/completions"
+            headers = {"Content-Type": "application/json"}
+            data = {
+                "messages": [{"role": "user", "content": message}],
+                "temperature": 0.7,
+                "max_tokens": -1
+            }
 
-    def connect_to_local_chatgpt(self, prompt):
-        server_config = self.config.get('server', {})
-        base_url = server_config.get('connection_str')
-        show_thinking = server_config.get('show_thinking', False)
+            response = requests.post(url, headers=headers, json=data, stream=True)
+            response.raise_for_status()
 
-        client = OpenAI(base_url=base_url, api_key='lm-studio')
-        messages = [
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": prompt}
-        ]
-
-        stream = client.chat.completions.create(
-            model="local-model",
-            messages=messages,
-            stream=True
-        )
-
-        in_thinking_block = False
-        first_content = True
-        for chunk in stream:
-            if chunk.choices[0].delta.content is not None:
-                content = chunk.choices[0].delta.content
-
-                if not show_thinking:
-                    skip_chunk = False
-                    # Check each pair of thinking tags
-                    for start_tag, end_tag in THINKING_TAGS.values():
-                        if start_tag in content:
-                            in_thinking_block = True
-                            skip_chunk = True
-                            break
-                        if end_tag in content:
-                            in_thinking_block = False
-                            skip_chunk = True
-                            break
-                    if skip_chunk:
-                        continue
-                    if in_thinking_block:
+            full_response = ""
+            for line in response.iter_lines():
+                if line:
+                    try:
+                        json_response = json.loads(line.decode('utf-8').replace('data: ', ''))
+                        if 'choices' in json_response and json_response['choices']:
+                            content = json_response['choices'][0].get('delta', {}).get('content', '')
+                            if content:
+                                full_response += content
+                                self.signals.response_signal.emit(content)
+                    except json.JSONDecodeError:
                         continue
 
-                if first_content:
-                    content = content.lstrip()
-                    first_content = False
+            self.signals.finished_signal.emit()
 
-                yield content
+        except requests.exceptions.RequestException as e:
+            error_message = f"Error connecting to LM Studio server: {str(e)}"
+            my_cprint(error_message, "red")
+            self.signals.error_signal.emit(error_message)
+            self.signals.finished_signal.emit()
+
+    def connect_to_local_model(self, augmented_query):
+        """Generator that yields response chunks from LM Studio"""
+        try:
+            url = f"http://{self.host}:{self.port}/v1/chat/completions"
+            headers = {"Content-Type": "application/json"}
+            data = {
+                "messages": [
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": augmented_query}
+                ],
+                "temperature": 0.7,
+                "max_tokens": -1,
+                "stream": True
+            }
+
+            response = requests.post(url, headers=headers, json=data, stream=True)
+            response.raise_for_status()
+
+            for line in response.iter_lines():
+                if line:
+                    try:
+                        line_text = line.decode('utf-8')
+                        if line_text.startswith('data: '):
+                            line_text = line_text[6:]  # Remove 'data: ' prefix
+                        
+                        if line_text.strip() == '[DONE]':
+                            break
+                            
+                        json_response = json.loads(line_text)
+                        if 'choices' in json_response and json_response['choices']:
+                            content = json_response['choices'][0].get('delta', {}).get('content', '')
+                            if content:
+                                yield content
+                    except json.JSONDecodeError:
+                        continue
+
+        except requests.exceptions.RequestException as e:
+            error_message = f"Error connecting to LM Studio server: {str(e)}"
+            my_cprint(error_message, "red")
+            raise Exception(error_message)
 
     def handle_response_and_cleanup(self, full_response, metadata_list):
         citations = format_citations(metadata_list)
@@ -96,50 +128,103 @@ class LMStudioChat:
             for metadata in metadata_list:
                 output_file.write(f"{metadata}\n")
 
+    def extract_rag_content(self, query):
+        """
+        Extreu el contingut dels tags <rag></rag> per fer la cerca de contexts.
+        Si no hi ha tags, retorna la query completa per mantenir compatibilitat.
+        
+        Args:
+            query (str): La query original amb possibles tags <rag></rag>
+        
+        Returns:
+            tuple: (rag_content, original_query)
+                - rag_content: Text dins dels tags <rag></rag> o query completa si no hi ha tags
+                - original_query: Query original sense modificar
+        """
+        # Cerca el contingut dins dels tags <rag></rag>
+        rag_pattern = r'<rag>(.*?)</rag>'
+        matches = re.findall(rag_pattern, query, re.DOTALL | re.IGNORECASE)
+        
+        if matches:
+            # Si trobem tags <rag>, unem tot el contingut trobat
+            rag_content = ' '.join(match.strip() for match in matches)
+            logging.info(f"RAG tags found. Using content for search: '{rag_content[:100]}...'")
+            return rag_content, query
+        else:
+            # Si no hi ha tags <rag>, usem la query completa (comportament original)
+            logging.info("No RAG tags found. Using full query for search.")
+            return query, query
+
     def ask_local_chatgpt(self, query, selected_database):
+        logging.info(f"Starting ask_local_chatgpt with query: '{query[:50]}...' and database: '{selected_database}'")
+        
         if self.query_vector_db is None or self.query_vector_db.selected_database != selected_database:
+            logging.info(f"Getting QueryVectorDB instance for database: {selected_database}")
             self.query_vector_db = QueryVectorDB.get_instance(selected_database)
 
-        contexts, metadata_list = self.query_vector_db.search(query)
+        # Extreu el contingut dels tags <rag></rag> per la cerca
+        rag_content, original_query = self.extract_rag_content(query)
+        
+        # Log si estem usant contingut RAG específic o la query completa
+        if rag_content != original_query:
+            logging.info(f"Using RAG-specific content for search: '{rag_content[:100]}...'")
+            logging.info(f"Will send full original query to model: '{original_query[:100]}...'")
+        else:
+            logging.info(f"No RAG tags found, using full query for both search and model")
+        
+        logging.info(f"About to search database with RAG content...")
+        contexts, metadata_list = self.query_vector_db.search(rag_content)
+        logging.info(f"Search returned {len(contexts)} contexts")
 
         self.save_metadata_to_file(metadata_list)
 
         if not contexts:
+            logging.warning(f"No contexts found! contexts length: {len(contexts)}")
             self.signals.error_signal.emit("No relevant contexts found.")
             self.signals.finished_signal.emit()
             return
+        else:
+            logging.info(f"Found {len(contexts)} contexts, proceeding to LM Studio...")
 
-        augmented_query = f"{rag_string}\n\n---\n\n" + "\n\n---\n\n".join(contexts) + f"\n\n-----\n\n{query}"
-        
-        full_response = ""
-        response_generator = self.connect_to_local_chatgpt(augmented_query)
-        for response_chunk in response_generator:
-            self.signals.response_signal.emit(response_chunk)
-            full_response += response_chunk
+            # DEBUG: Log the actual contexts content
+            logging.info("=== CONTEXTS RETRIEVED ===")
+            for i, context in enumerate(contexts):
+                logging.info(f"Context {i+1}: {context[:200]}...")
+            logging.info("=== END CONTEXTS ===")
 
-        with open('chat_history.txt', 'w', encoding='utf-8') as f:
-            normalized_response = normalize_chat_text(full_response)
-            f.write(normalized_response)
+            augmented_query = f"{rag_string}\n\n---\n\n" + "\n\n---\n\n".join(contexts) + f"\n\n-----\n\n{original_query}"
+            
+            # DEBUG: Log the complete prompt being sent
+            logging.info("=== COMPLETE PROMPT ===")
+            logging.info(f"System Message: {system_message}")
+            logging.info(f"User Message: {augmented_query[:500]}...")
+            logging.info("=== END PROMPT ===")
+            
+            full_response = ""
+            response_generator = self.connect_to_local_model(augmented_query)
+            for response_chunk in response_generator:
+                self.signals.response_signal.emit(response_chunk)
+                full_response += response_chunk
 
-        self.signals.response_signal.emit("\n")
+            with open('chat_history.txt', 'w', encoding='utf-8') as f:
+                normalized_response = normalize_chat_text(full_response)
+                f.write(normalized_response)
 
-        citations = self.handle_response_and_cleanup(full_response, metadata_list)
-        self.signals.citations_signal.emit(citations)
-        self.signals.finished_signal.emit()
+            self.signals.response_signal.emit("\n")
+
+            citations = self.handle_response_and_cleanup(full_response, metadata_list)
+            self.signals.citations_signal.emit(citations)
+            self.signals.finished_signal.emit()
 
 class LMStudioChatThread(QThread):
-    def __init__(self, query, selected_database):
+    def __init__(self, question, database_name):
         super().__init__()
-        self.query = query
-        self.selected_database = selected_database
+        self.question = question
+        self.database_name = database_name
         self.lm_studio_chat = LMStudioChat()
 
     def run(self):
-        try:
-            self.lm_studio_chat.ask_local_chatgpt(self.query, self.selected_database)
-        except Exception as e:
-            logging.error(f"Error in LMStudioChatThread: {str(e)}")
-            self.lm_studio_chat.signals.error_signal.emit(str(e))
+        self.lm_studio_chat.ask_local_chatgpt(self.question, self.database_name)
 
 def is_lm_studio_available():
     try:

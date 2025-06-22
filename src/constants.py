@@ -49,66 +49,38 @@ GLM4Z1_CHAT_TEMPLATE = """[gMASK]<sop>
 priority_libs = {
     "cp311": {
         "GPU": [
-            "https://github.com/kingbri1/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu124torch2.6.0cxx11abiFALSE-cp311-cp311-win_amd64.whl",
-            "https://download.pytorch.org/whl/cu124/torch-2.6.0%2Bcu124-cp311-cp311-win_amd64.whl#sha256=6a1fb2714e9323f11edb6e8abf7aad5f79e45ad25c081cde87681a18d99c29eb",
-            "https://download.pytorch.org/whl/cu124/torchvision-0.21.0%2Bcu124-cp311-cp311-win_amd64.whl#sha256=000a013584ad2304ab30496318145f284ac364622addb5ee3a5abd2769ba146f",
-            "https://download.pytorch.org/whl/cu124/torchaudio-2.6.0%2Bcu124-cp311-cp311-win_amd64.whl#sha256=a25e146ce66ea9a6aed39008cc2001891bdf75253af479a4c32096678b2073b3",
-            "triton-windows==3.2.0.post12",
+            # Mac M2 specific packages
+            "torch",
+            "torchvision",
+            "torchaudio",
+            "flash-attn",
+            "xformers",
             "git+https://github.com/shashikg/WhisperS2T.git@e7f7e6dbfdc7f3a39454feb9dd262fd3653add8c",
             "git+https://github.com/BBC-Esq/WhisperSpeech.git@795f60157136b0052b9a1f576e88803f7783ab1f",
-            "xformers==0.0.29.post3",
-            "nvidia-cuda-runtime-cu12==12.4.127",
-            "nvidia-cublas-cu12==12.4.5.8",
-            "nvidia-cuda-nvrtc-cu12==12.4.127",
-            "nvidia-cuda-nvcc-cu12==12.4.131",
-            "nvidia-cufft-cu12==11.2.1.3",
-            "nvidia-cudnn-cu12==9.1.0.70",
-            "nvidia-ml-py==12.575.51",
-            # "xformers==xformers==0.0.30",  # requires torch 2.7.0
-            # "nvidia-cuda-runtime-cu12==12.6.77",
-            # "nvidia-cublas-cu12==12.6.4.1",
-            # "nvidia-cuda-nvrtc-cu12==12.6.77",
-            # "nvidia-cuda-nvcc-cu12==12.6.85",
-            # "nvidia-cufft-cu12==11.3.0.4",
-            # "nvidia-cudnn-cu12==9.5.1.17",
         ],
         "CPU": [
             # CPU only libraries would go here
         ],
         "COMMON": [
-            "https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.8.0-tesseract-5.5.0/tesserocr-2.8.0-cp311-cp311-win_amd64.whl",
-        ],
+            # Common libraries for all platforms
+        ]
     },
     "cp312": {
         "GPU": [
-            "https://github.com/kingbri1/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu124torch2.6.0cxx11abiFALSE-cp312-cp312-win_amd64.whl",
-            "https://download.pytorch.org/whl/cu124/torch-2.6.0%2Bcu124-cp312-cp312-win_amd64.whl#sha256=3313061c1fec4c7310cf47944e84513dcd27b6173b72a349bb7ca68d0ee6e9c0",
-            "https://download.pytorch.org/whl/cu124/torchvision-0.21.0%2Bcu124-cp312-cp312-win_amd64.whl#sha256=ec63c2ee792757492da40590e34b14f2fceda29050558c215f0c1f3b08149c0f",
-            "https://download.pytorch.org/whl/cu124/torchaudio-2.6.0%2Bcu124-cp312-cp312-win_amd64.whl#sha256=004ff6bcee0ac78747253c09db67d281add4308a9b87a7bf1769da5914998639",
-            "triton-windows==3.2.0.post12",
+            # Mac M2 specific packages
+            "torch",
+            "torchvision",
+            "torchaudio",
+            "flash-attn",
+            "xformers",
             "git+https://github.com/shashikg/WhisperS2T.git@e7f7e6dbfdc7f3a39454feb9dd262fd3653add8c",
             "git+https://github.com/BBC-Esq/WhisperSpeech.git@795f60157136b0052b9a1f576e88803f7783ab1f",
-            "xformers==0.0.29.post3",
-            "nvidia-cuda-runtime-cu12==12.4.127",
-            "nvidia-cublas-cu12==12.4.5.8",
-            "nvidia-cuda-nvrtc-cu12==12.4.127",
-            "nvidia-cuda-nvcc-cu12==12.4.131",
-            "nvidia-cufft-cu12==11.2.1.3",
-            "nvidia-cudnn-cu12==9.1.0.70",
-            "nvidia-ml-py==12.575.51",
-            # "xformers==xformers==0.0.30", # requires torch 2.7.0
-            # "nvidia-cuda-runtime-cu12==12.6.77",
-            # "nvidia-cublas-cu12==12.6.4.1",
-            # "nvidia-cuda-nvrtc-cu12==12.6.77",
-            # "nvidia-cuda-nvcc-cu12==12.6.85",
-            # "nvidia-cufft-cu12==11.3.0.4",
-            # "nvidia-cudnn-cu12==9.5.1.17",
         ],
         "CPU": [
             # CPU only libraries would go here
         ],
         "COMMON": [
-            "https://github.com/simonflueckiger/tesserocr-windows_build/releases/download/tesserocr-v2.8.0-tesseract-5.5.0/tesserocr-2.8.0-cp312-cp312-win_amd64.whl",
+            # Common libraries for all platforms
         ]
     }
 }
@@ -128,7 +100,7 @@ libs = [
     "av==14.3.0",
     "backoff==2.2.1",
     "beautifulsoup4==4.13.4",
-    "bitsandbytes==0.46.0",
+    "bitsandbytes==0.42.0",
     "braceexpand==0.1.7",
     "certifi==2025.4.26",
     "cffi==1.17.1",
@@ -740,6 +712,70 @@ VECTOR_MODELS = {
             'precision': 'float32'
         },
     ],
+    'sentence-transformers': [
+        {
+            'name': 'paraphrase-multilingual-MiniLM-L12-v2',
+            'dimensions': 384,
+            'max_sequence': 512,
+            'size_mb': 471,
+            'repo_id': 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
+            'cache_dir': 'sentence-transformers--paraphrase-multilingual-MiniLM-L12-v2',
+            'type': 'vector',
+            'parameters': '118m',
+            'precision': 'float32',
+            'description': 'Multilingual (supports Spanish, Catalan, 50+ languages)'
+        },
+        {
+            'name': 'distiluse-base-multilingual-cased',
+            'dimensions': 512,
+            'max_sequence': 512,
+            'size_mb': 540,
+            'repo_id': 'sentence-transformers/distiluse-base-multilingual-cased',
+            'cache_dir': 'sentence-transformers--distiluse-base-multilingual-cased',
+            'type': 'vector',
+            'parameters': '135m',
+            'precision': 'float32',
+            'description': 'Multilingual (excellent for Spanish/Catalan)'
+        },
+        {
+            'name': 'all-MiniLM-L6-v2',
+            'dimensions': 384,
+            'max_sequence': 512,
+            'size_mb': 90,
+            'repo_id': 'sentence-transformers/all-MiniLM-L6-v2',
+            'cache_dir': 'sentence-transformers--all-MiniLM-L6-v2',
+            'type': 'vector',
+            'parameters': '22.7m',
+            'precision': 'float32',
+            'description': 'Fast, general purpose (some multilingual capability)'
+        },
+        {
+            'name': 'all-mpnet-base-v2',
+            'dimensions': 768,
+            'max_sequence': 512,
+            'size_mb': 438,
+            'repo_id': 'sentence-transformers/all-mpnet-base-v2',
+            'cache_dir': 'sentence-transformers--all-mpnet-base-v2',
+            'type': 'vector',
+            'parameters': '109m',
+            'precision': 'float32',
+            'description': 'High quality, best overall performance'
+        },
+    ],
+    'BSC-TeMU': [
+        {
+            'name': 'roberta-base-bne-capitel-sts',
+            'dimensions': 768,
+            'max_sequence': 512,
+            'size_mb': 498,
+            'repo_id': 'BSC-TeMU/roberta-base-bne-capitel-sts',
+            'cache_dir': 'BSC-TeMU--roberta-base-bne-capitel-sts',
+            'type': 'vector',
+            'parameters': '125m',
+            'precision': 'float32',
+            'description': 'Specialized for Spanish (Barcelona Supercomputing Center)'
+        },
+    ],
 }
 
 VISION_MODELS = {
@@ -1317,6 +1353,7 @@ TOOLTIPS = {
     "SHOW_THINKING_CHECKBOX": "If checked, show the model's internal thought process.  Only applies to models like Deepseek's R1 and it will be disregarded if not applicable.",
     "TRANSCRIBE_BUTTON": "Start transcription.",
     "TTS_MODEL": "Choose TTS model. Bark offers customization, Google requires internet.",
+    "TTS_DEVICE": "Choose 'cpu' or 'cuda' for text-to-speech processing. Use 'cuda' if available for faster processing.",
     "VECTOR_MODEL_DIMENSIONS": "Higher dimensions captures more nuance but requires more processing time.",
     "VECTOR_MODEL_DOWNLOADED": "Whether the model has been downloaded.",
     "VECTOR_MODEL_LINK": "Huggingface link.",
@@ -1324,8 +1361,7 @@ TOOLTIPS = {
     "VECTOR_MODEL_NAME": "The name of the vector model.",
     "VECTOR_MODEL_PARAMETERS": "The number of internal weights and biases that the model learns and adjusts during training.",
     "VECTOR_MODEL_PRECISION": (
-        "<html>"
-        "<body>"
+        "<html><body>"
         "<p style='font-size: 14px; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; margin-bottom: 10px;'>"
         "<b>The precision ultimately used depends on your setup:</b></p>"
         "<table style='border-collapse: collapse; width: 100%; font-size: 12px; color: #34495e;'>"
@@ -1379,9 +1415,12 @@ TOOLTIPS = {
     "VECTOR_MODEL_SELECT": "Choose a vector model to download.",
     "VECTOR_MODEL_SIZE": "Size on disk.",
     "VISION_MODEL": "Select vision model for image processing. Test before bulk processing.",
+    "VISION_DEVICE": "Choose 'cpu' or 'cuda' for vision model processing. Use 'cuda' if available for faster processing.",
     "VOICE_RECORDER": "Click to start recording, speak your question, then click again to stop recording.",
     "WHISPER_BATCH_SIZE": "Batch size for transcription. See the User Guid for optimal values.",
-    "WHISPER_MODEL_SELECT": "Distil models use ~ 70% VRAM of their non-Distil equivalents with little quality loss."
+    "WHISPER_MODEL_SELECT": "Distil models use ~ 70% VRAM of their non-Distil equivalents with little quality loss.",
+    "SERVER_HOST": "The host address for the server (e.g., localhost or 127.0.0.1)",
+    "SERVER_PORT": "The port number for the server (e.g., 5000)"
 }
 
 scrape_documentation = {
@@ -2967,8 +3006,8 @@ master_questions = [
 ]
 
 jeeves_system_message = "You are a helpful British butler who clearly and directly answers questions in a succinct fashion based on contexts provided to you. If you cannot find the answer within the contexts simply tell me that the contexts do not provide an answer. However, if the contexts partially address a question you answer based on what the contexts say and then briefly summarize the parts of the question that the contexts didn't provide an answer to.  Also, you should be very respectful to the person asking the question and frequently offer traditional butler services like various fancy drinks, snacks, various butler services like shining of shoes, pressing of suites, and stuff like that. Also, if you can't answer the question at all based on the provided contexts, you should apologize profusely and beg to keep your job.  Lastly, it is essential that if there are no contexts actually provided it means that a user's question wasn't relevant and you should state that you can't answer based off of the contexts because there are none.  And it goes without saying you should refuse to answer any questions that are not directly answerable by the provided contexts.  Moreover, some of the contexts might not have relevant information and you should simply ignore them and focus on only answering a user's question.  I cannot emphasize enough that you must gear your answer towards using this program and based your response off of the contexts you receive.  Lastly, in addition to offering to perform stereotypical butler services in the midst of your response, you must always always always end your response with some kind of offering of butler services even they don't want it."
-system_message = "You are a helpful person who clearly and directly answers questions in a succinct fashion based on contexts provided to you. If you cannot find the answer within the contexts simply tell me that the contexts do not provide an answer. However, if the contexts partially address my question I still want you to answer based on what the contexts say and then briefly summarize the parts of my question that the contexts didn't provide an answer."
-rag_string = "Here are the contexts to base your answer on.  However, I need to reiterate that I only want you to base your response on these contexts and do not use outside knowledge that you may have been trained with."
+system_message = "You are a knowledgeable and friendly assistant who helps users. Please answer in the language used by the user in the question, not in the contexts."
+rag_string = "Please provide a helpful and informative response, using the information stated in these contexts:"
 
 
 r"""

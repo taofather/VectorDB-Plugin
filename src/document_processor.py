@@ -33,14 +33,16 @@ from langchain_community.document_loaders import (
     BSHTMLLoader
 )
 
-from typing import Optional, Any, Iterator, Union
+from typing import Optional, Any, Iterator, Union, List, Dict
 from langchain_community.document_loaders.blob_loaders import Blob
 
 from langchain_community.document_loaders.parsers import PyMuPDFParser
-import pymupdf
+import fitz  # Aquest és el nom correcte del mòdul dins de PyMuPDF
 
 from constants import DOCUMENT_LOADERS
 from extract_metadata import extract_document_metadata, add_pymupdf_page_metadata, compute_content_hash
+from utilities import my_cprint
+from config_manager import ConfigManager
 
 logging.basicConfig(
     level=logging.ERROR,
@@ -53,15 +55,14 @@ logging.basicConfig(
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-ROOT_DIRECTORY = Path(__file__).parent
-SOURCE_DIRECTORY = ROOT_DIRECTORY / "Docs_for_DB"
+SOURCE_DIRECTORY = ConfigManager().docs_dir
 INGEST_THREADS = max(4, os.cpu_count() - 4)
 
 class CustomPyMuPDFParser(PyMuPDFParser):
     def _lazy_parse(self, blob: Blob, text_kwargs: Optional[dict[str, Any]] = None) -> Iterator[Document]:
         with PyMuPDFParser._lock:
             with blob.as_bytes_io() as file_path:
-                doc = pymupdf.open(stream=file_path, filetype="pdf") if blob.data else pymupdf.open(file_path)
+                doc = fitz.open(stream=file_path, filetype="pdf") if blob.data else fitz.open(file_path)
 
                 full_content = []
                 for page in doc:
@@ -217,7 +218,8 @@ def load_documents(source_dir: Path) -> list:
 def split_documents(documents=None, text_documents_pdf=None):
     try:
         print("\nSplitting documents into chunks.")
-        with open("config.yaml", "r", encoding='utf-8') as config_file:
+        config_path = Path(__file__).resolve().parent.parent / "config.yaml"
+        with open(config_path, "r", encoding='utf-8') as config_file:
             config = yaml.safe_load(config_file)
             chunk_size = config["database"]["chunk_size"]
             chunk_overlap = config["database"]["chunk_overlap"]
@@ -292,6 +294,121 @@ def split_documents(documents=None, text_documents_pdf=None):
         logging.exception("Error during document splitting")
         logging.error(f"Error type: {type(e)}")
         raise
+
+def process_documents(documents_dir: str) -> List[Dict[str, Any]]:
+    """Process documents in the specified directory."""
+    try:
+        config_manager = ConfigManager()
+        config = config_manager.get_config()
+        
+        # Get document types from config
+        document_types = config.get('document_types', [])
+        if not document_types:
+            my_cprint("No document types specified in config", "red")
+            return []
+
+        # Process each document
+        processed_docs = []
+        for doc_type in document_types:
+            docs = process_document_type(documents_dir, doc_type, config)
+            processed_docs.extend(docs)
+
+        return processed_docs
+
+    except Exception as e:
+        my_cprint(f"Error processing documents: {e}", "red")
+        return []
+
+def process_document_type(documents_dir: str, doc_type: str, config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Process documents of a specific type."""
+    try:
+        # Get type-specific settings
+        type_settings = config.get(f'{doc_type}_settings', {})
+        if not type_settings:
+            my_cprint(f"No settings found for document type: {doc_type}", "red")
+            return []
+
+        # Get file patterns for this type
+        patterns = type_settings.get('patterns', [])
+        if not patterns:
+            my_cprint(f"No file patterns specified for document type: {doc_type}", "red")
+            return []
+
+        # Process matching files
+        processed_docs = []
+        for pattern in patterns:
+            docs = process_files_by_pattern(documents_dir, pattern, doc_type, type_settings)
+            processed_docs.extend(docs)
+
+        return processed_docs
+
+    except Exception as e:
+        my_cprint(f"Error processing document type {doc_type}: {e}", "red")
+        return []
+
+def process_files_by_pattern(documents_dir: str, pattern: str, doc_type: str, settings: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Process files matching a specific pattern."""
+    try:
+        # Find matching files
+        matching_files = Path(documents_dir).glob(pattern)
+        
+        # Process each file
+        processed_docs = []
+        for file_path in matching_files:
+            doc = process_single_file(file_path, doc_type, settings)
+            if doc:
+                processed_docs.append(doc)
+
+        return processed_docs
+
+    except Exception as e:
+        my_cprint(f"Error processing files with pattern {pattern}: {e}", "red")
+        return []
+
+def process_single_file(file_path: Path, doc_type: str, settings: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Process a single file."""
+    try:
+        # Basic file info
+        doc = {
+            'path': str(file_path),
+            'name': file_path.name,
+            'type': doc_type,
+            'size': file_path.stat().st_size
+        }
+
+        # Add type-specific processing here
+        if doc_type == 'text':
+            process_text_file(doc, settings)
+        elif doc_type == 'image':
+            process_image_file(doc, settings)
+        # Add more document types as needed
+
+        return doc
+
+    except Exception as e:
+        my_cprint(f"Error processing file {file_path}: {e}", "red")
+        return None
+
+def process_text_file(doc: Dict[str, Any], settings: Dict[str, Any]) -> None:
+    """Process a text file."""
+    try:
+        with open(doc['path'], 'r', encoding='utf-8') as f:
+            content = f.read()
+        doc['content'] = content
+        doc['word_count'] = len(content.split())
+
+    except Exception as e:
+        my_cprint(f"Error processing text file {doc['path']}: {e}", "red")
+
+def process_image_file(doc: Dict[str, Any], settings: Dict[str, Any]) -> None:
+    """Process an image file."""
+    try:
+        # Add image-specific processing here
+        # For example: extract dimensions, format, etc.
+        pass
+
+    except Exception as e:
+        my_cprint(f"Error processing image file {doc['path']}: {e}", "red")
 
 """
 The PyMUPDF parser was modified in langchain-community 0.3.15+

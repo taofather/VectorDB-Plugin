@@ -1,0 +1,6 @@
+.DS_Store
+Models/
+Docs_for_DB/
+__pycache__
+config.yaml
+Tokenizer/

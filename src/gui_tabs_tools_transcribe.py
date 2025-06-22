@@ -9,12 +9,12 @@ from PySide6.QtWidgets import (
 from module_transcribe import WhisperTranscriber
 from utilities import my_cprint, has_bfloat16_support
 from constants import WHISPER_MODELS, TOOLTIPS
+from config_manager import ConfigManager
 
 class TranscriberToolSettingsTab(QWidget):
-    CONFIG_FILE = 'config.yaml'
-    
     def __init__(self):
         super().__init__()
+        self.config_manager = ConfigManager()
         self.selected_audio_file = None
         self.create_layout()
 
@@ -95,8 +95,8 @@ class TranscriberToolSettingsTab(QWidget):
         self.slider_label.setText(str(value))
 
     def update_config_file(self):
-        with open(self.CONFIG_FILE, 'w') as file:
-            yaml.dump(self.config, file)
+        config = self.config_manager.get_config()
+        self.config_manager.save_config(config)
 
     def select_audio_file(self):
         current_dir = Path.cwd()

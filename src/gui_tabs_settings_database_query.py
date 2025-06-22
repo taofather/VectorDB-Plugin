@@ -1,229 +1,100 @@
 import yaml
 from PySide6.QtGui import QIntValidator, QDoubleValidator
-from PySide6.QtWidgets import QWidget, QLabel, QLineEdit, QGridLayout, QSizePolicy, QComboBox, QPushButton, QMessageBox
+from PySide6.QtWidgets import QWidget, QLabel, QLineEdit, QGridLayout, QSizePolicy, QComboBox, QPushButton, QMessageBox, QSpinBox, QCheckBox
 
 from constants import TOOLTIPS
+from config_manager import ConfigManager
 
-class DatabaseSettingsTab(QWidget):
+class QuerySettingsTab(QWidget):
     def __init__(self):
-        super(DatabaseSettingsTab, self).__init__()
-
-        try:
-            with open('config.yaml', 'r', encoding='utf-8') as f:
-                config_data = yaml.safe_load(f)
-                self.database_config = config_data['database']
-                self.compute_device_options = config_data['Compute_Device']['available']
-                self.database_query_device = config_data['Compute_Device']['database_query']
-                self.search_term = self.database_config.get('search_term', '')
-                self.document_type = self.database_config.get('document_types', '')
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Error Loading Configuration",
-                f"An error occurred while loading the configuration: {e}"
-            )
-            self.database_config = {}
-            self.compute_device_options = []
-            self.database_query_device = ""
-            self.search_term = ""
-            self.document_type = ""
-
+        super(QuerySettingsTab, self).__init__()
+        self.config_manager = ConfigManager()
+        config_data = self.config_manager.get_config()
+        
+        self.database_config = config_data.get('database', {})
+        self.created_databases = config_data.get('created_databases', {})
+        self.database_to_search = self.database_config.get('database_to_search', '')
+        
         grid_layout = QGridLayout()
-
-        self.field_data = {}
-        self.label_data = {}
-
-        # Device Selection
-        self.query_device_label = QLabel(f"Device: {self.database_query_device}")
-        self.query_device_combo = QComboBox()
-        self.query_device_combo.addItems(self.compute_device_options)
-        self.query_device_combo.setToolTip(TOOLTIPS["CREATE_DEVICE_QUERY"])
-        if self.database_query_device in self.compute_device_options:
-            self.query_device_combo.setCurrentIndex(self.compute_device_options.index(self.database_query_device))
-        grid_layout.addWidget(self.query_device_label, 0, 0)
-        grid_layout.addWidget(self.query_device_combo, 0, 1)
-
-        # Similarity Settings
-        similarity_value = self.database_config.get('similarity', '')
-        self.similarity_edit = QLineEdit()
-        self.similarity_edit.setPlaceholderText("Similarity (0.0 - 1.0)...")
-        self.similarity_edit.setValidator(QDoubleValidator(0.0, 1.0, 4))
-        self.similarity_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.similarity_edit.setToolTip(TOOLTIPS["SIMILARITY"])
-        self.similarity_label = QLabel(f"Similarity: {similarity_value}")
-        self.similarity_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.similarity_label.setToolTip(TOOLTIPS["SIMILARITY"])
-        grid_layout.addWidget(self.similarity_label, 1, 0)
-        grid_layout.addWidget(self.similarity_edit, 1, 1)
-        self.field_data['similarity'] = self.similarity_edit
-        self.label_data['similarity'] = self.similarity_label
-
-        # Contexts Settings
-        contexts_value = self.database_config.get('contexts', '')
-        self.contexts_edit = QLineEdit()
-        self.contexts_edit.setPlaceholderText("# Contexts to return...")
-        self.contexts_edit.setValidator(QIntValidator(1, 1000000))
-        self.contexts_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.contexts_edit.setToolTip(TOOLTIPS["CONTEXTS"])
-        self.contexts_label = QLabel(f"Contexts: {contexts_value}")
-        self.contexts_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.contexts_label.setToolTip(TOOLTIPS["CONTEXTS"])
-        grid_layout.addWidget(self.contexts_label, 1, 3)
-        grid_layout.addWidget(self.contexts_edit, 1, 4)
-        self.field_data['contexts'] = self.contexts_edit
-        self.label_data['contexts'] = self.contexts_label
-
-        # Search Term Filter
-        self.search_term_edit = QLineEdit()
-        self.search_term_edit.setPlaceholderText("Term to exclude...")
-        self.search_term_edit.setText(self.search_term)
-        self.search_term_edit.setToolTip(TOOLTIPS["SEARCH_TERM_FILTER"])
-        self.search_term_label = QLabel(f"Search Term Filter: {self.search_term}")
-        self.search_term_label.setToolTip(TOOLTIPS["SEARCH_TERM_FILTER"])
-        self.filter_button = QPushButton("Clear Filter")
-        self.filter_button.clicked.connect(self.reset_search_term)
-        grid_layout.addWidget(self.search_term_label, 2, 0)
-        grid_layout.addWidget(self.search_term_edit, 2, 1)
-        grid_layout.addWidget(self.filter_button, 2, 2)
-
-        # File Type Filter
-        self.file_type_combo = QComboBox()
-        file_type_items = ["All Files", "Images Only", "Documents Only", "Audio Only"]
-        self.file_type_combo.addItems(file_type_items)
-        self.file_type_combo.setToolTip(TOOLTIPS["FILE_TYPE_FILTER"])
-
-        if self.document_type == 'image':
-            default_index = file_type_items.index("Images Only")
-        elif self.document_type == 'document':
-            default_index = file_type_items.index("Documents Only")
-        elif self.document_type == 'audio':
-            default_index = file_type_items.index("Audio Only")
-        else:
-            default_index = file_type_items.index("All Files")
-        self.file_type_combo.setCurrentIndex(default_index)
-
-        file_type_label = QLabel("File Type:")
-        file_type_label.setToolTip(TOOLTIPS["FILE_TYPE_FILTER"])
-        grid_layout.addWidget(file_type_label, 2, 3)
-        grid_layout.addWidget(self.file_type_combo, 2, 4)
-
+        
+        # Database selection and current setting
+        self.database_label = QLabel("Database:")
+        self.database_label.setToolTip(TOOLTIPS["DATABASE_SELECT"])
+        grid_layout.addWidget(self.database_label, 0, 0)
+        
+        self.database_combo = QComboBox()
+        self.database_combo.addItems(list(self.created_databases.keys()))
+        self.database_combo.setToolTip(TOOLTIPS["DATABASE_SELECT"])
+        if self.database_to_search in self.created_databases:
+            self.database_combo.setCurrentIndex(list(self.created_databases.keys()).index(self.database_to_search))
+        self.database_combo.setMinimumWidth(100)
+        grid_layout.addWidget(self.database_combo, 0, 2)
+        
+        self.current_database_label = QLabel(f"{self.database_to_search}")
+        self.current_database_label.setToolTip(TOOLTIPS["DATABASE_SELECT"])
+        grid_layout.addWidget(self.current_database_label, 0, 1)
+        
+        # Number of results and current setting
+        self.results_label = QLabel("Number of Results:")
+        self.results_label.setToolTip(TOOLTIPS["CONTEXTS"])
+        grid_layout.addWidget(self.results_label, 1, 0)
+        
+        self.results_spinbox = QSpinBox()
+        self.results_spinbox.setRange(1, 100)
+        self.results_spinbox.setValue(self.database_config.get('num_results', 3))
+        self.results_spinbox.setToolTip(TOOLTIPS["CONTEXTS"])
+        grid_layout.addWidget(self.results_spinbox, 1, 2)
+        
+        self.current_results_label = QLabel(f"{self.database_config.get('num_results', 3)}")
+        self.current_results_label.setToolTip(TOOLTIPS["CONTEXTS"])
+        grid_layout.addWidget(self.current_results_label, 1, 1)
+        
+        # Show thinking checkbox
+        self.thinking_label = QLabel("Show Thinking:")
+        self.thinking_label.setToolTip(TOOLTIPS["SHOW_THINKING_CHECKBOX"])
+        grid_layout.addWidget(self.thinking_label, 2, 0)
+        
+        self.thinking_checkbox = QCheckBox()
+        self.thinking_checkbox.setChecked(self.database_config.get('show_thinking', True))
+        self.thinking_checkbox.setToolTip(TOOLTIPS["SHOW_THINKING_CHECKBOX"])
+        grid_layout.addWidget(self.thinking_checkbox, 2, 2)
+        
         self.setLayout(grid_layout)
 
     def update_config(self):
         try:
-            with open('config.yaml', 'r', encoding='utf-8') as f:
-                config_data = yaml.safe_load(f)
+            config_data = self.config_manager.get_config()
+            settings_changed = False
+            
+            # Update database selection
+            new_database = self.database_combo.currentText()
+            if new_database != self.database_to_search:
+                config_data['database']['database_to_search'] = new_database
+                self.database_to_search = new_database
+                self.current_database_label.setText(f"{new_database}")
+                settings_changed = True
+            
+            # Update number of results
+            new_results = self.results_spinbox.value()
+            if new_results != config_data['database'].get('num_results', 3):
+                config_data['database']['num_results'] = new_results
+                self.current_results_label.setText(f"{new_results}")
+                settings_changed = True
+            
+            # Update show thinking
+            new_thinking = self.thinking_checkbox.isChecked()
+            if new_thinking != config_data['database'].get('show_thinking', True):
+                config_data['database']['show_thinking'] = new_thinking
+                settings_changed = True
+            
+            if settings_changed:
+                self.config_manager.save_config(config_data)
+            
+            return settings_changed
+            
         except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Error Loading Configuration",
-                f"An error occurred while loading the configuration: {e}"
-            )
+            print(f"Error updating config: {e}")
             return False
-
-        settings_changed = False
-        errors = []
-
-        new_query_device = self.query_device_combo.currentText()
-        device_changed = new_query_device != config_data['Compute_Device'].get('database_query', '')
-
-        new_similarity_text = self.similarity_edit.text().strip()
-        if new_similarity_text:
-            try:
-                new_similarity = float(new_similarity_text)
-                if not (0.0 <= new_similarity <= 1.0):
-                    raise ValueError("Similarity must be between 0.0 and 1.0.")
-            except ValueError:
-                errors.append("Similarity must be a number between 0.0 and 1.0.")
-        else:
-            new_similarity = self.database_config.get('similarity', 0.0)
-
-        new_contexts_text = self.contexts_edit.text().strip()
-        if new_contexts_text:
-            try:
-                new_contexts = int(new_contexts_text)
-                if new_contexts < 1:
-                    raise ValueError("Contexts must be a positive integer.")
-            except ValueError:
-                errors.append("Contexts must be a positive integer.")
-        else:
-            new_contexts = self.database_config.get('contexts', 1)
-
-        new_search_term = self.search_term_edit.text().strip()
-
-        file_type_map = {
-            "All Files": '',
-            "Images Only": 'image',
-            "Documents Only": 'document',
-            "Audio Only": 'audio'  # add items to map here
-        }
-
-        file_type_selection = self.file_type_combo.currentText()
-        document_type_value = file_type_map.get(file_type_selection, '')
-
-        if errors:
-            error_message = "\n".join(errors)
-            QMessageBox.warning(
-                self,
-                "Invalid Input",
-                f"The following errors occurred:\n{error_message}"
-            )
-            return False
-
-        if device_changed:
-            config_data['Compute_Device']['database_query'] = new_query_device
-            settings_changed = True
-
-        if new_similarity_text and new_similarity != config_data['database'].get('similarity', 0.0):
-            config_data['database']['similarity'] = new_similarity
-            settings_changed = True
-
-        if new_contexts_text and new_contexts != config_data['database'].get('contexts', 1):
-            config_data['database']['contexts'] = new_contexts
-            settings_changed = True
-
-        if new_search_term and new_search_term != config_data['database'].get('search_term', ''):
-            config_data['database']['search_term'] = new_search_term
-            settings_changed = True
-
-        if document_type_value != config_data['database'].get('document_types', ''):
-            config_data['database']['document_types'] = document_type_value
-            settings_changed = True
-
-        if settings_changed:
-            try:
-                with open('config.yaml', 'w', encoding='utf-8') as f:
-                    yaml.safe_dump(config_data, f)
-            except Exception as e:
-                QMessageBox.critical(
-                    self,
-                    "Error Saving Configuration",
-                    f"An error occurred while saving the configuration: {e}"
-                )
-                return False
-
-            if device_changed:
-                self.database_query_device = new_query_device
-                self.query_device_label.setText(f"Device: {new_query_device}")
-
-            if new_similarity_text:
-                self.similarity_label.setText(f"Similarity: {new_similarity}")
-
-            if new_contexts_text:
-                self.contexts_label.setText(f"Contexts: {new_contexts}")
-
-            if new_search_term:
-                self.search_term_label.setText(f"Search Term Filter: {new_search_term}")
-
-            self.file_type_label = self.findChild(QLabel, "File Type:")
-            if self.file_type_label:
-                self.file_type_label.setText("File Type: " + file_type_selection)
-
-            self.similarity_edit.clear()
-            self.contexts_edit.clear()
-            self.search_term_edit.clear()
-
-        return settings_changed
 
     def reset_search_term(self):
         try:

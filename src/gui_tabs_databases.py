@@ -13,6 +13,7 @@ from choose_documents_and_vector_model import choose_documents_directory
 from utilities import check_preconditions_for_db_creation, open_file, delete_file, backup_database_incremental, my_cprint
 from download_model import model_downloaded_signal
 from constants import TOOLTIPS
+from config_manager import ConfigManager
 
 
 class CreateDatabaseProcess:
@@ -74,22 +75,19 @@ class CreateDatabaseThread(QThread):
         backup_database_incremental(self.database_name)
 
     def update_config_with_database_name(self):
-        config_path = Path(__file__).resolve().parent / "config.yaml"
-        if config_path.exists():
-            with open(config_path, 'r', encoding='utf-8') as file:
-                config = yaml.safe_load(file) or {}
-            model = config.get('EMBEDDING_MODEL_NAME')
-            chunk_size = config.get('database', {}).get('chunk_size')
-            chunk_overlap = config.get('database', {}).get('chunk_overlap')
-            if 'created_databases' not in config or not isinstance(config['created_databases'], dict):
-                config['created_databases'] = {}
-            config['created_databases'][self.database_name] = {
-                'model': model,
-                'chunk_size': chunk_size,
-                'chunk_overlap': chunk_overlap
-            }
-            with open(config_path, 'w', encoding='utf-8') as file:
-                yaml.safe_dump(config, file, allow_unicode=True)
+        config_manager = ConfigManager()
+        config_data = config_manager.get_config()
+        model = config_data.get('EMBEDDING_MODEL_NAME')
+        chunk_size = config_data.get('database', {}).get('chunk_size')
+        chunk_overlap = config_data.get('database', {}).get('chunk_overlap')
+        if 'created_databases' not in config_data or not isinstance(config_data['created_databases'], dict):
+            config_data['created_databases'] = {}
+        config_data['created_databases'][self.database_name] = {
+            'model': model,
+            'chunk_size': chunk_size,
+            'chunk_overlap': chunk_overlap
+        }
+        config_manager.save_config(config_data)
 
 
 class CustomFileSystemModel(QFileSystemModel):
@@ -156,8 +154,8 @@ class DatabasesTab(QWidget):
     def populate_model_combobox(self):
         self.model_combobox.clear()
         self.model_combobox.addItem("Select a model", None)
-        script_dir = Path(__file__).resolve().parent
-        vector_dir = script_dir / "Models" / "vector"
+        config = ConfigManager()
+        vector_dir = config.models_dir / "vector"
         if not vector_dir.exists():
             return
         for folder in vector_dir.iterdir():
@@ -167,7 +165,7 @@ class DatabasesTab(QWidget):
                 self.model_combobox.addItem(display_name, full_path)
 
     def sync_combobox_with_config(self):
-        config_path = Path(__file__).resolve().parent / "config.yaml"
+        config_path = Path(__file__).resolve().parent.parent / "config.yaml"
         if config_path.exists():
             with open(config_path, 'r', encoding='utf-8') as file:
                 config_data = yaml.safe_load(file) or {}
@@ -185,7 +183,7 @@ class DatabasesTab(QWidget):
 
     def on_model_selected(self, index):
         selected_path = self.model_combobox.itemData(index)
-        config_path = Path(__file__).resolve().parent / "config.yaml"
+        config_path = Path(__file__).resolve().parent.parent / "config.yaml"
         config_data = {}
         if config_path.exists():
             with open(config_path, 'r', encoding='utf-8') as file:
@@ -229,8 +227,8 @@ class DatabasesTab(QWidget):
         model = CustomFileSystemModel()
         tree_view.setModel(model)
         tree_view.setSelectionMode(QTreeView.ExtendedSelection)
-        script_dir = Path(__file__).resolve().parent
-        directory_path = script_dir / directory_name
+        config = ConfigManager()
+        directory_path = config.get_path(directory_name)
         model.setRootPath(str(directory_path))
         tree_view.setRootIndex(model.index(str(directory_path)))
         tree_view.hideColumn(1)
@@ -282,7 +280,7 @@ class DatabasesTab(QWidget):
         database_name = self.database_name_input.text().strip()
         model_name   = self.model_combobox.currentText()
 
-        docs_dir = Path(__file__).resolve().parent / "Docs_for_DB"
+        docs_dir = Path(__file__).resolve().parent.parent / "Docs_for_DB"
         has_pdfs = any(p.suffix.lower() == ".pdf" for p in docs_dir.iterdir() if p.is_file())
         skip_ocr = False
         if has_pdfs:
