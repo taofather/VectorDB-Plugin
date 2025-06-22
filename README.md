@@ -61,10 +61,15 @@ Activate the virtual environment:
 ```
 ### Step 4
 Run the setup script:
-   > Only ```Windows``` is supported for now.
+   > For ```Windows```
 
 ```
 python setup_windows.py
+```
+   > For ```Mac or Linux```
+
+```
+python setup.py
 ```
 
 [Back to Top](#top)
@@ -97,6 +102,10 @@ python gui.py
 * Click `Submit Question`.
   > The `chunks only` checkbox will display the results from the vector database without getting a response.
 
+### The <rag> tags
+
+Only topic submited between <rag></rag> tags will be used by the embedded vector ddbb to search for context.
+
 ### ❓ Which Backend Should I Use?
 If you use either the `Kobold` or `LM Studio` you must be familiar with those programs.  For example, `LM Studio` must be running in "server mode" and handles the prompt formatting.  However,`Kobold` automatically starts in server mode but requires you to specify the prompt formatting.
 > [!TIP]
@@ -113,27 +122,3 @@ If you use either the `Kobold` or `LM Studio` you must be familiar with those pr
 
 Feel free to report bugs or request enhancements by creating an issue on github and I will respond promptly.
 
-<a name="contact"></a>
-<div align="center"><h3>CONTACT</h3></div>
-
-I welcome all suggestions - both positive and negative.  You can e-mail me directly at "bbc@chintellalaw.com" or I can frequently be seen on the ```KoboldAI``` Discord server (moniker is ```vic49```).  I am always happy to answer any quesitons or discuss anything vector database related!  (no formal affiliation with ```KoboldAI```).
-
-<br>
-<div align="center">
-    <a href="https://github.com/BBC-Esq/VectorDB-Plugin-for-LM-Studio/blob/main/src/Assets/example1.png" target="_blank">
-        <img src="https://github.com/BBC-Esq/VectorDB-Plugin-for-LM-Studio/blob/main/src/Assets/example1.png?raw=true" alt="Example Image" width="350">
-    </a>
-    <a href="https://github.com/BBC-Esq/VectorDB-Plugin-for-LM-Studio/blob/main/src/Assets/example2.png" target="_blank">
-        <img src="https://github.com/BBC-Esq/VectorDB-Plugin-for-LM-Studio/blob/main/src/Assets/example2.png?raw=true" alt="Example Image" width="350">
-    </a>
-    <a href="https://github.com/BBC-Esq/VectorDB-Plugin-for-LM-Studio/blob/main/src/Assets/example3.png" target="_blank">
-        <img src="https://github.com/BBC-Esq/VectorDB-Plugin-for-LM-Studio/blob/main/src/Assets/example3.png?raw=true" alt="Example Image" width="350">
-    </a>
-    <a href="https://github.com/BBC-Esq/VectorDB-Plugin-for-LM-Studio/blob/main/src/Assets/example4.png" target="_blank">
-        <img src="https://github.com/BBC-Esq/VectorDB-Plugin-for-LM-Studio/blob/main/src/Assets/example4.png?raw=true" alt="Example Image" width="350">
-    </a>
-      </a>
-    <a href="https://github.com/BBC-Esq/VectorDB-Plugin-for-LM-Studio/blob/main/src/Assets/example5.png" target="_blank">
-        <img src="https://github.com/BBC-Esq/VectorDB-Plugin-for-LM-Studio/blob/main/src/Assets/example5.png?raw=true" alt="Example Image" width="350">
-    </a>
-</div>

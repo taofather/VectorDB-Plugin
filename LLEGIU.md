@@ -110,3 +110,4 @@ La idea és que aquesta query ens doni una història a partir de la preparació 
 `Crea un petit Plot per una història de rol  d'Aquelarre on l'objectiu sigui aconseguir els elements per fer el conjur Aliento de Salamandra per escalfar-se en una nit freda d'hivern, donat que els jugadors no disposen d'escaquer ni pedernal.`
 
 En successives proves, el model inventa l'encanteri, posant-hi escates de drac, plomes de Fènix, etc. La idea és que sigui capaç de construïr amb la recepta de l'encanteri que l'embedding model ha guardat a Postgresql.
+
