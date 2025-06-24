@@ -1,0 +1,9 @@
+{
+    "messages": [
+        {"role": "system", "content": "Crear personatges pel joc de rol Aquelarre escrit per Ricard Ibáñez d'una manera esquemàtica."},
+        {"role": "user", "content": "%markdown-child%"}
+    ],
+    "temperature": 0.8,
+    "max_tokens": -1,
+    "stream": true
+}

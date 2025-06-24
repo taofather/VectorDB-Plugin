@@ -33,15 +33,9 @@ class RPGThread(QThread):
         try:
             url = f"http://{self.host}:{self.port}/v1/chat/completions"
             headers = {"Content-Type": "application/json"}
-            data = {
-                "messages": [
-                    {"role": "system", "content": self.context_content},
-                    {"role": "user", "content": "Escriu el resum d'una història pel joc de rol Aquelarre. Tindrà lloc en diferents paratges (pobles, boscos, ports, ciutats) a la península ibèrica Medieval (1300-1400)."}
-                ],
-                "temperature": 0.8,
-                "max_tokens": -1,
-                "stream": True
-            }
+            
+            # The context_content is already a complete JSON structure for the API request
+            data = json.loads(self.context_content)
 
             response = requests.post(url, headers=headers, json=data, stream=True)
             response.raise_for_status()
@@ -100,6 +94,27 @@ class RPGThread(QThread):
         except Exception as e:
             logging.error(f"Error saving plot: {e}")
 
+    def save_characters_to_file(self, characters_content):
+        """Save the generated characters to contexts/characters directory"""
+        try:
+            characters_dir = Path(__file__).parent.parent / 'contexts' / 'characters'
+            characters_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Find the next available characters file number
+            existing_characters = list(characters_dir.glob('characters-*.md'))
+            characters_number = len(existing_characters) + 1
+            
+            characters_file = characters_dir / f'characters-{characters_number:03d}.md'
+            
+            with open(characters_file, 'w', encoding='utf-8') as f:
+                f.write(f"# Characters Set {characters_number}\n\n")
+                f.write(characters_content)
+            
+            logging.info(f"Characters saved to: {characters_file}")
+            
+        except Exception as e:
+            logging.error(f"Error saving characters: {e}")
+
 
 class RPGTab(QWidget):
     def __init__(self):
@@ -121,8 +136,11 @@ class RPGTab(QWidget):
         desc_label.setStyleSheet("margin: 5px; color: #666;")
         layout.addWidget(desc_label)
         
+        # Buttons section
+        buttons_layout = QVBoxLayout()
+        
         # Start new plot button
-        button_layout = QHBoxLayout()
+        plot_button_layout = QHBoxLayout()
         self.start_plot_button = QPushButton("🚀 Start a new plot")
         self.start_plot_button.setStyleSheet("""
             QPushButton {
@@ -143,9 +161,51 @@ class RPGTab(QWidget):
             }
         """)
         self.start_plot_button.clicked.connect(self.start_new_plot)
-        button_layout.addWidget(self.start_plot_button)
-        button_layout.addStretch()
-        layout.addLayout(button_layout)
+        plot_button_layout.addWidget(self.start_plot_button)
+        plot_button_layout.addStretch()
+        buttons_layout.addLayout(plot_button_layout)
+        
+        # Generate characters section
+        characters_layout = QHBoxLayout()
+        
+        # Number of characters input
+        num_chars_label = QLabel("Number of characters:")
+        num_chars_label.setStyleSheet("margin: 5px;")
+        characters_layout.addWidget(num_chars_label)
+        
+        self.num_characters_spinbox = QSpinBox()
+        self.num_characters_spinbox.setMinimum(1)
+        self.num_characters_spinbox.setMaximum(8)
+        self.num_characters_spinbox.setValue(3)
+        self.num_characters_spinbox.setStyleSheet("margin: 5px; padding: 5px;")
+        characters_layout.addWidget(self.num_characters_spinbox)
+        
+        # Generate characters button
+        self.generate_characters_button = QPushButton("👥 Generate characters")
+        self.generate_characters_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                font-size: 14px;
+                border-radius: 5px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+                color: #666666;
+            }
+        """)
+        self.generate_characters_button.clicked.connect(self.generate_characters)
+        characters_layout.addWidget(self.generate_characters_button)
+        characters_layout.addStretch()
+        buttons_layout.addLayout(characters_layout)
+        
+        layout.addLayout(buttons_layout)
         
         # Response display area
         self.response_browser = QTextBrowser()
@@ -161,13 +221,13 @@ class RPGTab(QWidget):
         """Start generating a new plot using the system-summarizer context"""
         try:
             # Load the system-summarizer context
-            context_file = Path(__file__).parent.parent / 'contexts' / 'game' / 'system-summarizer.md'
+            context_file = Path(__file__).parent.parent / 'contexts' / 'game' / 'system-summarizer.json'
             
             if not context_file.exists():
                 QMessageBox.warning(
                     self,
                     "Context File Missing",
-                    f"The system-summarizer.md file is missing at:\n{context_file}\n\nPlease ensure the contexts/game directory contains the required files."
+                    f"The system-summarizer.json file is missing at:\n{context_file}\n\nPlease ensure the contexts/game directory contains the required files."
                 )
                 return
             
@@ -178,7 +238,7 @@ class RPGTab(QWidget):
                 QMessageBox.warning(
                     self,
                     "Empty Context File",
-                    "The system-summarizer.md file is empty. Please add the appropriate context content."
+                    "The system-summarizer.json file is empty. Please add the appropriate context content."
                 )
                 return
             
@@ -256,6 +316,166 @@ class RPGTab(QWidget):
         """Reset UI elements to initial state"""
         self.start_plot_button.setEnabled(True)
         self.start_plot_button.setText("🚀 Start a new plot")
+        self.reset_characters_ui()
+
+    def generate_characters(self):
+        """Generate characters using the system-character-creation context with tag substitutions"""
+        try:
+            # Load the system character creation JSON template
+            json_file = Path(__file__).parent.parent / 'contexts' / 'game' / 'system-character-creation.json'
+            md_file = Path(__file__).parent.parent / 'contexts' / 'game' / 'system-character-creation.md'
+            
+            if not json_file.exists():
+                QMessageBox.warning(
+                    self,
+                    "JSON File Missing",
+                    f"The system-character-creation.json file is missing at:\n{json_file}\n\nPlease ensure the contexts/game directory contains the required files."
+                )
+                return
+                
+            if not md_file.exists():
+                QMessageBox.warning(
+                    self,
+                    "Markdown File Missing",
+                    f"The system-character-creation.md file is missing at:\n{md_file}\n\nPlease ensure the contexts/game directory contains the required files."
+                )
+                return
+            
+            # Load JSON template
+            with open(json_file, 'r', encoding='utf-8') as f:
+                json_content = f.read()
+            
+            # Load Markdown content
+            with open(md_file, 'r', encoding='utf-8') as f:
+                md_content = f.read()
+            
+            if not json_content.strip():
+                QMessageBox.warning(
+                    self,
+                    "Empty JSON File",
+                    "The system-character-creation.json file is empty. Please add the appropriate context content."
+                )
+                return
+                
+            if not md_content.strip():
+                QMessageBox.warning(
+                    self,
+                    "Empty Markdown File",
+                    "The system-character-creation.md file is empty. Please add the appropriate context content."
+                )
+                return
+            
+            # Get the number of characters from the spinbox
+            num_characters = self.num_characters_spinbox.value()
+            
+            # Load the plot content for substitution
+            plot_file = Path(__file__).parent.parent / 'contexts' / 'plot' / 'plot-001.md'
+            plot_content = ""
+            
+            if plot_file.exists():
+                with open(plot_file, 'r', encoding='utf-8') as f:
+                    plot_content = f.read()
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Plot File Missing",
+                    f"No plot file found at:\n{plot_file}\n\nPlease generate a plot first before creating characters."
+                )
+                return
+            
+            # Substitute markdown content and tags
+            context_content = self.substitute_markdown_and_tags(json_content, md_content, num_characters, plot_content)
+            
+            # Check if server is configured
+            config_manager = ConfigManager()
+            config = config_manager.get_config()
+            server_config = config.get('server', {})
+            host = server_config.get('host', 'localhost')
+            port = server_config.get('port', 1234)
+            
+            if not host or not port:
+                QMessageBox.warning(
+                    self,
+                    "Server Configuration Missing",
+                    "Please configure the LM Studio server settings in the config.yaml file."
+                )
+                return
+            
+            # Disable button and update status
+            self.generate_characters_button.setEnabled(False)
+            self.generate_characters_button.setText("🔄 Generating characters...")
+            self.status_label.setText("Connecting to LM Studio and generating characters...")
+            self.response_browser.clear()
+            self.current_response = ""
+            
+            # Start the RPG thread for character generation
+            self.rpg_thread = RPGThread(context_content, "characters")
+            self.rpg_thread.signals.response_signal.connect(self.update_response)
+            self.rpg_thread.signals.error_signal.connect(self.show_error)
+            self.rpg_thread.signals.finished_signal.connect(self.on_characters_finished)
+            self.rpg_thread.start()
+            
+        except Exception as e:
+            logging.error(f"Error generating characters: {e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to generate characters: {str(e)}"
+            )
+            self.reset_characters_ui()
+
+    def substitute_markdown_and_tags(self, json_content, md_content, num_characters, plot_content):
+        """Substitute markdown content and XHTML tags in the JSON content"""
+        try:
+            # Parse the JSON content
+            context_data = json.loads(json_content)
+            
+            # First, substitute the markdown content in the JSON
+            json_str = json.dumps(context_data, ensure_ascii=False, indent=2)
+            
+            # Replace %markdown-child% with the markdown content
+            # We need to properly escape the markdown content for JSON
+            escaped_md_content = json.dumps(md_content, ensure_ascii=False)[1:-1]  # Remove surrounding quotes
+            json_str = json_str.replace('"%markdown-child%"', f'"{escaped_md_content}"')
+            
+            # Parse back to modify tags
+            context_data = json.loads(json_str)
+            
+            # Iterate through messages and substitute XHTML tags in content
+            for message in context_data.get('messages', []):
+                if 'content' in message:
+                    # Replace <num_characters></num_characters> with the actual number
+                    message['content'] = message['content'].replace('<num_characters></num_characters>', str(num_characters))
+                    
+                    # Replace <plot></plot> with the plot content
+                    message['content'] = message['content'].replace('<plot></plot>', plot_content)
+            
+            # Return the modified JSON as string
+            return json.dumps(context_data, ensure_ascii=False, indent=2)
+            
+        except json.JSONDecodeError as e:
+            logging.error(f"JSON decode error: {e}")
+            raise Exception(f"Invalid JSON format: {e}")
+        except Exception as e:
+            logging.error(f"Error in substitute_markdown_and_tags: {e}")
+            raise
+
+    def on_characters_finished(self):
+        """Called when character generation is complete"""
+        self.status_label.setText("Character generation completed! Check contexts/characters directory for saved file.")
+        self.reset_characters_ui()
+        
+        if self.current_response.strip():
+            QMessageBox.information(
+                self,
+                "Characters Generated",
+                "New characters have been generated and saved to contexts/characters directory!"
+            )
+
+    def reset_characters_ui(self):
+        """Reset character generation UI elements to initial state"""
+        self.generate_characters_button.setEnabled(True)
+        self.generate_characters_button.setText("👥 Generate characters")
 
     def cleanup(self):
         """Cleanup when tab is closed"""
