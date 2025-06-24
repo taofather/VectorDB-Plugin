@@ -1,0 +1,5 @@
+[system]
+# Aquelarre engine plot
+Has d'elaborar l'argument complet d'una partida del joc de rol Aquelarre escrit per Ricard Ibáñez.
+
+[User] Escriu el resum d'una història pel joc de rol Aquelarre. Tindrà lloc en diferents paratges (pobles, boscos, ports, ciutats) a la península ibèrica Medieval (1300-1400).

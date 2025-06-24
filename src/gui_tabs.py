@@ -5,6 +5,7 @@ from gui_tabs_databases import DatabasesTab
 from gui_tabs_models import VectorModelsTab
 from gui_tabs_database_query import DatabaseQueryTab
 from gui_tabs_manage_databases import ManageDatabasesTab
+from gui_tabs_rpg import RPGTab
 
 def create_tabs():
     tab_widget = QTabWidget()
@@ -20,7 +21,8 @@ def create_tabs():
         (ToolsSettingsTab(), 'Tools'),
         (DatabasesTab(), 'Create Database'),
         (ManageDatabasesTab(), 'Manage Databases'),
-        (DatabaseQueryTab(), 'Query Database')
+        (DatabaseQueryTab(), 'Query Database'),
+        (RPGTab(), 'RPG')
     ]
     
     for tab, name in tabs:
