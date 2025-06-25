@@ -1,6 +1,16 @@
 {
     "messages": [
         {"role": "system", "content": "Has d'elaborar l'argument complet d'una partida del joc de rol Aquelarre escrit per Ricard Ibáñez."},
-        {"role": "user", "content": "Escriu el resum d'una història pel joc de rol Aquelarre. Tindrà lloc en diferents paratges (pobles, boscos, ports, ciutats) a la península ibèrica Medieval (1300-1400)."}
-    ]
+        {"role": "user", "content": "Escriu el resum d'una història pel joc de rol Aquelarre. Tindrà lloc en diferents paratges (pobles, boscos, ports, ciutats) a la península ibèrica Medieval (1300-1400). La resposta serà un fitxer xml amb certes parts:"},
+        {"role": "user", "content": "<plot>El resum de la història.</plot>"},
+        {"role": "user", "content": "<characters>Llista de personatges<character>Cada un</character.</characters>"},
+        {"role": "user", "content": "<places>Llista de llocs.</places>"},
+        {"role": "user", "content": "<development>El més important, la llista d'events de la història.<event_1></event_1><event_2></event_2>Limitar a un màxim de 8 events, el penúltim és el desenllaç, l últim el `que fou de`.</development>"},
+        {"role": "user", "content": "<items>Llista d'objectes.</items>"},
+        {"role": "user", "content": "<magic>Llista d'encants màgics si aplica.</magic>"}
+
+    ],
+    "temperature": 0.6,
+    "max_tokens": -1,
+    "stream": true
 }

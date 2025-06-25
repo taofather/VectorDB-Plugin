@@ -74,25 +74,71 @@ class RPGThread(QThread):
             self.signals.finished_signal.emit()
 
     def save_plot_to_file(self, plot_content):
-        """Save the generated plot to contexts/plot directory"""
+        """Save the generated plot to contexts/plot directory as XML and extract events"""
         try:
+            import xml.etree.ElementTree as ET
+            import re
+            
             plot_dir = Path(__file__).parent.parent / 'contexts' / 'plot'
             plot_dir.mkdir(parents=True, exist_ok=True)
             
             # Find the next available plot file number
-            existing_plots = list(plot_dir.glob('plot-*.md'))
+            existing_plots = list(plot_dir.glob('plot-*.xml'))
             plot_number = len(existing_plots) + 1
             
-            plot_file = plot_dir / f'plot-{plot_number:03d}.md'
+            # Save the complete XML response
+            plot_file = plot_dir / f'plot-{plot_number:03d}.xml'
             
             with open(plot_file, 'w', encoding='utf-8') as f:
-                f.write(f"# Plot {plot_number}\n\n")
                 f.write(plot_content)
             
-            logging.info(f"Plot saved to: {plot_file}")
+            logging.info(f"Plot saved as XML to: {plot_file}")
+            
+            # Extract and save individual events
+            self.extract_and_save_events(plot_content, plot_number, plot_dir)
             
         except Exception as e:
             logging.error(f"Error saving plot: {e}")
+
+    def extract_and_save_events(self, xml_content, plot_number, plot_dir):
+        """Extract events from development section and save as individual markdown files"""
+        try:
+            import re
+            
+            # Create plot-specific directory
+            plot_events_dir = plot_dir / f'plot-{plot_number:03d}-events'
+            plot_events_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Extract development section
+            development_match = re.search(r'<development>(.*?)</development>', xml_content, re.DOTALL)
+            if not development_match:
+                logging.warning("No development section found in XML content")
+                return
+            
+            development_content = development_match.group(1)
+            
+            # Find all event tags (event_1, event_2, etc.)
+            event_pattern = r'<event_(\d+)>(.*?)</event_\1>'
+            events = re.findall(event_pattern, development_content, re.DOTALL)
+            
+            if not events:
+                logging.warning("No events found in development section")
+                return
+            
+            # Save each event as a markdown file
+            for event_num, event_content in events:
+                event_file = plot_events_dir / f'event-{event_num}.md'
+                
+                with open(event_file, 'w', encoding='utf-8') as f:
+                    f.write(f"# Event {event_num}\n\n")
+                    f.write(event_content.strip())
+                
+                logging.info(f"Event {event_num} saved to: {event_file}")
+            
+            logging.info(f"Extracted {len(events)} events to {plot_events_dir}")
+            
+        except Exception as e:
+            logging.error(f"Error extracting events: {e}")
 
     def save_characters_to_file(self, characters_content):
         """Save the generated characters to contexts/characters directory"""
@@ -302,14 +348,14 @@ class RPGTab(QWidget):
 
     def on_finished(self):
         """Called when plot generation is complete"""
-        self.status_label.setText("Plot generation completed! Check contexts/plot directory for saved file.")
+        self.status_label.setText("Plot generation completed! Check contexts/plot directory for XML file and event files.")
         self.reset_ui()
         
         if self.current_response.strip():
             QMessageBox.information(
                 self,
                 "Plot Generated",
-                "New plot has been generated and saved to contexts/plot directory!"
+                "New plot has been generated and saved as XML to contexts/plot directory!\nEvent files have been extracted to individual markdown files."
             )
 
     def reset_ui(self):
@@ -368,18 +414,28 @@ class RPGTab(QWidget):
             # Get the number of characters from the spinbox
             num_characters = self.num_characters_spinbox.value()
             
-            # Load the plot content for substitution
-            plot_file = Path(__file__).parent.parent / 'contexts' / 'plot' / 'plot-001.md'
+            # Load the plot content for substitution - look for XML files first, fallback to MD
+            plot_dir = Path(__file__).parent.parent / 'contexts' / 'plot'
             plot_content = ""
             
-            if plot_file.exists():
+            # Try to find the most recent plot file (XML first, then MD)
+            xml_plots = list(plot_dir.glob('plot-*.xml'))
+            md_plots = list(plot_dir.glob('plot-*.md'))
+            
+            plot_file = None
+            if xml_plots:
+                plot_file = max(xml_plots, key=lambda x: x.name)
+            elif md_plots:
+                plot_file = max(md_plots, key=lambda x: x.name)
+            
+            if plot_file and plot_file.exists():
                 with open(plot_file, 'r', encoding='utf-8') as f:
                     plot_content = f.read()
             else:
                 QMessageBox.warning(
                     self,
                     "Plot File Missing",
-                    f"No plot file found at:\n{plot_file}\n\nPlease generate a plot first before creating characters."
+                    f"No plot file found in:\n{plot_dir}\n\nPlease generate a plot first before creating characters."
                 )
                 return
             
