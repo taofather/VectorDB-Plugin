@@ -19,6 +19,7 @@ def install_requirements():
         "psycopg2-binary",
         "tiledb",
         "langchain-community",
+        "unstructured",
         "numpy",
         "PySide6",
         "PyYAML"

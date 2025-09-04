@@ -18,20 +18,25 @@ from langchain_text_splitters.base import TextSplitter
     # return _old_merge(self, splits, separator)
 # TextSplitter._merge_splits = _debug_merge
 # # ─ monkey-patch block ends
-from langchain_community.document_loaders import (
-    PyMuPDFLoader,
-    Docx2txtLoader,
-    TextLoader,
-    EverNoteLoader,
-    UnstructuredEPubLoader,
-    UnstructuredEmailLoader,
-    CSVLoader,
-    UnstructuredExcelLoader,
-    UnstructuredRTFLoader,
-    UnstructuredODTLoader,
-    UnstructuredMarkdownLoader,
-    BSHTMLLoader
-)
+try:
+    from langchain_community.document_loaders import (
+        PyMuPDFLoader,
+        Docx2txtLoader,
+        TextLoader,
+        EverNoteLoader,
+        UnstructuredEPubLoader,
+        UnstructuredEmailLoader,
+        CSVLoader,
+        UnstructuredExcelLoader,
+        UnstructuredRTFLoader,
+        UnstructuredODTLoader,
+        UnstructuredMarkdownLoader,
+        BSHTMLLoader
+    )
+except ImportError as e:
+    print(f"\033[91mError importing document loaders: {e}\033[0m")
+    print(f"\033[91mPlease install missing dependencies by running: python src/setup.py\033[0m")
+    raise
 
 from typing import Optional, Any, Iterator, Union, List, Dict
 from langchain_community.document_loaders.blob_loaders import Blob
@@ -145,6 +150,13 @@ def load_single_document(file_path: Path) -> Document:
 
     try:
         if file_extension in [".epub", ".rtf", ".odt", ".md", ".eml", ".msg", ".xlsx", ".xls", ".xlsm"]:
+            try:
+                import unstructured
+            except ImportError:
+                print(f"\033[91mFailed---> {file_path.name} (unstructured package not installed)\033[0m")
+                logging.error(f"unstructured package required for file: {file_path.name} - Please run: python src/setup.py")
+                return None
+
             unstructured_kwargs = loader_options.pop("unstructured_kwargs", {})
             loader = loader_class(str(file_path), mode=loader_options.get("mode", "single"), **unstructured_kwargs)
         else:
@@ -192,7 +204,7 @@ def load_document_batch(filepaths, threads_per_process):
 
 def load_documents(source_dir: Path) -> list:
     valid_extensions = {ext.lower() for ext in DOCUMENT_LOADERS.keys()}
-    doc_paths = [f for f in source_dir.iterdir() if f.suffix.lower() in valid_extensions]
+    doc_paths = [f for f in source_dir.rglob("*") if f.is_file() and f.suffix.lower() in valid_extensions]
 
     docs = []
 
@@ -298,11 +310,13 @@ def split_documents(documents=None, text_documents_pdf=None):
 def process_documents(documents_dir: str) -> List[Dict[str, Any]]:
     """Process documents in the specified directory."""
     try:
+        my_cprint(f"Starting process_documents for directory: {documents_dir}", "yellow")
         config_manager = ConfigManager()
         config = config_manager.get_config()
         
         # Get document types from config
         document_types = config.get('document_types', [])
+        my_cprint(f"Configured document types: {document_types}", "yellow")
         if not document_types:
             my_cprint("No document types specified in config", "red")
             return []
@@ -322,6 +336,7 @@ def process_documents(documents_dir: str) -> List[Dict[str, Any]]:
 def process_document_type(documents_dir: str, doc_type: str, config: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Process documents of a specific type."""
     try:
+        my_cprint(f"Processing document type: {doc_type} in directory: {documents_dir}", "yellow")
         # Get type-specific settings
         type_settings = config.get(f'{doc_type}_settings', {})
         if not type_settings:
@@ -330,6 +345,7 @@ def process_document_type(documents_dir: str, doc_type: str, config: Dict[str, A
 
         # Get file patterns for this type
         patterns = type_settings.get('patterns', [])
+        my_cprint(f"Patterns for {doc_type}: {patterns}", "yellow")
         if not patterns:
             my_cprint(f"No file patterns specified for document type: {doc_type}", "red")
             return []
@@ -349,12 +365,14 @@ def process_document_type(documents_dir: str, doc_type: str, config: Dict[str, A
 def process_files_by_pattern(documents_dir: str, pattern: str, doc_type: str, settings: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Process files matching a specific pattern."""
     try:
+        my_cprint(f"Searching for files in directory: {documents_dir} with pattern: {pattern}", "yellow")
         # Find matching files
-        matching_files = Path(documents_dir).glob(pattern)
+        matching_files = Path(documents_dir).rglob(pattern)
         
         # Process each file
         processed_docs = []
         for file_path in matching_files:
+            my_cprint(f"Found file: {file_path}", "blue")
             doc = process_single_file(file_path, doc_type, settings)
             if doc:
                 processed_docs.append(doc)

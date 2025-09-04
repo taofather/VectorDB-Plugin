@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
 
@@ -19,30 +20,21 @@ from PySide6.QtWidgets import (
 from create_symlinks import _create_single_symlink
 from config_manager import ConfigManager
 
+# Setup logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 ALLOWED_EXTENSIONS = {
-    ".pdf",
-    ".docx",
-    ".epub",
     ".txt",
-    ".enex",
     ".eml",
     ".msg",
     ".csv",
-    ".xls",
-    ".xlsx",
-    ".rtf",
-    ".odt",
-    ".png",
-    ".jpg",
-    ".jpeg",
-    ".bmp",
-    ".gif",
-    ".tif",
-    ".tiff",
-    ".html",
-    ".htm",
+    ".yaml",
     ".md",
-    ".doc",
+    ".yml",
 }
 
 DOCS_FOLDER = "Docs_for_DB"
@@ -61,13 +53,27 @@ class SymlinkWorker(QThread):
     def run(self):
         if isinstance(self.source, (str, Path)):
             dir_path = Path(self.source)
+            logger.info(f"SymlinkWorker: Starting recursive search in directory: {dir_path}")
+
+            # Use rglob for recursive search
             files = [
                 str(p)
-                for p in dir_path.iterdir()
+                for p in dir_path.rglob("*")
                 if p.is_file() and p.suffix.lower() in ALLOWED_EXTENSIONS
             ]
+            logger.info(f"SymlinkWorker: Found {len(files)} files with allowed extensions")
+
+            # Log first few files for debugging
+            for i, file_path in enumerate(files[:5]):
+                logger.debug(f"File {i+1}: {file_path}")
+            if len(files) > 5:
+                logger.debug(f"... and {len(files)-5} more files")
+
+            source_root = str(dir_path)
         else:
             files = list(self.source)
+            logger.info(f"SymlinkWorker: Processing {len(files)} individual files from list")
+            source_root = None
 
         total = len(files)
         made = 0
@@ -79,7 +85,7 @@ class SymlinkWorker(QThread):
 
         if total > 1000:
             processes = min((total // 10000) + 1, cpu_count())
-            file_args = [(f, str(self.target_dir)) for f in files]
+            file_args = [(f, str(self.target_dir), source_root) for f in files]
             with Pool(processes=processes) as pool:
                 for i, (ok, err) in enumerate(
                     pool.imap_unordered(_create_single_symlink, file_args), 1
@@ -99,7 +105,7 @@ class SymlinkWorker(QThread):
                 if self.isInterruptionRequested():
                     break
 
-                ok, err = _create_single_symlink((f, str(self.target_dir)))
+                ok, err = _create_single_symlink((f, str(self.target_dir), source_root))
                 if ok:
                     made += 1
                 if err:
@@ -115,9 +121,11 @@ class SymlinkWorker(QThread):
 
 
 def choose_documents_directory():
+    logger.info("Starting choose_documents_directory function")
     config = ConfigManager()
     target_dir = config.docs_dir
     target_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Target directory: {target_dir}")
 
     msg_box = QMessageBox()
     msg_box.setWindowTitle("Selection Type")
@@ -131,6 +139,7 @@ def choose_documents_directory():
     clicked_button = msg_box.clickedButton()
 
     if clicked_button == cancel_button:
+        logger.info("User cancelled selection")
         return
 
     file_dialog = QFileDialog()
@@ -198,6 +207,9 @@ def choose_documents_directory():
             None, "Choose Directory for Database", str(config.docs_dir)
         )
         if selected_dir:
+            print(f"Selected directory: {selected_dir}")
+            print(f"Directory exists: {Path(selected_dir).exists()}")
+            print(f"Directory is readable: {Path(selected_dir).is_dir()}")
             start_worker(Path(selected_dir))
     else:
         file_dialog.setFileMode(QFileDialog.ExistingFiles)
